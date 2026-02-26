@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>natebike</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Supabase JS (UMD) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --blue:#004a95;
+      --lightblue:#004a95;
+      --bg:#ffffff;
+      --note:#ffd84d;
+      --text:#0b1a2a;
+      --danger:#7a0b0b;
+    }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header{
+      padding: 14px 16px 8px 16px;
+      display:flex;
+      align-items:center;
+      gap: 12px;
+    }
+    #logo{
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+    h1{
+      margin: 0;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      text-transform: lowercase;
+      color: var(--blue);
+    }
+
+    .wrap{
+      padding: 8px 16px 16px 16px;
+      height: calc(100% - 70px);
+      box-sizing: border-box;
+    }
+
+    #mapFrame, #lockFrame{
+      height: 100%;
+      border: 4px solid var(--lightblue);
+      border-radius: 8px;
+      box-sizing: border-box;
+      overflow: hidden;
+      background: #fff;
+      position: relative;
+    }
+
+    #map{ height: 100%; width: 100%; }
+
+    /* Lock screen */
+    #lockFrame{
+      display: grid;
+      place-items: center;
+      background: #fff;
+    }
+    .lockPanel{
+      width: min(520px, 92%);
+      border: 3px solid var(--blue);
+      border-radius: 12px;
+      padding: 16px;
+      box-sizing: border-box;
+      background: #fff;
+    }
+    .lockRow{
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+    .lockLabel{ font-size: 16px; }
+    input[type="password"], input[type="text"], textarea{
+      width: 100%;
+      border: 1px solid #cfd7e6;
+      border-radius: 8px;
+      padding: 10px 10px;
+      font-size: 14px;
+      box-sizing: border-box;
+      outline: none;
+    }
+    textarea{
+      min-height: 72px;
+      resize: vertical;
+      padding: 9px 10px;
+    }
+    .lockFooter{
+      display:flex;
+      justify-content: flex-end;
+      margin-top: 14px;
+    }
+    #pwMsg{
+      margin-top:10px;
+      color: var(--danger);
+      font-size: 13px;
+      display:none;
+    }
+
+    /* Context menu */
+    .ctx-menu{
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      border: 2px solid var(--blue);
+      border-radius: 8px;
+      min-width: 190px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.14);
+      padding: 6px;
+      display: none;
+      user-select: none;
+    }
+    .ctx-item{
+      padding: 10px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .ctx-item:hover{ background: rgba(0,74,149,0.08); }
+
+    /* Modal */
+    .modal-overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.25);
+      display: none;
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .modal{
+      width: min(560px, 95vw);
+      background: #fff;
+      border: 3px solid var(--blue);
+      border-radius: 10px;
+      padding: 14px 14px 12px 14px;
+      box-sizing: border-box;
+    }
+    .modal h2{
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--blue);
+      text-transform: lowercase;
+    }
+    .grid{
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 10px 12px;
+      align-items: center;
+    }
+    .label{ font-size: 14px; }
+
+    .photoBtn{
+      width: 100px;
+      height: 100px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 8px;
+      line-height: 1.15;
+    }
+    .photoPreview{
+      width: 100px;
+      height: 100px;
+      border-radius: 10px;
+      border: 1px solid #cfd7e6;
+      object-fit: contain;
+      background: #fff;
+      display: block;
+    }
+
+    .modal-footer{
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 14px;
+      gap: 10px;
+    }
+    .btn{
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      text-transform: lowercase;
+    }
+    .btn.danger{ background: var(--danger); }
+
+    /* Custom marker icons */
+    .bikeIconWrap{
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--blue);
+      display: grid; place-items: center;
+      border: 2px solid var(--blue);
+      box-sizing: border-box;
+    }
+    .noteIconWrap{
+      width: 34px; height: 28px;
+      background: var(--note);
+      border: 2px solid #b08a00;
+      border-radius: 4px;
+      position: relative;
+      box-sizing: border-box;
+    }
+    .noteIconWrap:after{
+      content:"";
+      position:absolute;
+      right:-2px; top:-2px;
+      width: 12px; height: 12px;
+      background: #fff3b2;
+      border-left: 2px solid #b08a00;
+      border-bottom: 2px solid #b08a00;
+      transform: rotate(45deg) translate(4px,-4px);
+      transform-origin: top right;
+    }
+
+    .statusBar{
+      position:absolute;
+      left: 10px;
+      bottom: 10px;
+      z-index: 5000;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid #cfd7e6;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #25324a;
+      display:none;
+      max-width: 70%;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <img id="logo" alt="logo" src="logo.png" />
+    <h1>natebike</h1>
+  </header>
+
+  <div class="wrap">
+    <div id="lockFrame">
+      <div class="lockPanel">
+        <div class="lockRow">
+          <div class="lockLabel">Passwort:</div>
+          <input id="pwInput" type="password" autocomplete="current-password" />
+        </div>
+        <div class="lockFooter">
+          <button class="btn" id="pwBtn" type="button">bestätigen</button>
+        </div>
+        <div id="pwMsg">falsches Passwort</div>
+      </div>
+    </div>
+
+    <div id="mapFrame" style="display:none;">
+      <div id="map"></div>
+      <div id="statusBar" class="statusBar"></div>
+    </div>
+  </div>
+
+  <div id="ctxMenu" class="ctx-menu">
+    <div class="ctx-item" data-action="bike">Fahrrad parken</div>
+    <div class="ctx-item" data-action="note">Notitz hinzufügen</div>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2 id="modalTitle">details</h2>
+      <div class="grid" id="modalBody"></div>
+      <div class="modal-footer" id="modalFooter"></div>
+    </div>
+  </div>
+
+  <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
+
+  <script>
+    // =======================
+    // Supabase credentials (filled in)
+    // =======================
+    const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
+    const SUPABASE_BUCKET = "marker-photos";
+
+    // Password gate (client-side)
+    const APP_PASSWORD = "drahtesel";
+
+    // ---------- Helpers ----------
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
+    }
+    function randId(n=10){
+      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+      let s = "";
+      for(let i=0;i<n;i++) s += chars[Math.floor(Math.random()*chars.length)];
+      return s;
+    }
+    async function readFileAsDataURL(file){
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    async function scaleToJpegBlob(dataUrl, maxSidePx, quality=0.9){
+      const img = new Image();
+      img.src = dataUrl;
+      await img.decode();
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const scale = Math.min(1, maxSidePx / Math.max(w, h));
+      const nw = Math.max(1, Math.round(w * scale));
+      const nh = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = nw; canvas.height = nh;
+      canvas.getContext('2d').drawImage(img, 0, 0, nw, nh);
+      return await new Promise((resolve) => canvas.toBlob(b => resolve(b), 'image/jpeg', quality));
+    }
+
+    // ---------- Status ----------
+    const statusBar = document.getElementById('statusBar');
+    let statusTimer = null;
+    function showStatus(msg){
+      statusBar.textContent = msg;
+      statusBar.style.display = 'block';
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
+    }
+
+    // ---------- Gate DOM refs ----------
+    const lockFrame = document.getElementById('lockFrame');
+    const mapFrame = document.getElementById('mapFrame');
+    const pwInput = document.getElementById('pwInput');
+    const pwBtn = document.getElementById('pwBtn');
+    const pwMsg = document.getElementById('pwMsg');
+
+    // ---------- Supabase client ----------
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ---------- Leaflet init ----------
+    const map = L.map('map', { center: [51.5413, 9.9158], zoom: 13, dragging: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    const bikeSvg = `
+      <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden="true">
+        <g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="44" r="12"></circle>
+          <circle cx="46" cy="44" r="12"></circle>
+          <path d="M18 44 L28 26 L36 26"></path>
+          <path d="M28 26 L40 44"></path>
+          <path d="M40 44 L46 44"></path>
+          <path d="M30 20 L38 20"></path>
+          <path d="M28 26 L22 26"></path>
+          <path d="M36 26 L42 16"></path>
+        </g>
+      </svg>
+    `;
+    const bikeIcon = L.divIcon({
+      className: '',
+      html: `<div class="bikeIconWrap">${bikeSvg}</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+    const noteIcon = L.divIcon({
+      className: '',
+      html: `<div class="noteIconWrap"></div>`,
+      iconSize: [34, 28],
+      iconAnchor: [17, 14]
+    });
+
+    // markers: Map(leafletId -> entry)
+    const markers = new Map();
+    let pendingPhotoTarget = null; // entry
+
+    // ---------- DB helpers ----------
+    async function dbLoadAll(){
+      const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending: true });
+      if(error) throw error;
+      return data || [];
+    }
+    async function dbInsert(type, lat, lng){
+      const payload = { type, lat, lng, name:'natebike', color:'undefiniert', remark:'keine', photo_url:null, content:' ' };
+      const { data, error } = await sb.from('markers').insert(payload).select().single();
+      if(error) throw error;
+      return data;
+    }
+    async function dbUpdate(id, patch){
+      const { error } = await sb.from('markers').update(patch).eq('id', id);
+      if(error) throw error;
+    }
+    async function dbDelete(id){
+      const { error } = await sb.from('markers').delete().eq('id', id);
+      if(error) throw error;
+    }
+
+    // ---------- Storage helper ----------
+    async function uploadPhotoAndGetPublicUrl(fileBlob){
+      const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
+      const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(
+        fileName, fileBlob, { contentType: 'image/jpeg', upsert: false }
+      );
+      if(upErr) throw upErr;
+      const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
+      return { fileName, publicUrl: data.publicUrl };
+    }
+
+    // ---------- Marker wiring ----------
+    function wireMarkerEvents(entry){
+      const marker = entry.marker;
+
+      const openFn = (e) => {
+        if(e) L.DomEvent.stop(e);
+        if(entry.type === 'bike') openBikeEditor(entry);
+        else openNoteEditor(entry);
+      };
+      marker.on('click', openFn);
+      marker.on('contextmenu', openFn);
+
+      marker.on('dragstart', () => map.dragging.disable());
+      marker.on('dragend', async () => {
+        map.dragging.enable();
+        try{
+          const ll = marker.getLatLng();
+          await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
+          showStatus('position gespeichert');
+        }catch(err){
+          console.error(err);
+          showStatus('fehler beim speichern der position');
+        }
+      });
+    }
+
+    function addMarkerFromRow(row){
+      const icon = row.type === 'bike' ? bikeIcon : noteIcon;
+      const marker = L.marker({ lat: row.lat, lng: row.lng }, { icon, draggable: true }).addTo(map);
+
+      const entry = {
+        type: row.type,
+        marker,
+        dbId: row.id,
+        photo_url: row.photo_url || null,
+        data: {
+          Name: row.name ?? 'natebike',
+          Farbe: row.color ?? 'undefiniert',
+          Bemerkung: row.remark ?? 'keine',
+          Foto: row.photo_url ? (row.photo_url.split('/').pop() || 'vorhanden') : 'nicht vorhanden',
+          Inhalt: row.content ?? ' '
+        }
+      };
+
+      markers.set(marker._leaflet_id, entry);
+      wireMarkerEvents(entry);
+      return entry;
+    }
+
+    async function createBikeAt(latlng, openEditor){
+      const row = await dbInsert('bike', latlng.lat, latlng.lng);
+      const entry = addMarkerFromRow(row);
+      if(openEditor) openBikeEditor(entry);
+      showStatus('rad erstellt');
+    }
+
+    async function createNoteAt(latlng, openEditor){
+      const row = await dbInsert('note', latlng.lat, latlng.lng);
+      const entry = addMarkerFromRow(row);
+      if(openEditor) openNoteEditor(entry);
+      showStatus('notitz erstellt');
+    }
+
+    // ---------- Context menu ----------
+    const ctxMenu = document.getElementById('ctxMenu');
+    let ctxLatLng = null;
+    function hideCtxMenu(){
+      ctxMenu.style.display = 'none';
+      ctxLatLng = null;
+    }
+    map.getContainer().addEventListener('contextmenu', (e) => e.preventDefault());
+    map.on('contextmenu', (e) => {
+      ctxLatLng = e.latlng;
+      const oe = e.originalEvent;
+      ctxMenu.style.left = `${oe.clientX}px`;
+      ctxMenu.style.top  = `${oe.clientY}px`;
+      ctxMenu.style.display = 'block';
+    });
+    map.on('click', hideCtxMenu);
+    map.on('movestart', hideCtxMenu);
+    document.addEventListener('click', (e) => { if (!ctxMenu.contains(e.target)) hideCtxMenu(); });
+    ctxMenu.addEventListener('click', async (e) => {
+      const item = e.target.closest('.ctx-item');
+      if(!item || !ctxLatLng) return;
+      const action = item.dataset.action;
+      const ll = ctxLatLng;
+      hideCtxMenu();
+      try{
+        if(action === 'bike') await createBikeAt(ll, true);
+        if(action === 'note') await createNoteAt(ll, true);
+      }catch(err){
+        console.error(err);
+        showStatus('fehler beim erstellen');
+      }
+    });
+
+    // ---------- Modal ----------
+    const overlay = document.getElementById('modalOverlay');
+    const modalBody = document.getElementById('modalBody');
+    const modalFooter = document.getElementById('modalFooter');
+    const modalTitle = document.getElementById('modalTitle');
+    const fileInput = document.getElementById('fileInput');
+
+    function openModal(){ overlay.style.display = 'flex'; }
+    function closeModal(){
+      overlay.style.display = 'none';
+      modalBody.innerHTML = '';
+      modalFooter.innerHTML = '';
+      modalTitle.textContent = 'details';
+      pendingPhotoTarget = null;
+      fileInput.value = '';
+    }
+    overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
+
+    function openBikeEditor(entry){
+      modalTitle.textContent = 'geparktes rad';
+      const photoCell = entry.photo_url
+        ? `<img class="photoPreview" id="photoPreview" src="${escapeHtml(entry.photo_url)}" alt="Foto" />`
+        : `<button class="photoBtn" id="photoBtn" type="button">Foto hinzufügen</button>`;
+
+      modalBody.innerHTML = `
+        <div class="label">Name</div>
+        <input type="text" id="bikeName" value="${escapeHtml(entry.data.Name)}" />
+        <div class="label">Farbe</div>
+        <input type="text" id="bikeColor" value="${escapeHtml(entry.data.Farbe)}" />
+        <div class="label">Bemerkung</div>
+        <input type="text" id="bikeRemark" value="${escapeHtml(entry.data.Bemerkung)}" />
+        <div class="label">Foto</div>
+        <div>${photoCell}</div>
+      `;
+
+      const photoClick = () => { pendingPhotoTarget = entry; fileInput.click(); };
+      const btn = document.getElementById('photoBtn');
+      const prev = document.getElementById('photoPreview');
+      if(btn) btn.addEventListener('click', photoClick);
+      if(prev){
+        prev.style.cursor = 'pointer';
+        prev.title = 'klicken zum foto ersetzen';
+        prev.addEventListener('click', photoClick);
+      }
+
+      modalFooter.innerHTML = `
+        <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
+        <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
+      `;
+
+      document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
+        const nameVal = document.getElementById('bikeName').value.trim();
+        const colorVal = document.getElementById('bikeColor').value.trim();
+        const remarkVal = document.getElementById('bikeRemark').value.trim();
+
+        const patch = {};
+        if(nameVal !== '') patch.name = nameVal;
+        if(colorVal !== '') patch.color = colorVal;
+        if(remarkVal !== '') patch.remark = remarkVal;
+
+        try{
+          if(Object.keys(patch).length){
+            await dbUpdate(entry.dbId, patch);
+            if(patch.name) entry.data.Name = patch.name;
+            if(patch.color) entry.data.Farbe = patch.color;
+            if(patch.remark) entry.data.Bemerkung = patch.remark;
+          }
+          showStatus('gespeichert');
+          closeModal();
+        }catch(err){
+          console.error(err);
+          showStatus('fehler beim speichern');
+        }
+      });
+
+      document.getElementById('bikeDeleteBtn').addEventListener('click', async () => {
+        try{
+          await dbDelete(entry.dbId);
+          map.removeLayer(entry.marker);
+          markers.delete(entry.marker._leaflet_id);
+          showStatus('gelöscht');
+          closeModal();
+        }catch(err){
+          console.error(err);
+          showStatus('fehler beim löschen');
+        }
+      });
+
+      openModal();
+    }
+
+    function openNoteEditor(entry){
+      modalTitle.textContent = 'notitz';
+      modalBody.innerHTML = `
+        <div class="label">Inhalt</div>
+        <textarea id="noteContent">${escapeHtml(entry.data.Inhalt)}</textarea>
+      `;
+      modalFooter.innerHTML = `
+        <button class="btn" id="noteSaveBtn" type="button">speichern</button>
+        <button class="btn danger" id="noteDeleteBtn" type="button">löschen</button>
+      `;
+
+      document.getElementById('noteSaveBtn').addEventListener('click', async () => {
+        const contentVal = document.getElementById('noteContent').value.trim();
+        if(contentVal === ''){ closeModal(); return; }
+        try{
+          await dbUpdate(entry.dbId, { content: contentVal });
+          entry.data.Inhalt = contentVal;
+          showStatus('gespeichert');
+          closeModal();
+        }catch(err){
+          console.error(err);
+          showStatus('fehler beim speichern');
+        }
+      });
+
+      document.getElementById('noteDeleteBtn').addEventListener('click', async () => {
+        try{
+          await dbDelete(entry.dbId);
+          map.removeLayer(entry.marker);
+          markers.delete(entry.marker._leaflet_id);
+          showStatus('gelöscht');
+          closeModal();
+        }catch(err){
+          console.error(err);
+          showStatus('fehler beim löschen');
+        }
+      });
+
+      openModal();
+    }
+
+    // ---------- Photo upload ----------
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if(!file || !pendingPhotoTarget) return;
+
+      if(file.type !== 'image/jpeg'){
+        alert('Bitte eine JPG-Datei auswählen.');
+        fileInput.value = '';
+        return;
+      }
+      if(file.size > 5 * 1024 * 1024){
+        alert('Bitte Maximalgröße von 5 MB beachten!');
+        fileInput.value = '';
+        return;
+      }
+
+      const entry = pendingPhotoTarget;
+      try{
+        showStatus('foto wird hochgeladen…');
+        const dataUrl = await readFileAsDataURL(file);
+        const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
+        const { fileName, publicUrl } = await uploadPhotoAndGetPublicUrl(jpgBlob);
+
+        await dbUpdate(entry.dbId, { photo_url: publicUrl });
+        entry.photo_url = publicUrl;
+        entry.data.Foto = fileName;
+
+        const photoBtn = document.getElementById('photoBtn');
+        const prev = document.getElementById('photoPreview');
+
+        if(photoBtn){
+          const img = document.createElement('img');
+          img.className = 'photoPreview';
+          img.id = 'photoPreview';
+          img.src = publicUrl;
+          img.alt = 'Foto';
+          img.style.cursor = 'pointer';
+          img.title = 'klicken zum foto ersetzen';
+          img.addEventListener('click', () => { pendingPhotoTarget = entry; fileInput.click(); });
+          photoBtn.replaceWith(img);
+        }else if(prev){
+          prev.src = publicUrl;
+        }
+
+        showStatus('foto gespeichert');
+      }catch(err){
+        console.error(err);
+        showStatus('fehler beim foto-upload');
+      }finally{
+        pendingPhotoTarget = null;
+        fileInput.value = '';
+      }
+    });
+
+    // ---------- PASSWORD GATE ----------
+    async function unlock(e){
+      if(e) e.preventDefault();
+      const val = (pwInput.value || "").trim();
+
+      if(val !== APP_PASSWORD){
+        pwMsg.textContent = "falsches Passwort";
+        pwMsg.style.display = 'block';
+        return;
+      }
+
+      pwMsg.style.display = 'none';
+      lockFrame.style.display = 'none';
+      lockFrame.hidden = true;
+
+      mapFrame.style.display = 'block';
+      mapFrame.hidden = false;
+
+      setTimeout(() => map.invalidateSize(), 150);
+
+      try{
+        showStatus('lade marker…');
+        const rows = await dbLoadAll();
+        for(const row of rows) addMarkerFromRow(row);
+        showStatus('fertig');
+      }catch(err){
+        console.error(err);
+        showStatus('fehler beim laden');
+      }
+    }
+
+    pwBtn.addEventListener('click', unlock);
+    pwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') unlock(e); });
+  </script>
+</body>
+</html>
