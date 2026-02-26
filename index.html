@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>natebike</title>
 
-  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -18,7 +17,6 @@
     crossorigin=""
   ></script>
 
-  <!-- Supabase JS (UMD) -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
@@ -26,13 +24,15 @@
       --blue:#004a95;
       --lightblue:#004a95;
       --bg:#ffffff;
-      --note:#ffd84d;
       --text:#0b1a2a;
       --danger:#7a0b0b;
+
       --adminGrey:#c9c9c9;
       --adminGreen:#9be39b;
       --adminBorder:#7d7d7d;
+      --noteDefault:#ffd84d;
     }
+
     html, body { height: 100%; }
     body{
       margin: 0;
@@ -55,8 +55,7 @@
       min-width: 0;
     }
     #logo{
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       border-radius: 8px;
       object-fit: contain;
     }
@@ -64,13 +63,18 @@
       margin: 0;
       font-size: 30px;
       font-weight: 800;
-      letter-spacing: 0.2px;
       text-transform: lowercase;
       color: var(--blue);
       white-space: nowrap;
     }
 
-    .adminBtn{
+    .headerRight{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+    }
+
+    .adminBtn, .userManageBtn{
       background: var(--adminGrey);
       border: 1px solid var(--adminBorder);
       color: #1b1b1b;
@@ -79,6 +83,7 @@
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
+      user-select: none;
     }
     .adminBtn.isAdmin{
       background: var(--adminGreen);
@@ -92,7 +97,7 @@
       box-sizing: border-box;
     }
 
-    #mapFrame, #lockFrame{
+    #mapFrame, #loginFrame{
       height: 100%;
       border: 4px solid var(--lightblue);
       border-radius: 8px;
@@ -101,30 +106,31 @@
       background: #fff;
       position: relative;
     }
+
     #map{ height: 100%; width: 100%; }
 
-    /* Lock screen */
-    #lockFrame{
+    /* Login screen */
+    #loginFrame{
       display: grid;
       place-items: center;
       background: #fff;
     }
-    .lockPanel{
-      width: min(520px, 92%);
+    .panel{
+      width: min(560px, 92%);
       border: 3px solid var(--blue);
       border-radius: 12px;
       padding: 16px;
       box-sizing: border-box;
       background: #fff;
     }
-    .lockRow{
-      display: grid;
-      grid-template-columns: 110px 1fr;
-      gap: 12px;
-      align-items: center;
+    .grid2{
+      display:grid;
+      grid-template-columns: 140px 1fr;
+      gap: 10px 12px;
+      align-items:center;
     }
-    .lockLabel{ font-size: 16px; }
-    input[type="password"], input[type="text"], textarea{
+    .label{ font-size: 14px; }
+    input[type="text"], input[type="password"], textarea{
       width: 100%;
       border: 1px solid #cfd7e6;
       border-radius: 8px;
@@ -138,16 +144,11 @@
       resize: vertical;
       padding: 9px 10px;
     }
-    .lockFooter{
+    .panelFooter{
       display:flex;
       justify-content: flex-end;
+      gap: 10px;
       margin-top: 14px;
-    }
-    #pwMsg{
-      margin-top:10px;
-      color: var(--danger);
-      font-size: 13px;
-      display:none;
     }
 
     /* Context menu */
@@ -157,7 +158,7 @@
       background: #fff;
       border: 2px solid var(--blue);
       border-radius: 8px;
-      min-width: 190px;
+      min-width: 210px;
       box-shadow: 0 8px 22px rgba(0,0,0,0.14);
       padding: 6px;
       display: none;
@@ -170,10 +171,7 @@
       font-size: 14px;
     }
     .ctx-item:hover{ background: rgba(0,74,149,0.08); }
-    .ctx-item.disabled{
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
+    .ctx-item.disabled{ opacity:0.45; cursor:not-allowed; }
 
     /* Modal */
     .modal-overlay{
@@ -188,7 +186,7 @@
       box-sizing: border-box;
     }
     .modal{
-      width: min(560px, 95vw);
+      width: min(620px, 95vw);
       background: #fff;
       border: 3px solid var(--blue);
       border-radius: 10px;
@@ -208,7 +206,24 @@
       gap: 10px 12px;
       align-items: center;
     }
-    .label{ font-size: 14px; }
+
+    .btn{
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      text-transform: lowercase;
+    }
+    .btn.secondary{
+      background: #e8f0ff;
+      border: 1px solid #b9c6f2;
+      color: var(--blue);
+    }
+    .btn.danger{ background: var(--danger); }
 
     .photoBtn{
       width: 100px;
@@ -233,30 +248,6 @@
       display: block;
     }
 
-    .modal-footer{
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 14px;
-      gap: 10px;
-    }
-    .btn{
-      background: var(--blue);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 14px;
-      font-weight: 800;
-      cursor: pointer;
-      text-transform: lowercase;
-    }
-    .btn.danger{ background: var(--danger); }
-    .btn.secondary{
-      background: #e8f0ff;
-      border: 1px solid #b9c6f2;
-      color: var(--blue);
-    }
-
     .statusBar{
       position:absolute;
       left: 10px;
@@ -269,10 +260,10 @@
       font-size: 12px;
       color: #25324a;
       display:none;
-      max-width: 70%;
+      max-width: 75%;
     }
 
-    /* Custom marker icons */
+    /* Marker icons */
     .bikeIconWrap{
       width: 36px; height: 36px;
       border-radius: 50%;
@@ -283,7 +274,7 @@
     }
     .noteIconWrap{
       width: 34px; height: 28px;
-      background: var(--note);
+      background: var(--noteDefault);
       border: 2px solid #b08a00;
       border-radius: 4px;
       position: relative;
@@ -310,20 +301,32 @@
       <h1>natebike</h1>
     </div>
 
-    <button id="adminBtn" class="adminBtn" type="button">Admin</button>
+    <div class="headerRight">
+      <button id="adminBtn" class="adminBtn" type="button">Admin</button>
+      <button id="userManageBtn" class="userManageBtn" type="button" style="display:none;">Nutzer bearbeiten</button>
+    </div>
   </header>
 
   <div class="wrap">
-    <div id="lockFrame">
-      <div class="lockPanel">
-        <div class="lockRow">
-          <div class="lockLabel">Passwort:</div>
-          <input id="pwInput" type="password" autocomplete="current-password" />
+    <!-- Login (Nickname + Farbe) -->
+    <div id="loginFrame">
+      <div class="panel">
+        <h2 style="margin:0 0 12px 0;color:var(--blue);text-transform:lowercase;">anmeldung</h2>
+        <div class="grid2">
+          <div class="label">Nutzername</div>
+          <input id="loginUsername" type="text" placeholder="z.B. max" />
+
+          <div class="label">Farbe</div>
+          <input id="loginColor" type="text" value="#ffd84d" placeholder="#ffd84d" />
         </div>
-        <div class="lockFooter">
-          <button class="btn" id="pwBtn" type="button">bestätigen</button>
+
+        <div id="loginMsg" style="margin-top:10px;color:var(--danger);display:none;font-size:13px;">
+          bitte nutzernamen eingeben
         </div>
-        <div id="pwMsg">falsches Passwort</div>
+
+        <div class="panelFooter">
+          <button class="btn" id="loginBtn" type="button">bestätigen</button>
+        </div>
       </div>
     </div>
 
@@ -333,31 +336,39 @@
     </div>
   </div>
 
+  <!-- Map context menu -->
   <div id="ctxMenu" class="ctx-menu">
-    <!-- renamed here -->
     <div class="ctx-item" data-action="bike" id="ctxBike">neues Rad hinzufügen</div>
     <div class="ctx-item" data-action="note">Notitz hinzufügen</div>
   </div>
 
+  <!-- User manage menu (admin) -->
+  <div id="userMenu" class="ctx-menu">
+    <div class="ctx-item" data-action="user_add">Nutzer hinzufügen</div>
+    <div class="ctx-item" data-action="user_list">Nutzerliste</div>
+  </div>
+
+  <!-- Generic modal -->
   <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal">
       <h2 id="modalTitle">details</h2>
       <div class="grid" id="modalBody"></div>
-      <div class="modal-footer" id="modalFooter"></div>
+      <div class="panelFooter" id="modalFooter" style="margin-top:14px;"></div>
     </div>
   </div>
 
+  <!-- Admin modal -->
   <div id="adminOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal">
       <h2>admin</h2>
       <div class="grid">
         <div class="label">Passwort</div>
-        <input id="adminPwInput" type="password" autocomplete="current-password" />
+        <input id="adminPwInput" type="password" />
       </div>
       <div style="margin-top:10px;color:var(--danger);display:none;font-size:13px;" id="adminMsg">
         falsches Passwort
       </div>
-      <div class="modal-footer">
+      <div class="panelFooter">
         <button class="btn secondary" id="adminCancelBtn" type="button">schließen</button>
         <button class="btn" id="adminOkBtn" type="button">bestätigen</button>
       </div>
@@ -367,20 +378,32 @@
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
+    // =======================
+    // Supabase (public)
+    // =======================
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
     const SUPABASE_BUCKET = "marker-photos";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const APP_PASSWORD = "drahtesel";
+    // =======================
+    // Admin (UI-only)
+    // =======================
     const ADMIN_PASSWORD = "eseldraht";
+    let isAdmin = false;
 
+    // =======================
+    // Current user (nickname)
+    // =======================
+    let currentUser = null; // { username, color }
+
+    // =======================
+    // Helpers
+    // =======================
     function escapeHtml(str){
       return String(str ?? "")
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'","&#039;");
+        .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+        .replaceAll('"','&quot;').replaceAll("'","&#039;");
     }
     function randId(n=10){
       const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -388,6 +411,19 @@
       for(let i=0;i<n;i++) s += chars[Math.floor(Math.random()*chars.length)];
       return s;
     }
+    function validHexColor(s){
+      return /^#[0-9A-Fa-f]{6}$/.test(String(s||"").trim());
+    }
+
+    const statusBar = document.getElementById('statusBar');
+    let statusTimer = null;
+    function showStatus(msg){
+      statusBar.textContent = msg;
+      statusBar.style.display = 'block';
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
+    }
+
     async function readFileAsDataURL(file){
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -400,29 +436,83 @@
       const img = new Image();
       img.src = dataUrl;
       await img.decode();
+
       const w = img.naturalWidth, h = img.naturalHeight;
       const scale = Math.min(1, maxSidePx / Math.max(w, h));
       const nw = Math.max(1, Math.round(w * scale));
       const nh = Math.max(1, Math.round(h * scale));
+
       const canvas = document.createElement('canvas');
       canvas.width = nw; canvas.height = nh;
       canvas.getContext('2d').drawImage(img, 0, 0, nw, nh);
+
       return await new Promise((resolve) => canvas.toBlob(b => resolve(b), 'image/jpeg', quality));
     }
 
-    const statusBar = document.getElementById('statusBar');
-    let statusTimer = null;
-    function showStatus(msg){
-      statusBar.textContent = msg;
-      statusBar.style.display = 'block';
-      clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
+    // =======================
+    // UI: Login
+    // =======================
+    const loginFrame = document.getElementById('loginFrame');
+    const mapFrame = document.getElementById('mapFrame');
+    const loginUsername = document.getElementById('loginUsername');
+    const loginColor = document.getElementById('loginColor');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginMsg = document.getElementById('loginMsg');
+
+    async function ensureUserInDb(username, color){
+      // Upsert into users_public (no password)
+      const { error } = await sb.from('users_public').upsert({ username, color }, { onConflict: 'username' });
+      if(error) throw error;
     }
 
-    // Admin: not persisted; defaults to logged out on reload
-    let isAdmin = false;
+    async function doLogin(){
+      const username = (loginUsername.value || "").trim();
+      const color = (loginColor.value || "").trim();
 
+      if(username === ""){
+        loginMsg.textContent = "bitte nutzernamen eingeben";
+        loginMsg.style.display = "block";
+        return;
+      }
+      if(!validHexColor(color)){
+        loginMsg.textContent = "bitte farbe als hex eingeben (z.B. #ffd84d)";
+        loginMsg.style.display = "block";
+        return;
+      }
+
+      try{
+        await ensureUserInDb(username, color);
+      }catch(err){
+        console.error(err);
+        loginMsg.textContent = "fehler beim anmelden (supabase?)";
+        loginMsg.style.display = "block";
+        return;
+      }
+
+      loginMsg.style.display = "none";
+      currentUser = { username, color };
+
+      // show map
+      loginFrame.style.display = "none";
+      mapFrame.style.display = "block";
+      setTimeout(() => map.invalidateSize(), 120);
+
+      // load markers
+      await loadMarkers();
+      updateAdminUI();
+      showStatus(`angemeldet als ${username}`);
+    }
+
+    loginBtn.addEventListener('click', doLogin);
+    loginUsername.addEventListener('keydown', (e) => { if(e.key === 'Enter') doLogin(); });
+    loginColor.addEventListener('keydown', (e) => { if(e.key === 'Enter') doLogin(); });
+
+    // =======================
+    // UI: Admin + User manage
+    // =======================
     const adminBtn = document.getElementById('adminBtn');
+    const userManageBtn = document.getElementById('userManageBtn');
+
     const adminOverlay = document.getElementById('adminOverlay');
     const adminPwInput = document.getElementById('adminPwInput');
     const adminMsg = document.getElementById('adminMsg');
@@ -431,6 +521,9 @@
 
     function updateAdminUI(){
       adminBtn.classList.toggle('isAdmin', isAdmin);
+      userManageBtn.style.display = isAdmin ? "inline-block" : "none";
+
+      // context menu bike create disabled if not admin
       const ctxBike = document.getElementById('ctxBike');
       if(ctxBike){
         if(isAdmin) ctxBike.classList.remove('disabled');
@@ -439,52 +532,58 @@
     }
 
     function openAdminModal(){
-      adminMsg.style.display = 'none';
-      adminPwInput.value = '';
-      adminOverlay.style.display = 'flex';
+      adminMsg.style.display = "none";
+      adminPwInput.value = "";
+      adminOverlay.style.display = "flex";
       adminPwInput.focus();
     }
-    function closeAdminModal(){
-      adminOverlay.style.display = 'none';
-    }
+    function closeAdminModal(){ adminOverlay.style.display = "none"; }
     function logoutAdmin(){
       isAdmin = false;
       updateAdminUI();
-      showStatus('admin abgemeldet');
+      showStatus("admin abgemeldet");
+    }
+    function confirmAdmin(){
+      if((adminPwInput.value || "").trim() !== ADMIN_PASSWORD){
+        adminMsg.textContent = "falsches Passwort";
+        adminMsg.style.display = "block";
+        return;
+      }
+      isAdmin = true;
+      updateAdminUI();
+      closeAdminModal();
+      showStatus("admin aktiv");
     }
 
     adminBtn.addEventListener('click', () => {
       if(isAdmin) logoutAdmin();
       else openAdminModal();
     });
-
+    adminOkBtn.addEventListener('click', confirmAdmin);
     adminCancelBtn.addEventListener('click', closeAdminModal);
+    adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
     adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
 
-    function confirmAdmin(){
-      const val = (adminPwInput.value || "").trim();
-      if(val !== ADMIN_PASSWORD){
-        adminMsg.textContent = "falsches Passwort";
-        adminMsg.style.display = 'block';
-        return;
-      }
-      isAdmin = true;
-      updateAdminUI();
-      closeAdminModal();
-      showStatus('admin aktiv');
-    }
-    adminOkBtn.addEventListener('click', confirmAdmin);
-    adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
+    // user manage menu (simple context menu near button)
+    const userMenu = document.getElementById('userMenu');
 
-    const lockFrame = document.getElementById('lockFrame');
-    const mapFrame = document.getElementById('mapFrame');
-    const pwInput = document.getElementById('pwInput');
-    const pwBtn = document.getElementById('pwBtn');
-    const pwMsg = document.getElementById('pwMsg');
+    function hideUserMenu(){ userMenu.style.display = 'none'; }
+    userManageBtn.addEventListener('click', (e) => {
+      if(!isAdmin) return;
+      const r = userManageBtn.getBoundingClientRect();
+      userMenu.style.left = `${r.left}px`;
+      userMenu.style.top = `${r.bottom + 6}px`;
+      userMenu.style.display = 'block';
+      e.stopPropagation();
+    });
+    document.addEventListener('click', (e) => {
+      if(!userMenu.contains(e.target) && e.target !== userManageBtn) hideUserMenu();
+    });
 
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const map = L.map('map', { center: [51.5413, 9.9158], zoom: 13, dragging: true });
+    // =======================
+    // Leaflet init (Kassel)
+    // =======================
+    const map = L.map('map', { center: [51.3127, 9.4797], zoom: 13, dragging: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
     const bikeSvg = `
@@ -507,36 +606,67 @@
       iconSize: [36, 36],
       iconAnchor: [18, 18]
     });
-    const noteIcon = L.divIcon({
-      className: '',
-      html: `<div class="noteIconWrap"></div>`,
-      iconSize: [34, 28],
-      iconAnchor: [17, 14]
-    });
 
+    function makeNoteIcon(color){
+      const c = color && validHexColor(color) ? color : getComputedStyle(document.documentElement).getPropertyValue('--noteDefault').trim();
+      return L.divIcon({
+        className: '',
+        html: `<div class="noteIconWrap" style="background:${c};"></div>`,
+        iconSize: [34, 28],
+        iconAnchor: [17, 14]
+      });
+    }
+
+    // =======================
+    // App state
+    // =======================
+    // entry: { type, marker, dbId, data, photo_url, creator, note_color }
     const markers = new Map();
     let pendingPhotoTarget = null;
 
-    async function dbLoadAll(){
+    // =======================
+    // DB functions (markers)
+    // =======================
+    async function dbLoadAllMarkers(){
       const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending: true });
       if(error) throw error;
       return data || [];
     }
-    async function dbInsert(type, lat, lng){
-      const payload = { type, lat, lng, name:'natebike', color:'undefiniert', remark:'keine', photo_url:null, content:' ' };
+
+    async function dbInsertMarker(payload){
       const { data, error } = await sb.from('markers').insert(payload).select().single();
       if(error) throw error;
       return data;
     }
-    async function dbUpdate(id, patch){
+
+    async function dbUpdateMarker(id, patch){
       const { error } = await sb.from('markers').update(patch).eq('id', id);
       if(error) throw error;
     }
-    async function dbDelete(id){
+
+    async function dbDeleteMarker(id){
       const { error } = await sb.from('markers').delete().eq('id', id);
       if(error) throw error;
     }
 
+    // users_public (admin UI only)
+    async function dbUpsertUser(username, color){
+      const { error } = await sb.from('users_public').upsert({ username, color }, { onConflict: 'username' });
+      if(error) throw error;
+    }
+    async function dbListUsers(){
+      const { data, error } = await sb.from('users_public').select('*').order('created_at', { ascending: true });
+      if(error) throw error;
+      return data || [];
+    }
+    async function dbDeleteUser(username){
+      const { error } = await sb.from('users_public').delete().eq('username', username);
+      if(error) throw error;
+    }
+
+    // =======================
+    // Storage (photos)
+    // =======================
     async function uploadPhotoAndGetPublicUrl(fileBlob){
       const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
       const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(
@@ -547,22 +677,70 @@
       return { fileName, publicUrl: data.publicUrl };
     }
 
+    // =======================
+    // Marker rights
+    // =======================
+    function canEditNote(entry){
+      if(isAdmin) return true;
+      return currentUser && entry.creator === currentUser.username;
+    }
+    function canMoveNote(entry){
+      if(isAdmin) return true;
+      return currentUser && entry.creator === currentUser.username;
+    }
+    function canCreateBike(){
+      return isAdmin;
+    }
+    function canDeleteBike(){
+      return isAdmin;
+    }
+    function canEditBikeNameColor(){
+      return isAdmin;
+    }
+    function canEditBikeRemarkPhoto(){
+      return true; // all logged-in users
+    }
+
+    // =======================
+    // Marker creation / wiring
+    // =======================
     function wireMarkerEvents(entry){
-      const marker = entry.marker;
+      const m = entry.marker;
+
       const openFn = (e) => {
         if(e) L.DomEvent.stop(e);
         if(entry.type === 'bike') openBikeEditor(entry);
         else openNoteEditor(entry);
       };
-      marker.on('click', openFn);
-      marker.on('contextmenu', openFn);
+      m.on('click', openFn);
+      m.on('contextmenu', openFn);
 
-      marker.on('dragstart', () => map.dragging.disable());
-      marker.on('dragend', async () => {
-        map.dragging.enable();
+      m.on('dragstart', () => {
+        // block moving notes if not allowed
+        if(entry.type === 'note' && !canMoveNote(entry)){
+          m.dragging.disable();
+          showStatus('keine berechtigung (notitz)');
+        }
+      });
+
+      m.on('dragend', async () => {
+        // re-enable in case it was disabled
+        if(!m.dragging.enabled()) m.dragging.enable();
+
+        // enforce: non-owner cannot move note
+        if(entry.type === 'note' && !canMoveNote(entry)){
+          // snap back by reloading from DB (simple)
+          try{
+            const rows = await dbLoadAllMarkers();
+            const row = rows.find(r => r.id === entry.dbId);
+            if(row) m.setLatLng([row.lat, row.lng]);
+          }catch {}
+          return;
+        }
+
         try{
-          const ll = marker.getLatLng();
-          await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
+          const ll = m.getLatLng();
+          await dbUpdateMarker(entry.dbId, { lat: ll.lat, lng: ll.lng });
           showStatus('position gespeichert');
         }catch(err){
           console.error(err);
@@ -572,20 +750,27 @@
     }
 
     function addMarkerFromRow(row){
-      const icon = row.type === 'bike' ? bikeIcon : noteIcon;
-      const marker = L.marker({ lat: row.lat, lng: row.lng }, { icon, draggable: true }).addTo(map);
+      const type = row.type;
+      const icon = (type === 'bike')
+        ? bikeIcon
+        : makeNoteIcon(row.note_color || row.noteColor || row.note_colour || row.noteColorHex || row.note_color);
+
+      const marker = L.marker([row.lat, row.lng], { icon, draggable: true }).addTo(map);
 
       const entry = {
-        type: row.type,
+        type,
         marker,
         dbId: row.id,
         photo_url: row.photo_url || null,
+        creator: row.creator || "",
+        note_color: row.note_color || null,
         data: {
           Name: row.name ?? 'natebike',
           Farbe: row.color ?? 'undefiniert',
           Bemerkung: row.remark ?? 'keine',
           Foto: row.photo_url ? (row.photo_url.split('/').pop() || 'vorhanden') : 'nicht vorhanden',
-          Inhalt: row.content ?? ' '
+          Inhalt: row.content ?? ' ',
+          Ersteller: row.creator || ""
         }
       };
 
@@ -594,24 +779,61 @@
       return entry;
     }
 
-    async function createBikeAt(latlng, openEditor){
-      if(!isAdmin){
-        showStatus('nur admin kann räder erstellen');
+    async function loadMarkers(){
+      // clear existing
+      for(const e of markers.values()){
+        map.removeLayer(e.marker);
+      }
+      markers.clear();
+
+      const rows = await dbLoadAllMarkers();
+      rows.forEach(addMarkerFromRow);
+    }
+
+    async function createBikeAt(latlng){
+      if(!canCreateBike()){
+        showStatus('nur admin kann neue räder hinzufügen');
         return;
       }
-      const row = await dbInsert('bike', latlng.lat, latlng.lng);
+      const payload = {
+        type: 'bike',
+        lat: latlng.lat,
+        lng: latlng.lng,
+        name: 'natebike',
+        color: 'undefiniert',
+        remark: 'keine',
+        photo_url: null,
+        content: ' ',
+        creator: currentUser.username
+      };
+      const row = await dbInsertMarker(payload);
       const entry = addMarkerFromRow(row);
-      if(openEditor) openBikeEditor(entry);
+      openBikeEditor(entry);
       showStatus('rad erstellt');
     }
 
-    async function createNoteAt(latlng, openEditor){
-      const row = await dbInsert('note', latlng.lat, latlng.lng);
+    async function createNoteAt(latlng){
+      const payload = {
+        type: 'note',
+        lat: latlng.lat,
+        lng: latlng.lng,
+        name: 'natebike',
+        color: 'undefiniert',
+        remark: 'keine',
+        photo_url: null,
+        content: ' ',
+        creator: currentUser.username,
+        note_color: currentUser.color
+      };
+      const row = await dbInsertMarker(payload);
       const entry = addMarkerFromRow(row);
-      if(openEditor) openNoteEditor(entry);
+      openNoteEditor(entry);
       showStatus('notitz erstellt');
     }
 
+    // =======================
+    // Context menu (map)
+    // =======================
     const ctxMenu = document.getElementById('ctxMenu');
     let ctxLatLng = null;
 
@@ -619,7 +841,6 @@
       ctxMenu.style.display = 'none';
       ctxLatLng = null;
     }
-
     map.getContainer().addEventListener('contextmenu', (e) => e.preventDefault());
     map.on('contextmenu', (e) => {
       ctxLatLng = e.latlng;
@@ -627,9 +848,12 @@
       ctxMenu.style.left = `${oe.clientX}px`;
       ctxMenu.style.top  = `${oe.clientY}px`;
       ctxMenu.style.display = 'block';
-      updateAdminUI();
-    });
 
+      // disable bike create if not admin
+      const ctxBike = document.getElementById('ctxBike');
+      if(!canCreateBike()) ctxBike.classList.add('disabled');
+      else ctxBike.classList.remove('disabled');
+    });
     map.on('click', hideCtxMenu);
     map.on('movestart', hideCtxMenu);
     document.addEventListener('click', (e) => { if (!ctxMenu.contains(e.target)) hideCtxMenu(); });
@@ -637,25 +861,22 @@
     ctxMenu.addEventListener('click', async (e) => {
       const item = e.target.closest('.ctx-item');
       if(!item || !ctxLatLng) return;
-
       const action = item.dataset.action;
       const ll = ctxLatLng;
       hideCtxMenu();
 
       try{
-        if(action === 'bike'){
-          if(!isAdmin) return;
-          await createBikeAt(ll, true);
-        }
-        if(action === 'note'){
-          await createNoteAt(ll, true);
-        }
+        if(action === 'bike') await createBikeAt(ll);
+        if(action === 'note') await createNoteAt(ll);
       }catch(err){
         console.error(err);
         showStatus('fehler beim erstellen');
       }
     });
 
+    // =======================
+    // Modal helpers
+    // =======================
     const overlay = document.getElementById('modalOverlay');
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
@@ -673,32 +894,37 @@
     }
     overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
 
+    // =======================
+    // Bike editor (same as before for logged-in users/admin)
+    // =======================
     function openBikeEditor(entry){
       modalTitle.textContent = 'geparktes rad';
+
+      const canNameColor = canEditBikeNameColor();
+      const canRemarkPhoto = canEditBikeRemarkPhoto();
 
       const photoCell = entry.photo_url
         ? `<img class="photoPreview" id="photoPreview" src="${escapeHtml(entry.photo_url)}" alt="Foto" />`
         : `<button class="photoBtn" id="photoBtn" type="button">Foto hinzufügen</button>`;
 
-      const nameField = isAdmin
-        ? `<input type="text" id="bikeName" value="${escapeHtml(entry.data.Name)}" />`
-        : `<input type="text" id="bikeName" value="${escapeHtml(entry.data.Name)}" readonly />`;
-
-      const colorField = isAdmin
-        ? `<input type="text" id="bikeColor" value="${escapeHtml(entry.data.Farbe)}" />`
-        : `<input type="text" id="bikeColor" value="${escapeHtml(entry.data.Farbe)}" readonly />`;
-
       modalBody.innerHTML = `
+        <div class="label">Ersteller</div>
+        <input type="text" value="${escapeHtml(entry.creator)}" readonly />
+
         <div class="label">Name</div>
-        ${nameField}
+        <input type="text" id="bikeName" value="${escapeHtml(entry.data.Name)}" ${canNameColor ? "" : "readonly"} />
+
         <div class="label">Farbe</div>
-        ${colorField}
+        <input type="text" id="bikeColor" value="${escapeHtml(entry.data.Farbe)}" ${canNameColor ? "" : "readonly"} />
+
         <div class="label">Bemerkung</div>
-        <input type="text" id="bikeRemark" value="${escapeHtml(entry.data.Bemerkung)}" />
+        <input type="text" id="bikeRemark" value="${escapeHtml(entry.data.Bemerkung)}" ${canRemarkPhoto ? "" : "readonly"} />
+
         <div class="label">Foto</div>
         <div>${photoCell}</div>
       `;
 
+      // photo upload allowed for all logged-in users
       const photoClick = () => { pendingPhotoTarget = entry; fileInput.click(); };
       const btn = document.getElementById('photoBtn');
       const prev = document.getElementById('photoPreview');
@@ -709,14 +935,11 @@
         prev.addEventListener('click', photoClick);
       }
 
-      modalFooter.innerHTML = isAdmin
-        ? `
-          <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
-          <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
-        `
-        : `
-          <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
-        `;
+      const showDelete = canDeleteBike();
+      modalFooter.innerHTML = showDelete
+        ? `<button class="btn" id="bikeSaveBtn" type="button">speichern</button>
+           <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>`
+        : `<button class="btn" id="bikeSaveBtn" type="button">speichern</button>`;
 
       document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
         const nameVal = document.getElementById('bikeName').value.trim();
@@ -724,15 +947,17 @@
         const remarkVal = document.getElementById('bikeRemark').value.trim();
 
         const patch = {};
-        if(isAdmin){
+        if(canNameColor){
           if(nameVal !== '') patch.name = nameVal;
           if(colorVal !== '') patch.color = colorVal;
         }
-        if(remarkVal !== '') patch.remark = remarkVal;
+        if(canRemarkPhoto){
+          if(remarkVal !== '') patch.remark = remarkVal;
+        }
 
         try{
           if(Object.keys(patch).length){
-            await dbUpdate(entry.dbId, patch);
+            await dbUpdateMarker(entry.dbId, patch);
             if(patch.name) entry.data.Name = patch.name;
             if(patch.color) entry.data.Farbe = patch.color;
             if(patch.remark) entry.data.Bemerkung = patch.remark;
@@ -745,43 +970,67 @@
         }
       });
 
-      if(isAdmin){
-        const delBtn = document.getElementById('bikeDeleteBtn');
-        if(delBtn){
-          delBtn.addEventListener('click', async () => {
-            try{
-              await dbDelete(entry.dbId);
-              map.removeLayer(entry.marker);
-              markers.delete(entry.marker._leaflet_id);
-              showStatus('gelöscht');
-              closeModal();
-            }catch(err){
-              console.error(err);
-              showStatus('fehler beim löschen');
-            }
-          });
-        }
+      if(showDelete){
+        document.getElementById('bikeDeleteBtn').addEventListener('click', async () => {
+          try{
+            await dbDeleteMarker(entry.dbId);
+            map.removeLayer(entry.marker);
+            markers.delete(entry.marker._leaflet_id);
+            showStatus('gelöscht');
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus('fehler beim löschen');
+          }
+        });
       }
 
       openModal();
     }
 
+    // =======================
+    // Note editor (owner/admin can edit; others read-only)
+    // =======================
     function openNoteEditor(entry){
       modalTitle.textContent = 'notitz';
+
+      const editable = canEditNote(entry);
+
       modalBody.innerHTML = `
+        <div class="label">Ersteller</div>
+        <input type="text" value="${escapeHtml(entry.creator)}" readonly />
+
         <div class="label">Inhalt</div>
-        <textarea id="noteContent">${escapeHtml(entry.data.Inhalt)}</textarea>
+        ${editable
+          ? `<textarea id="noteContent">${escapeHtml(entry.data.Inhalt)}</textarea>`
+          : `<textarea readonly>${escapeHtml(entry.data.Inhalt)}</textarea>`
+        }
       `;
-      modalFooter.innerHTML = `
-        <button class="btn" id="noteSaveBtn" type="button">speichern</button>
-        <button class="btn danger" id="noteDeleteBtn" type="button">löschen</button>
-      `;
+
+      const footerBtns = [];
+      if(editable){
+        footerBtns.push(`<button class="btn" id="noteSaveBtn" type="button">speichern</button>`);
+      } else {
+        footerBtns.push(`<button class="btn secondary" id="noteCloseBtn" type="button">schließen</button>`);
+      }
+
+      if(editable){
+        footerBtns.push(`<button class="btn danger" id="noteDeleteBtn" type="button">löschen</button>`);
+      }
+
+      modalFooter.innerHTML = footerBtns.join('');
+
+      if(!editable){
+        document.getElementById('noteCloseBtn').addEventListener('click', closeModal);
+        openModal();
+        return;
+      }
 
       document.getElementById('noteSaveBtn').addEventListener('click', async () => {
         const contentVal = document.getElementById('noteContent').value.trim();
         if(contentVal === ''){ closeModal(); return; }
         try{
-          await dbUpdate(entry.dbId, { content: contentVal });
+          await dbUpdateMarker(entry.dbId, { content: contentVal });
           entry.data.Inhalt = contentVal;
           showStatus('gespeichert');
           closeModal();
@@ -793,7 +1042,7 @@
 
       document.getElementById('noteDeleteBtn').addEventListener('click', async () => {
         try{
-          await dbDelete(entry.dbId);
+          await dbDeleteMarker(entry.dbId);
           map.removeLayer(entry.marker);
           markers.delete(entry.marker._leaflet_id);
           showStatus('gelöscht');
@@ -807,6 +1056,9 @@
       openModal();
     }
 
+    // =======================
+    // Photo upload (bike)
+    // =======================
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files && fileInput.files[0];
       if(!file || !pendingPhotoTarget) return;
@@ -823,13 +1075,15 @@
       }
 
       const entry = pendingPhotoTarget;
+
       try{
         showStatus('foto wird hochgeladen…');
+
         const dataUrl = await readFileAsDataURL(file);
         const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
         const { fileName, publicUrl } = await uploadPhotoAndGetPublicUrl(jpgBlob);
 
-        await dbUpdate(entry.dbId, { photo_url: publicUrl });
+        await dbUpdateMarker(entry.dbId, { photo_url: publicUrl });
         entry.photo_url = publicUrl;
         entry.data.Foto = fileName;
 
@@ -860,41 +1114,113 @@
       }
     });
 
-    async function unlock(e){
-      if(e) e.preventDefault();
-      const val = (pwInput.value || "").trim();
+    // =======================
+    // Admin: users menu actions
+    // =======================
+    userMenu.addEventListener('click', async (e) => {
+      const item = e.target.closest('.ctx-item');
+      if(!item) return;
+      const action = item.dataset.action;
+      hideUserMenu();
 
-      if(val !== APP_PASSWORD){
-        pwMsg.textContent = "falsches Passwort";
-        pwMsg.style.display = 'block';
-        return;
+      if(!isAdmin) return;
+
+      if(action === 'user_add'){
+        openUserAddModal();
+      } else if(action === 'user_list'){
+        await openUserListModal();
       }
+    });
 
-      pwMsg.style.display = 'none';
-      lockFrame.style.display = 'none';
-      lockFrame.hidden = true;
+    function openUserAddModal(){
+      modalTitle.textContent = 'nutzer hinzufügen';
+      modalBody.innerHTML = `
+        <div class="label">Nutzername</div>
+        <input type="text" id="newUName" />
 
-      mapFrame.style.display = 'block';
-      mapFrame.hidden = false;
+        <div class="label">Farbe</div>
+        <input type="text" id="newUColor" value="#ffd84d" placeholder="#ffd84d" />
+      `;
+      modalFooter.innerHTML = `
+        <button class="btn secondary" id="uCancel" type="button">schließen</button>
+        <button class="btn" id="uSave" type="button">speichern</button>
+      `;
+      document.getElementById('uCancel').addEventListener('click', closeModal);
+      document.getElementById('uSave').addEventListener('click', async () => {
+        const u = (document.getElementById('newUName').value || "").trim();
+        const c = (document.getElementById('newUColor').value || "").trim();
+        if(u === ''){ showStatus('nutzername fehlt'); return; }
+        if(!validHexColor(c)){ showStatus('farbe ungültig'); return; }
+        try{
+          await dbUpsertUser(u, c);
+          showStatus('nutzer gespeichert');
+          closeModal();
+        }catch(err){
+          console.error(err);
+          showStatus('fehler beim speichern');
+        }
+      });
+      openModal();
+    }
 
-      setTimeout(() => map.invalidateSize(), 150);
+    async function openUserListModal(){
+      modalTitle.textContent = 'nutzerliste';
+      modalBody.innerHTML = `<div class="label">Lade…</div><div></div>`;
+      modalFooter.innerHTML = `<button class="btn" id="closeList" type="button">schließen</button>`;
+      document.getElementById('closeList').addEventListener('click', closeModal);
+      openModal();
 
       try{
-        updateAdminUI();
-        showStatus('lade marker…');
-        const rows = await dbLoadAll();
-        for(const row of rows) addMarkerFromRow(row);
-        showStatus('fertig');
+        const users = await dbListUsers();
+        const html = users.map(u => {
+          const uname = escapeHtml(u.username);
+          const col = escapeHtml(u.color || '#ffd84d');
+          return `
+            <div class="label">${uname}</div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:22px;height:22px;border-radius:6px;border:1px solid #ccc;background:${col};"></div>
+              <div style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace;">${col}</div>
+              <div style="flex:1;"></div>
+              <button class="btn danger" data-del-user="${uname}" type="button">löschen</button>
+            </div>
+          `;
+        }).join('');
+        modalBody.innerHTML = html || `<div class="label">(leer)</div><div></div>`;
+
+        // wire delete buttons
+        modalBody.querySelectorAll('button[data-del-user]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const uname = btn.getAttribute('data-del-user');
+            try{
+              await dbDeleteUser(uname);
+              showStatus('nutzer gelöscht');
+              closeModal();
+            }catch(err){
+              console.error(err);
+              showStatus('fehler beim löschen');
+            }
+          });
+        });
       }catch(err){
         console.error(err);
         showStatus('fehler beim laden');
       }
     }
 
-    pwBtn.addEventListener('click', unlock);
-    pwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') unlock(e); });
+    // =======================
+    // Admin: users menu positioning helpers
+    // =======================
+    function hideUserMenu(){ userMenu.style.display = 'none'; }
 
-    // init UI
+    // =======================
+    // Photo upload uses modal state
+    // =======================
+    // pendingPhotoTarget set by bike editor
+    fileInput.addEventListener('click', () => { /* keep */ });
+
+    // =======================
+    // Admin UI initialization
+    // =======================
     updateAdminUI();
   </script>
 </body>
