@@ -54,11 +54,7 @@
       gap: 12px;
       min-width: 0;
     }
-    #logo{
-      width: 40px; height: 40px;
-      border-radius: 8px;
-      object-fit: contain;
-    }
+    #logo{ width: 40px; height: 40px; border-radius: 8px; object-fit: contain; }
     h1{
       margin: 0;
       font-size: 30px;
@@ -68,11 +64,7 @@
       white-space: nowrap;
     }
 
-    .headerRight{
-      display:flex;
-      align-items:center;
-      gap: 10px;
-    }
+    .headerRight{ display:flex; align-items:center; gap: 10px; }
 
     .adminBtn, .userManageBtn{
       background: var(--adminGrey);
@@ -110,11 +102,7 @@
     #map{ height: 100%; width: 100%; }
 
     /* Login screen */
-    #loginFrame{
-      display: grid;
-      place-items: center;
-      background: #fff;
-    }
+    #loginFrame{ display: grid; place-items: center; background: #fff; }
     .panel{
       width: min(560px, 92%);
       border: 3px solid var(--blue);
@@ -139,11 +127,7 @@
       box-sizing: border-box;
       outline: none;
     }
-    textarea{
-      min-height: 72px;
-      resize: vertical;
-      padding: 9px 10px;
-    }
+    textarea{ min-height: 72px; resize: vertical; padding: 9px 10px; }
     .panelFooter{
       display:flex;
       justify-content: flex-end;
@@ -312,17 +296,23 @@
     <div id="loginFrame">
       <div class="panel">
         <h2 style="margin:0 0 12px 0;color:var(--blue);text-transform:lowercase;">anmeldung</h2>
+
         <div class="grid2">
           <div class="label">Nutzername</div>
           <input id="loginUsername" type="text" placeholder="z.B. max" />
 
           <div class="label">Farbe</div>
-          <input id="loginColor" type="text" value="#ffd84d" placeholder="#ffd84d" />
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input id="loginColor" type="text" value="#ffd84d" placeholder="#ffd84d" />
+            <div id="colorSwatch" style="width:26px;height:26px;border-radius:8px;border:1px solid #cfd7e6;background:#ffd84d;"></div>
+          </div>
         </div>
 
-        <div id="loginMsg" style="margin-top:10px;color:var(--danger);display:none;font-size:13px;">
-          bitte nutzernamen eingeben
+        <div style="margin-top:10px;font-size:12px;color:#4a5872;">
+          Tipp: Nutzername eingeben → Farbe wird automatisch aus der Nutzerliste geladen (falls vorhanden).
         </div>
+
+        <div id="loginMsg" style="margin-top:10px;color:var(--danger);display:none;font-size:13px;"></div>
 
         <div class="panelFooter">
           <button class="btn" id="loginBtn" type="button">bestätigen</button>
@@ -378,28 +368,20 @@
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
-    // =======================
-    // Supabase (public)
-    // =======================
+    // Supabase
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
     const SUPABASE_BUCKET = "marker-photos";
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // =======================
     // Admin (UI-only)
-    // =======================
     const ADMIN_PASSWORD = "eseldraht";
     let isAdmin = false;
 
-    // =======================
-    // Current user (nickname)
-    // =======================
+    // Current user
     let currentUser = null; // { username, color }
 
-    // =======================
     // Helpers
-    // =======================
     function escapeHtml(str){
       return String(str ?? "")
         .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
@@ -436,34 +418,73 @@
       const img = new Image();
       img.src = dataUrl;
       await img.decode();
-
       const w = img.naturalWidth, h = img.naturalHeight;
       const scale = Math.min(1, maxSidePx / Math.max(w, h));
       const nw = Math.max(1, Math.round(w * scale));
       const nh = Math.max(1, Math.round(h * scale));
-
       const canvas = document.createElement('canvas');
       canvas.width = nw; canvas.height = nh;
       canvas.getContext('2d').drawImage(img, 0, 0, nw, nh);
-
       return await new Promise((resolve) => canvas.toBlob(b => resolve(b), 'image/jpeg', quality));
     }
 
-    // =======================
-    // UI: Login
-    // =======================
+    // DB: users_public
+    async function dbGetUser(username){
+      const { data, error } = await sb.from('users_public').select('*').eq('username', username).maybeSingle();
+      if(error) throw error;
+      return data; // null if not found
+    }
+    async function dbUpsertUser(username, color){
+      const { error } = await sb.from('users_public').upsert({ username, color }, { onConflict: 'username' });
+      if(error) throw error;
+    }
+    async function dbListUsers(){
+      const { data, error } = await sb.from('users_public').select('*').order('created_at', { ascending: true });
+      if(error) throw error;
+      return data || [];
+    }
+    async function dbDeleteUser(username){
+      const { error } = await sb.from('users_public').delete().eq('username', username);
+      if(error) throw error;
+    }
+
+    // Login UI: auto-load color
     const loginFrame = document.getElementById('loginFrame');
     const mapFrame = document.getElementById('mapFrame');
     const loginUsername = document.getElementById('loginUsername');
     const loginColor = document.getElementById('loginColor');
+    const colorSwatch = document.getElementById('colorSwatch');
     const loginBtn = document.getElementById('loginBtn');
     const loginMsg = document.getElementById('loginMsg');
 
-    async function ensureUserInDb(username, color){
-      // Upsert into users_public (no password)
-      const { error } = await sb.from('users_public').upsert({ username, color }, { onConflict: 'username' });
-      if(error) throw error;
+    function setLoginColor(c){
+      loginColor.value = c;
+      if(validHexColor(c)) colorSwatch.style.background = c;
     }
+
+    let colorLookupTimer = null;
+    loginUsername.addEventListener('input', () => {
+      clearTimeout(colorLookupTimer);
+      colorLookupTimer = setTimeout(async () => {
+        const u = (loginUsername.value || "").trim();
+        if(u === "") return;
+
+        try{
+          const rec = await dbGetUser(u);
+          if(rec && validHexColor(rec.color)){
+            setLoginColor(rec.color);
+          }
+        }catch(err){
+          console.error(err);
+          // ignore lookup errors
+        }
+      }, 250);
+    });
+
+    loginColor.addEventListener('input', () => {
+      const c = (loginColor.value || "").trim();
+      if(validHexColor(c)) colorSwatch.style.background = c;
+    });
 
     async function doLogin(){
       const username = (loginUsername.value || "").trim();
@@ -481,7 +502,8 @@
       }
 
       try{
-        await ensureUserInDb(username, color);
+        // create/update user record so others can auto-load later
+        await dbUpsertUser(username, color);
       }catch(err){
         console.error(err);
         loginMsg.textContent = "fehler beim anmelden (supabase?)";
@@ -492,12 +514,10 @@
       loginMsg.style.display = "none";
       currentUser = { username, color };
 
-      // show map
       loginFrame.style.display = "none";
       mapFrame.style.display = "block";
       setTimeout(() => map.invalidateSize(), 120);
 
-      // load markers
       await loadMarkers();
       updateAdminUI();
       showStatus(`angemeldet als ${username}`);
@@ -507,12 +527,9 @@
     loginUsername.addEventListener('keydown', (e) => { if(e.key === 'Enter') doLogin(); });
     loginColor.addEventListener('keydown', (e) => { if(e.key === 'Enter') doLogin(); });
 
-    // =======================
-    // UI: Admin + User manage
-    // =======================
+    // Admin UI
     const adminBtn = document.getElementById('adminBtn');
     const userManageBtn = document.getElementById('userManageBtn');
-
     const adminOverlay = document.getElementById('adminOverlay');
     const adminPwInput = document.getElementById('adminPwInput');
     const adminMsg = document.getElementById('adminMsg');
@@ -522,15 +539,12 @@
     function updateAdminUI(){
       adminBtn.classList.toggle('isAdmin', isAdmin);
       userManageBtn.style.display = isAdmin ? "inline-block" : "none";
-
-      // context menu bike create disabled if not admin
       const ctxBike = document.getElementById('ctxBike');
       if(ctxBike){
         if(isAdmin) ctxBike.classList.remove('disabled');
         else ctxBike.classList.add('disabled');
       }
     }
-
     function openAdminModal(){
       adminMsg.style.display = "none";
       adminPwInput.value = "";
@@ -564,9 +578,8 @@
     adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
     adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
 
-    // user manage menu (simple context menu near button)
+    // User manage menu
     const userMenu = document.getElementById('userMenu');
-
     function hideUserMenu(){ userMenu.style.display = 'none'; }
     userManageBtn.addEventListener('click', (e) => {
       if(!isAdmin) return;
@@ -580,12 +593,11 @@
       if(!userMenu.contains(e.target) && e.target !== userManageBtn) hideUserMenu();
     });
 
-    // =======================
     // Leaflet init (Kassel)
-    // =======================
     const map = L.map('map', { center: [51.3127, 9.4797], zoom: 13, dragging: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
+    // Icons
     const bikeSvg = `
       <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden="true">
         <g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
@@ -608,7 +620,7 @@
     });
 
     function makeNoteIcon(color){
-      const c = color && validHexColor(color) ? color : getComputedStyle(document.documentElement).getPropertyValue('--noteDefault').trim();
+      const c = validHexColor(color) ? color : '#ffd84d';
       return L.divIcon({
         className: '',
         html: `<div class="noteIconWrap" style="background:${c};"></div>`,
@@ -617,56 +629,31 @@
       });
     }
 
-    // =======================
-    // App state
-    // =======================
-    // entry: { type, marker, dbId, data, photo_url, creator, note_color }
+    // Markers state
     const markers = new Map();
     let pendingPhotoTarget = null;
 
-    // =======================
-    // DB functions (markers)
-    // =======================
+    // DB: markers
     async function dbLoadAllMarkers(){
       const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending: true });
       if(error) throw error;
       return data || [];
     }
-
     async function dbInsertMarker(payload){
       const { data, error } = await sb.from('markers').insert(payload).select().single();
       if(error) throw error;
       return data;
     }
-
     async function dbUpdateMarker(id, patch){
       const { error } = await sb.from('markers').update(patch).eq('id', id);
       if(error) throw error;
     }
-
     async function dbDeleteMarker(id){
       const { error } = await sb.from('markers').delete().eq('id', id);
       if(error) throw error;
     }
 
-    // users_public (admin UI only)
-    async function dbUpsertUser(username, color){
-      const { error } = await sb.from('users_public').upsert({ username, color }, { onConflict: 'username' });
-      if(error) throw error;
-    }
-    async function dbListUsers(){
-      const { data, error } = await sb.from('users_public').select('*').order('created_at', { ascending: true });
-      if(error) throw error;
-      return data || [];
-    }
-    async function dbDeleteUser(username){
-      const { error } = await sb.from('users_public').delete().eq('username', username);
-      if(error) throw error;
-    }
-
-    // =======================
     // Storage (photos)
-    // =======================
     async function uploadPhotoAndGetPublicUrl(fileBlob){
       const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
       const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(
@@ -677,9 +664,7 @@
       return { fileName, publicUrl: data.publicUrl };
     }
 
-    // =======================
-    // Marker rights
-    // =======================
+    // Rights
     function canEditNote(entry){
       if(isAdmin) return true;
       return currentUser && entry.creator === currentUser.username;
@@ -688,22 +673,12 @@
       if(isAdmin) return true;
       return currentUser && entry.creator === currentUser.username;
     }
-    function canCreateBike(){
-      return isAdmin;
-    }
-    function canDeleteBike(){
-      return isAdmin;
-    }
-    function canEditBikeNameColor(){
-      return isAdmin;
-    }
-    function canEditBikeRemarkPhoto(){
-      return true; // all logged-in users
-    }
+    function canCreateBike(){ return isAdmin; }
+    function canDeleteBike(){ return isAdmin; }
+    function canEditBikeNameColor(){ return isAdmin; }
+    function canEditBikeRemarkPhoto(){ return true; }
 
-    // =======================
-    // Marker creation / wiring
-    // =======================
+    // Marker wiring
     function wireMarkerEvents(entry){
       const m = entry.marker;
 
@@ -716,7 +691,6 @@
       m.on('contextmenu', openFn);
 
       m.on('dragstart', () => {
-        // block moving notes if not allowed
         if(entry.type === 'note' && !canMoveNote(entry)){
           m.dragging.disable();
           showStatus('keine berechtigung (notitz)');
@@ -724,17 +698,14 @@
       });
 
       m.on('dragend', async () => {
-        // re-enable in case it was disabled
         if(!m.dragging.enabled()) m.dragging.enable();
 
-        // enforce: non-owner cannot move note
         if(entry.type === 'note' && !canMoveNote(entry)){
-          // snap back by reloading from DB (simple)
           try{
             const rows = await dbLoadAllMarkers();
             const row = rows.find(r => r.id === entry.dbId);
             if(row) m.setLatLng([row.lat, row.lng]);
-          }catch {}
+          }catch{}
           return;
         }
 
@@ -750,15 +721,11 @@
     }
 
     function addMarkerFromRow(row){
-      const type = row.type;
-      const icon = (type === 'bike')
-        ? bikeIcon
-        : makeNoteIcon(row.note_color || row.noteColor || row.note_colour || row.noteColorHex || row.note_color);
-
+      const icon = (row.type === 'bike') ? bikeIcon : makeNoteIcon(row.note_color);
       const marker = L.marker([row.lat, row.lng], { icon, draggable: true }).addTo(map);
 
       const entry = {
-        type,
+        type: row.type,
         marker,
         dbId: row.id,
         photo_url: row.photo_url || null,
@@ -780,30 +747,19 @@
     }
 
     async function loadMarkers(){
-      // clear existing
-      for(const e of markers.values()){
-        map.removeLayer(e.marker);
-      }
+      for(const e of markers.values()) map.removeLayer(e.marker);
       markers.clear();
-
       const rows = await dbLoadAllMarkers();
       rows.forEach(addMarkerFromRow);
     }
 
     async function createBikeAt(latlng){
-      if(!canCreateBike()){
-        showStatus('nur admin kann neue räder hinzufügen');
-        return;
-      }
+      if(!canCreateBike()){ showStatus('nur admin kann neue räder hinzufügen'); return; }
       const payload = {
         type: 'bike',
-        lat: latlng.lat,
-        lng: latlng.lng,
-        name: 'natebike',
-        color: 'undefiniert',
-        remark: 'keine',
-        photo_url: null,
-        content: ' ',
+        lat: latlng.lat, lng: latlng.lng,
+        name: 'natebike', color: 'undefiniert', remark: 'keine',
+        photo_url: null, content: ' ',
         creator: currentUser.username
       };
       const row = await dbInsertMarker(payload);
@@ -815,13 +771,9 @@
     async function createNoteAt(latlng){
       const payload = {
         type: 'note',
-        lat: latlng.lat,
-        lng: latlng.lng,
-        name: 'natebike',
-        color: 'undefiniert',
-        remark: 'keine',
-        photo_url: null,
-        content: ' ',
+        lat: latlng.lat, lng: latlng.lng,
+        name: 'natebike', color: 'undefiniert', remark: 'keine',
+        photo_url: null, content: ' ',
         creator: currentUser.username,
         note_color: currentUser.color
       };
@@ -831,16 +783,11 @@
       showStatus('notitz erstellt');
     }
 
-    // =======================
-    // Context menu (map)
-    // =======================
+    // Map context menu
     const ctxMenu = document.getElementById('ctxMenu');
     let ctxLatLng = null;
+    function hideCtxMenu(){ ctxMenu.style.display = 'none'; ctxLatLng = null; }
 
-    function hideCtxMenu(){
-      ctxMenu.style.display = 'none';
-      ctxLatLng = null;
-    }
     map.getContainer().addEventListener('contextmenu', (e) => e.preventDefault());
     map.on('contextmenu', (e) => {
       ctxLatLng = e.latlng;
@@ -849,7 +796,6 @@
       ctxMenu.style.top  = `${oe.clientY}px`;
       ctxMenu.style.display = 'block';
 
-      // disable bike create if not admin
       const ctxBike = document.getElementById('ctxBike');
       if(!canCreateBike()) ctxBike.classList.add('disabled');
       else ctxBike.classList.remove('disabled');
@@ -864,7 +810,6 @@
       const action = item.dataset.action;
       const ll = ctxLatLng;
       hideCtxMenu();
-
       try{
         if(action === 'bike') await createBikeAt(ll);
         if(action === 'note') await createNoteAt(ll);
@@ -874,9 +819,7 @@
       }
     });
 
-    // =======================
     // Modal helpers
-    // =======================
     const overlay = document.getElementById('modalOverlay');
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
@@ -894,9 +837,7 @@
     }
     overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
 
-    // =======================
-    // Bike editor (same as before for logged-in users/admin)
-    // =======================
+    // Bike editor
     function openBikeEditor(entry){
       modalTitle.textContent = 'geparktes rad';
 
@@ -924,7 +865,6 @@
         <div>${photoCell}</div>
       `;
 
-      // photo upload allowed for all logged-in users
       const photoClick = () => { pendingPhotoTarget = entry; fileInput.click(); };
       const btn = document.getElementById('photoBtn');
       const prev = document.getElementById('photoPreview');
@@ -988,12 +928,9 @@
       openModal();
     }
 
-    // =======================
-    // Note editor (owner/admin can edit; others read-only)
-    // =======================
+    // Note editor
     function openNoteEditor(entry){
       modalTitle.textContent = 'notitz';
-
       const editable = canEditNote(entry);
 
       modalBody.innerHTML = `
@@ -1010,14 +947,10 @@
       const footerBtns = [];
       if(editable){
         footerBtns.push(`<button class="btn" id="noteSaveBtn" type="button">speichern</button>`);
+        footerBtns.push(`<button class="btn danger" id="noteDeleteBtn" type="button">löschen</button>`);
       } else {
         footerBtns.push(`<button class="btn secondary" id="noteCloseBtn" type="button">schließen</button>`);
       }
-
-      if(editable){
-        footerBtns.push(`<button class="btn danger" id="noteDeleteBtn" type="button">löschen</button>`);
-      }
-
       modalFooter.innerHTML = footerBtns.join('');
 
       if(!editable){
@@ -1056,9 +989,7 @@
       openModal();
     }
 
-    // =======================
     // Photo upload (bike)
-    // =======================
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files && fileInput.files[0];
       if(!file || !pendingPhotoTarget) return;
@@ -1078,7 +1009,6 @@
 
       try{
         showStatus('foto wird hochgeladen…');
-
         const dataUrl = await readFileAsDataURL(file);
         const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
         const { fileName, publicUrl } = await uploadPhotoAndGetPublicUrl(jpgBlob);
@@ -1114,15 +1044,12 @@
       }
     });
 
-    // =======================
-    // Admin: users menu actions
-    // =======================
+    // User manage menu actions
     userMenu.addEventListener('click', async (e) => {
       const item = e.target.closest('.ctx-item');
       if(!item) return;
       const action = item.dataset.action;
       hideUserMenu();
-
       if(!isAdmin) return;
 
       if(action === 'user_add'){
@@ -1132,12 +1059,13 @@
       }
     });
 
+    const modalOverlay = overlay;
+
     function openUserAddModal(){
       modalTitle.textContent = 'nutzer hinzufügen';
       modalBody.innerHTML = `
         <div class="label">Nutzername</div>
         <input type="text" id="newUName" />
-
         <div class="label">Farbe</div>
         <input type="text" id="newUColor" value="#ffd84d" placeholder="#ffd84d" />
       `;
@@ -1187,7 +1115,6 @@
         }).join('');
         modalBody.innerHTML = html || `<div class="label">(leer)</div><div></div>`;
 
-        // wire delete buttons
         modalBody.querySelectorAll('button[data-del-user]').forEach(btn => {
           btn.addEventListener('click', async () => {
             const uname = btn.getAttribute('data-del-user');
@@ -1207,21 +1134,9 @@
       }
     }
 
-    // =======================
-    // Admin: users menu positioning helpers
-    // =======================
-    function hideUserMenu(){ userMenu.style.display = 'none'; }
-
-    // =======================
-    // Photo upload uses modal state
-    // =======================
-    // pendingPhotoTarget set by bike editor
-    fileInput.addEventListener('click', () => { /* keep */ });
-
-    // =======================
-    // Admin UI initialization
-    // =======================
+    // init
     updateAdminUI();
+    setLoginColor(loginColor.value);
   </script>
 </body>
 </html>
