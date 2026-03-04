@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="de">
 <head>
@@ -334,7 +335,6 @@
   </div>
 
   <div id="ctxMenu" class="ctx-menu">
-    <!-- renamed here -->
     <div class="ctx-item" data-action="bike" id="ctxBike">neues Rad hinzufügen</div>
     <div class="ctx-item" data-action="note">Notitz hinzufügen</div>
   </div>
@@ -373,6 +373,10 @@
 
     const APP_PASSWORD = "drahtesel";
     const ADMIN_PASSWORD = "eseldraht";
+
+    // Kassel fallback
+    const KASSEL_CENTER = [51.3127, 9.4797];
+    const DEFAULT_ZOOM = 13;
 
     function escapeHtml(str){
       return String(str ?? "")
@@ -419,7 +423,7 @@
       statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
     }
 
-    // Admin: not persisted; defaults to logged out on reload
+    // Admin state: not persisted
     let isAdmin = false;
 
     const adminBtn = document.getElementById('adminBtn');
@@ -484,8 +488,62 @@
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const map = L.map('map', { center: [51.5413, 9.9158], zoom: 13, dragging: true });
+    // Map: initial Kassel, will be replaced by geolocation if available after unlock
+    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+
+    // Device location marker (red ring)
+    let locationMarker = null;
+    function setOrUpdateLocationMarker(latlng){
+      if(!locationMarker){
+        locationMarker = L.circleMarker(latlng, {
+          radius: 10,
+          color: '#ff0000',
+          weight: 3,
+          fillColor: 'transparent',
+          fillOpacity: 0
+        }).addTo(map);
+      }else{
+        locationMarker.setLatLng(latlng);
+      }
+    }
+
+    async function centerOnDeviceOrKassel(){
+      // Try Leaflet geolocation (wrap in promise)
+      return new Promise((resolve) => {
+        let done = false;
+
+        const success = (e) => {
+          if(done) return;
+          done = true;
+          const ll = e.latlng;
+          map.setView(ll, 16, { animate: true });
+          setOrUpdateLocationMarker(ll);
+          resolve(true);
+        };
+
+        const fail = () => {
+          if(done) return;
+          done = true;
+          map.setView(KASSEL_CENTER, DEFAULT_ZOOM, { animate: false });
+          resolve(false);
+        };
+
+        map.once('locationfound', success);
+        map.once('locationerror', fail);
+
+        map.locate({
+          setView: false,      // we set view ourselves
+          watch: false,
+          enableHighAccuracy: true,
+          maximumAge: 15000,
+          timeout: 7000
+        });
+
+        // safety timeout if neither event fires
+        setTimeout(fail, 8000);
+      });
+    }
 
     const bikeSvg = `
       <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden="true">
@@ -879,6 +937,14 @@
 
       setTimeout(() => map.invalidateSize(), 150);
 
+      // Center on device location (or Kassel fallback) + show red ring
+      try{
+        const ok = await centerOnDeviceOrKassel();
+        if(!ok) showStatus('standort nicht verfügbar – kassel');
+      } catch {
+        map.setView(KASSEL_CENTER, DEFAULT_ZOOM);
+      }
+
       try{
         updateAdminUI();
         showStatus('lade marker…');
@@ -894,7 +960,6 @@
     pwBtn.addEventListener('click', unlock);
     pwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') unlock(e); });
 
-    // init UI
     updateAdminUI();
   </script>
 </body>
