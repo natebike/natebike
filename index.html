@@ -70,6 +70,9 @@
       text-transform: lowercase;
       color: var(--blue);
       white-space: nowrap;
+
+      /* Century Gothic for the headline */
+      font-family: "Century Gothic", "URW Gothic L", "Futura", Arial, sans-serif;
     }
 
     .adminBtn{
@@ -390,9 +393,8 @@
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
-    // IMPORTANT:
-    // Bike marker icon is now logo.png using L.Icon.
-    // Rented state is shown by adding a red circle ring around the logo.
+    // Voraussetzung in Supabase (einmalig ausführen):
+    // alter table public.markers add column if not exists is_rented boolean not null default false;
 
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
@@ -458,7 +460,7 @@
       toastTimer = setTimeout(() => toast.style.display = 'none', ms);
     }
 
-    // Admin state: not persisted
+    // Admin state: not persisted (on reload logged out)
     let isAdmin = false;
 
     const adminBtn = document.getElementById('adminBtn');
@@ -583,15 +585,15 @@
       }
     }
 
-    // Icons:
-    // Bike icon uses logo.png
+    // Bike marker icons:
+    // normal: logo.png
     const bikeLogoIcon = L.icon({
       iconUrl: 'logo.png',
       iconSize: [40, 40],
       iconAnchor: [20, 20]
     });
 
-    // For rented bikes: logo + red ring (divIcon)
+    // rented: logo.png with red ring (divIcon)
     function makeBikeRentedIcon(){
       const size = 44;
       return L.divIcon({
@@ -832,7 +834,10 @@
     }
     overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
 
-    // Bike window
+    // Bike window:
+    // - Name/Farbe/Bemerkung: only admin editable, and only admin has Save button
+    // - Photos: everyone can upload, auto-save
+    // - Rent state persists globally via is_rented
     function openBikeWindow(entry){
       modalTitle.textContent = 'geparktes rad';
 
@@ -868,7 +873,7 @@
         <div>${photoCell}</div>
       `;
 
-      // photo upload for all; auto-save
+      // photo upload for all users; auto-save
       const photoClick = () => { pendingPhotoTarget = entry; fileInput.click(); };
       const btn = document.getElementById('photoBtn');
       const prev = document.getElementById('photoPreview');
