@@ -33,6 +33,7 @@
       --adminGrey:#c9c9c9;
       --adminGreen:#9be39b;
       --adminBorder:#7d7d7d;
+      --rentRed:#d7191c;
     }
     html, body { height: 100%; }
     body{
@@ -189,7 +190,7 @@
       box-sizing: border-box;
     }
     .modal{
-      width: min(560px, 95vw);
+      width: min(580px, 95vw);
       background: #fff;
       border: 3px solid var(--blue);
       border-radius: 10px;
@@ -239,6 +240,7 @@
       justify-content: flex-end;
       margin-top: 14px;
       gap: 10px;
+      align-items: center;
     }
     .btn{
       background: var(--blue);
@@ -257,6 +259,15 @@
       border: 1px solid #b9c6f2;
       color: var(--blue);
     }
+    .btn.rent{ background: var(--blue); }
+    .btn.rent.isRented{ background: var(--rentRed); }
+
+    .hint{
+      color: var(--danger);
+      font-size: 13px;
+      margin-right: auto;
+      display: none;
+    }
 
     .statusBar{
       position:absolute;
@@ -273,15 +284,7 @@
       max-width: 70%;
     }
 
-    /* Custom marker icons */
-    .bikeIconWrap{
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      background: var(--blue);
-      display: grid; place-items: center;
-      border: 2px solid var(--blue);
-      box-sizing: border-box;
-    }
+    /* Notiz icon */
     .noteIconWrap{
       width: 34px; height: 28px;
       background: var(--note);
@@ -300,6 +303,24 @@
       border-bottom: 2px solid #b08a00;
       transform: rotate(45deg) translate(4px,-4px);
       transform-origin: top right;
+    }
+
+    /* 3s toast */
+    #toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: #fff;
+      border: 3px solid var(--blue);
+      border-radius: 12px;
+      padding: 12px 14px;
+      z-index: 20000;
+      display: none;
+      max-width: min(700px, 92vw);
+      font-weight: 700;
+      color: #0b1a2a;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
     }
   </style>
 </head>
@@ -364,9 +385,15 @@
     </div>
   </div>
 
+  <div id="toast"></div>
+
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
+    // IMPORTANT:
+    // Bike marker icon is now logo.png using L.Icon.
+    // Rented state is shown by adding a red circle ring around the logo.
+
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
     const SUPABASE_BUCKET = "marker-photos";
@@ -374,7 +401,6 @@
     const APP_PASSWORD = "drahtesel";
     const ADMIN_PASSWORD = "eseldraht";
 
-    // Kassel fallback
     const KASSEL_CENTER = [51.3127, 9.4797];
     const DEFAULT_ZOOM = 13;
 
@@ -423,6 +449,15 @@
       statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
     }
 
+    const toast = document.getElementById('toast');
+    let toastTimer = null;
+    function showToast(msg, ms=3000){
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.style.display = 'none', ms);
+    }
+
     // Admin state: not persisted
     let isAdmin = false;
 
@@ -441,16 +476,13 @@
         else ctxBike.classList.add('disabled');
       }
     }
-
     function openAdminModal(){
       adminMsg.style.display = 'none';
       adminPwInput.value = '';
       adminOverlay.style.display = 'flex';
       adminPwInput.focus();
     }
-    function closeAdminModal(){
-      adminOverlay.style.display = 'none';
-    }
+    function closeAdminModal(){ adminOverlay.style.display = 'none'; }
     function logoutAdmin(){
       isAdmin = false;
       updateAdminUI();
@@ -461,7 +493,6 @@
       if(isAdmin) logoutAdmin();
       else openAdminModal();
     });
-
     adminCancelBtn.addEventListener('click', closeAdminModal);
     adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
 
@@ -480,15 +511,17 @@
     adminOkBtn.addEventListener('click', confirmAdmin);
     adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
 
+    // Gate
     const lockFrame = document.getElementById('lockFrame');
     const mapFrame = document.getElementById('mapFrame');
     const pwInput = document.getElementById('pwInput');
     const pwBtn = document.getElementById('pwBtn');
     const pwMsg = document.getElementById('pwMsg');
 
+    // Supabase
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Map: initial Kassel, will be replaced by geolocation if available after unlock
+    // Map
     const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
@@ -508,63 +541,86 @@
       }
     }
 
-    async function centerOnDeviceOrKassel(){
-      // Try Leaflet geolocation (wrap in promise)
+    async function getDeviceLatLng(timeoutMs=7000){
       return new Promise((resolve) => {
         let done = false;
 
-        const success = (e) => {
+        const ok = (e) => {
           if(done) return;
           done = true;
-          const ll = e.latlng;
-          map.setView(ll, 16, { animate: true });
-          setOrUpdateLocationMarker(ll);
-          resolve(true);
+          resolve(e.latlng);
         };
-
         const fail = () => {
           if(done) return;
           done = true;
-          map.setView(KASSEL_CENTER, DEFAULT_ZOOM, { animate: false });
-          resolve(false);
+          resolve(null);
         };
 
-        map.once('locationfound', success);
+        map.once('locationfound', ok);
         map.once('locationerror', fail);
 
         map.locate({
-          setView: false,      // we set view ourselves
+          setView: false,
           watch: false,
           enableHighAccuracy: true,
           maximumAge: 15000,
-          timeout: 7000
+          timeout: timeoutMs
         });
 
-        // safety timeout if neither event fires
-        setTimeout(fail, 8000);
+        setTimeout(fail, timeoutMs + 800);
       });
     }
 
-    const bikeSvg = `
-      <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden="true">
-        <g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="18" cy="44" r="12"></circle>
-          <circle cx="46" cy="44" r="12"></circle>
-          <path d="M18 44 L28 26 L36 26"></path>
-          <path d="M28 26 L40 44"></path>
-          <path d="M40 44 L46 44"></path>
-          <path d="M30 20 L38 20"></path>
-          <path d="M28 26 L22 26"></path>
-          <path d="M36 26 L42 16"></path>
-        </g>
-      </svg>
-    `;
-    const bikeIcon = L.divIcon({
-      className: '',
-      html: `<div class="bikeIconWrap">${bikeSvg}</div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
+    async function centerOnDeviceOrKassel(){
+      const ll = await getDeviceLatLng(7000);
+      if(ll){
+        map.setView(ll, 16, { animate: true });
+        setOrUpdateLocationMarker(ll);
+        return true;
+      }else{
+        map.setView(KASSEL_CENTER, DEFAULT_ZOOM, { animate: false });
+        return false;
+      }
+    }
+
+    // Icons:
+    // Bike icon uses logo.png
+    const bikeLogoIcon = L.icon({
+      iconUrl: 'logo.png',
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
     });
+
+    // For rented bikes: logo + red ring (divIcon)
+    function makeBikeRentedIcon(){
+      const size = 44;
+      return L.divIcon({
+        className: '',
+        html: `
+          <div style="width:${size}px;height:${size}px;position:relative;">
+            <div style="
+              position:absolute;inset:0;
+              border:4px solid var(--rentRed);
+              border-radius:50%;
+              box-sizing:border-box;
+            "></div>
+            <img src="logo.png" alt="" style="
+              position:absolute;
+              left:50%;top:50%;
+              transform:translate(-50%,-50%);
+              width:40px;height:40px;
+              border-radius:50%;
+              object-fit:contain;
+              background:transparent;
+            "/>
+          </div>
+        `,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2]
+      });
+    }
+
+    // Note icon
     const noteIcon = L.divIcon({
       className: '',
       html: `<div class="noteIconWrap"></div>`,
@@ -572,16 +628,30 @@
       iconAnchor: [17, 14]
     });
 
+    // App state
+    // entry: { type, marker, dbId, photo_url, data, isRented:boolean }
     const markers = new Map();
     let pendingPhotoTarget = null;
 
+    // DB helpers
     async function dbLoadAll(){
-      const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending: true });
+      const { data, error } = await sb
+        .from('markers')
+        .select('*')
+        .order('created_at', { ascending: true });
       if(error) throw error;
       return data || [];
     }
     async function dbInsert(type, lat, lng){
-      const payload = { type, lat, lng, name:'natebike', color:'undefiniert', remark:'keine', photo_url:null, content:' ' };
+      const payload = {
+        type, lat, lng,
+        name:'natebike',
+        color:'undefiniert',
+        remark:'keine',
+        photo_url:null,
+        content:' ',
+        is_rented:false
+      };
       const { data, error } = await sb.from('markers').insert(payload).select().single();
       if(error) throw error;
       return data;
@@ -595,6 +665,7 @@
       if(error) throw error;
     }
 
+    // Storage helper
     async function uploadPhotoAndGetPublicUrl(fileBlob){
       const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
       const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(
@@ -605,11 +676,21 @@
       return { fileName, publicUrl: data.publicUrl };
     }
 
+    function applyRentedState(entry){
+      entry.marker.setIcon(entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon);
+      if(entry.isRented){
+        entry.marker.dragging.disable();
+      }else{
+        entry.marker.dragging.enable();
+      }
+    }
+
     function wireMarkerEvents(entry){
       const marker = entry.marker;
+
       const openFn = (e) => {
         if(e) L.DomEvent.stop(e);
-        if(entry.type === 'bike') openBikeEditor(entry);
+        if(entry.type === 'bike') openBikeWindow(entry);
         else openNoteEditor(entry);
       };
       marker.on('click', openFn);
@@ -630,46 +711,65 @@
     }
 
     function addMarkerFromRow(row){
-      const icon = row.type === 'bike' ? bikeIcon : noteIcon;
-      const marker = L.marker({ lat: row.lat, lng: row.lng }, { icon, draggable: true }).addTo(map);
+      if(row.type === 'bike'){
+        const rented = !!row.is_rented;
+        const marker = L.marker(
+          { lat: row.lat, lng: row.lng },
+          { icon: rented ? makeBikeRentedIcon() : bikeLogoIcon, draggable: true }
+        ).addTo(map);
 
-      const entry = {
-        type: row.type,
-        marker,
-        dbId: row.id,
-        photo_url: row.photo_url || null,
-        data: {
-          Name: row.name ?? 'natebike',
-          Farbe: row.color ?? 'undefiniert',
-          Bemerkung: row.remark ?? 'keine',
-          Foto: row.photo_url ? (row.photo_url.split('/').pop() || 'vorhanden') : 'nicht vorhanden',
-          Inhalt: row.content ?? ' '
-        }
-      };
+        const entry = {
+          type: 'bike',
+          marker,
+          dbId: row.id,
+          photo_url: row.photo_url || null,
+          data: {
+            Name: row.name ?? 'natebike',
+            Farbe: row.color ?? 'undefiniert',
+            Bemerkung: row.remark ?? 'keine',
+            Foto: row.photo_url ? (row.photo_url.split('/').pop() || 'vorhanden') : 'nicht vorhanden'
+          },
+          isRented: rented
+        };
 
-      markers.set(marker._leaflet_id, entry);
-      wireMarkerEvents(entry);
-      return entry;
+        markers.set(marker._leaflet_id, entry);
+        applyRentedState(entry);
+        wireMarkerEvents(entry);
+        return entry;
+      } else {
+        const marker = L.marker({ lat: row.lat, lng: row.lng }, { icon: noteIcon, draggable: true }).addTo(map);
+        const entry = {
+          type: 'note',
+          marker,
+          dbId: row.id,
+          photo_url: null,
+          data: { Inhalt: row.content ?? ' ' }
+        };
+        markers.set(marker._leaflet_id, entry);
+        wireMarkerEvents(entry);
+        return entry;
+      }
     }
 
-    async function createBikeAt(latlng, openEditor){
+    async function createBikeAt(latlng){
       if(!isAdmin){
         showStatus('nur admin kann räder erstellen');
         return;
       }
       const row = await dbInsert('bike', latlng.lat, latlng.lng);
       const entry = addMarkerFromRow(row);
-      if(openEditor) openBikeEditor(entry);
+      openBikeWindow(entry);
       showStatus('rad erstellt');
     }
 
-    async function createNoteAt(latlng, openEditor){
+    async function createNoteAt(latlng){
       const row = await dbInsert('note', latlng.lat, latlng.lng);
       const entry = addMarkerFromRow(row);
-      if(openEditor) openNoteEditor(entry);
+      openNoteEditor(entry);
       showStatus('notitz erstellt');
     }
 
+    // Context menu
     const ctxMenu = document.getElementById('ctxMenu');
     let ctxLatLng = null;
 
@@ -703,10 +803,10 @@
       try{
         if(action === 'bike'){
           if(!isAdmin) return;
-          await createBikeAt(ll, true);
+          await createBikeAt(ll);
         }
         if(action === 'note'){
-          await createNoteAt(ll, true);
+          await createNoteAt(ll);
         }
       }catch(err){
         console.error(err);
@@ -714,6 +814,7 @@
       }
     });
 
+    // Modal
     const overlay = document.getElementById('modalOverlay');
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
@@ -731,8 +832,11 @@
     }
     overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
 
-    function openBikeEditor(entry){
+    // Bike window
+    function openBikeWindow(entry){
       modalTitle.textContent = 'geparktes rad';
+
+      const isRented = !!entry.isRented;
 
       const photoCell = entry.photo_url
         ? `<img class="photoPreview" id="photoPreview" src="${escapeHtml(entry.photo_url)}" alt="Foto" />`
@@ -746,17 +850,25 @@
         ? `<input type="text" id="bikeColor" value="${escapeHtml(entry.data.Farbe)}" />`
         : `<input type="text" id="bikeColor" value="${escapeHtml(entry.data.Farbe)}" readonly />`;
 
+      const remarkField = isAdmin
+        ? `<input type="text" id="bikeRemark" value="${escapeHtml(entry.data.Bemerkung)}" />`
+        : `<input type="text" id="bikeRemark" value="${escapeHtml(entry.data.Bemerkung)}" readonly />`;
+
       modalBody.innerHTML = `
         <div class="label">Name</div>
         ${nameField}
+
         <div class="label">Farbe</div>
         ${colorField}
+
         <div class="label">Bemerkung</div>
-        <input type="text" id="bikeRemark" value="${escapeHtml(entry.data.Bemerkung)}" />
+        ${remarkField}
+
         <div class="label">Foto</div>
         <div>${photoCell}</div>
       `;
 
+      // photo upload for all; auto-save
       const photoClick = () => { pendingPhotoTarget = entry; fileInput.click(); };
       const btn = document.getElementById('photoBtn');
       const prev = document.getElementById('photoPreview');
@@ -767,63 +879,108 @@
         prev.addEventListener('click', photoClick);
       }
 
-      modalFooter.innerHTML = isAdmin
-        ? `
-          <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
-          <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
-        `
-        : `
-          <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
-        `;
+      const rentLabel = isRented ? "abstellen" : "ausleihen";
+      const rentClass = isRented ? "isRented" : "";
 
-      document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
-        const nameVal = document.getElementById('bikeName').value.trim();
-        const colorVal = document.getElementById('bikeColor').value.trim();
-        const remarkVal = document.getElementById('bikeRemark').value.trim();
+      modalFooter.innerHTML = `
+        <div id="rentHint" class="hint"></div>
+        <button class="btn rent ${rentClass}" id="rentBtn" type="button">${rentLabel}</button>
+        ${isAdmin ? `<button class="btn" id="bikeSaveBtn" type="button">speichern</button>` : ``}
+        ${isAdmin ? `<button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>` : ``}
+      `;
 
-        const patch = {};
-        if(isAdmin){
+      // Save & delete only admin
+      if(isAdmin){
+        document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
+          const nameVal = document.getElementById('bikeName').value.trim();
+          const colorVal = document.getElementById('bikeColor').value.trim();
+          const remarkVal = document.getElementById('bikeRemark').value.trim();
+
+          const patch = {};
           if(nameVal !== '') patch.name = nameVal;
           if(colorVal !== '') patch.color = colorVal;
-        }
-        if(remarkVal !== '') patch.remark = remarkVal;
+          if(remarkVal !== '') patch.remark = remarkVal;
 
-        try{
-          if(Object.keys(patch).length){
-            await dbUpdate(entry.dbId, patch);
-            if(patch.name) entry.data.Name = patch.name;
-            if(patch.color) entry.data.Farbe = patch.color;
-            if(patch.remark) entry.data.Bemerkung = patch.remark;
+          try{
+            if(Object.keys(patch).length){
+              await dbUpdate(entry.dbId, patch);
+              if(patch.name) entry.data.Name = patch.name;
+              if(patch.color) entry.data.Farbe = patch.color;
+              if(patch.remark) entry.data.Bemerkung = patch.remark;
+            }
+            showStatus('gespeichert');
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus('fehler beim speichern');
           }
-          showStatus('gespeichert');
-          closeModal();
+        });
+
+        document.getElementById('bikeDeleteBtn').addEventListener('click', async () => {
+          try{
+            await dbDelete(entry.dbId);
+            map.removeLayer(entry.marker);
+            markers.delete(entry.marker._leaflet_id);
+            showStatus('gelöscht');
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus('fehler beim löschen');
+          }
+        });
+      }
+
+      // Rent/return globally
+      const rentBtn = document.getElementById('rentBtn');
+      const rentHint = document.getElementById('rentHint');
+
+      async function moveToDeviceLocationOrShowHint(){
+        const ll = await getDeviceLatLng(7000);
+        if(!ll){
+          rentHint.textContent = "Standort nicht verfügbar. Bitte verschiebe das Rad manuell an den neuen Abstellort.";
+          rentHint.style.display = 'block';
+          return null;
+        }
+        rentHint.style.display = 'none';
+
+        entry.marker.setLatLng(ll);
+        await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
+        setOrUpdateLocationMarker(ll);
+        return ll;
+      }
+
+      rentBtn.addEventListener('click', async () => {
+        try{
+          if(!entry.isRented){
+            const ll = await moveToDeviceLocationOrShowHint();
+            if(!ll) return;
+
+            await dbUpdate(entry.dbId, { is_rented: true });
+            entry.isRented = true;
+            applyRentedState(entry);
+
+            rentBtn.textContent = "abstellen";
+            rentBtn.classList.add('isRented');
+          } else {
+            await dbUpdate(entry.dbId, { is_rented: false });
+            entry.isRented = false;
+            applyRentedState(entry);
+
+            rentBtn.textContent = "ausleihen";
+            rentBtn.classList.remove('isRented');
+
+            showToast("Rückgabe erfolgreich :) Bitte prüfe, ob der Standort des Rades stimmt und verschiebe ihn, wenn nötig manuell.", 3000);
+          }
         }catch(err){
           console.error(err);
-          showStatus('fehler beim speichern');
+          showStatus('fehler bei ausleihen/abstellen');
         }
       });
-
-      if(isAdmin){
-        const delBtn = document.getElementById('bikeDeleteBtn');
-        if(delBtn){
-          delBtn.addEventListener('click', async () => {
-            try{
-              await dbDelete(entry.dbId);
-              map.removeLayer(entry.marker);
-              markers.delete(entry.marker._leaflet_id);
-              showStatus('gelöscht');
-              closeModal();
-            }catch(err){
-              console.error(err);
-              showStatus('fehler beim löschen');
-            }
-          });
-        }
-      }
 
       openModal();
     }
 
+    // Note unchanged
     function openNoteEditor(entry){
       modalTitle.textContent = 'notitz';
       modalBody.innerHTML = `
@@ -865,6 +1022,7 @@
       openModal();
     }
 
+    // Photo upload: auto-save
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files && fileInput.files[0];
       if(!file || !pendingPhotoTarget) return;
@@ -881,13 +1039,16 @@
       }
 
       const entry = pendingPhotoTarget;
+
       try{
         showStatus('foto wird hochgeladen…');
+
         const dataUrl = await readFileAsDataURL(file);
         const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
         const { fileName, publicUrl } = await uploadPhotoAndGetPublicUrl(jpgBlob);
 
         await dbUpdate(entry.dbId, { photo_url: publicUrl });
+
         entry.photo_url = publicUrl;
         entry.data.Foto = fileName;
 
@@ -918,6 +1079,7 @@
       }
     });
 
+    // Password gate
     async function unlock(e){
       if(e) e.preventDefault();
       const val = (pwInput.value || "").trim();
@@ -937,13 +1099,8 @@
 
       setTimeout(() => map.invalidateSize(), 150);
 
-      // Center on device location (or Kassel fallback) + show red ring
-      try{
-        const ok = await centerOnDeviceOrKassel();
-        if(!ok) showStatus('standort nicht verfügbar – kassel');
-      } catch {
-        map.setView(KASSEL_CENTER, DEFAULT_ZOOM);
-      }
+      const ok = await centerOnDeviceOrKassel();
+      if(!ok) showStatus('standort nicht verfügbar – kassel');
 
       try{
         updateAdminUI();
