@@ -1,14 +1,4 @@
-Unten ist eine **vollständige `index.html`**, in der das manuelle Verschieben geändert wurde:
 
-- Marker sind **standardmäßig nicht mehr per Drag&Drop** verschiebbar.
-- Im **Rechtsklick-Menü eines Markers** gibt es neu **„verschieben“**.
-- Klick auf **„verschieben“** aktiviert Drag nur für **diesen** Marker; beim **Loslassen** (dragend) wird Drag wieder deaktiviert und die Position in Supabase gespeichert.
-- Kontextmenü auf der Karte bleibt (Rad hinzufügen/Notitz).
-- Notitz bleibt „unberührt“: sie kann weiterhin erstellt/gelöscht/bearbeitet werden; Verschieben erfolgt ebenfalls über den neuen Menüpunkt (wie gefordert „ein Marker“).
-
-> Hinweis: Für das Marker-Kontextmenü nutze ich ein separates Menü (damit nicht das Karten-Menü dazwischenfunkt).
-
-```html
 <!doctype html>
 <html lang="de">
 <head>
@@ -1210,6 +1200,3 @@ Unten ist eine **vollständige `index.html`**, in der das manuelle Verschieben g
   </script>
 </body>
 </html>
-```
-
-Wenn du möchtest, dass beim „verschieben“-Modus der Marker optisch hervorgehoben wird (z. B. gelber Rahmen), sag Bescheid.
