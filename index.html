@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="de">
 <head>
@@ -34,6 +33,7 @@
       --adminGreen:#9be39b;
       --adminBorder:#7d7d7d;
       --rentRed:#d7191c;
+      --blinkRed:#ff0000;
     }
     html, body { height: 100%; }
     body{
@@ -323,6 +323,22 @@
       color: #0b1a2a;
       box-shadow: 0 10px 24px rgba(0,0,0,0.18);
     }
+
+    /* blinking ring for "move mode" */
+    @keyframes blinkRing {
+      0%, 100% { opacity: 0.15; transform: translate(-50%,-50%) scale(0.98); }
+      50%      { opacity: 1.00; transform: translate(-50%,-50%) scale(1.08); }
+    }
+    .moveRing{
+      position:absolute;
+      left:50%; top:50%;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      border: 4px solid var(--blinkRed);
+      box-sizing: border-box;
+      pointer-events: none;
+      animation: blinkRing 0.9s infinite ease-in-out;
+    }
   </style>
 </head>
 
@@ -411,10 +427,8 @@
     const KASSEL_CENTER = [51.3127, 9.4797];
     const DEFAULT_ZOOM = 13;
 
-    // Geolocation refresh interval
     const LOCATION_REFRESH_MS = 5000;
 
-    // ---------- helpers ----------
     function escapeHtml(str){
       return String(str ?? "")
         .replaceAll('&','&amp;')
@@ -625,6 +639,29 @@
       });
     }
 
+    function makeBikeMoveIcon(){
+      const size = 56;
+      return L.divIcon({
+        className: '',
+        html: `
+          <div style="width:${size}px;height:${size}px;position:relative;">
+            <div class="moveRing"></div>
+            <img src="logo.png" alt="" style="
+              position:absolute;
+              left:50%;top:50%;
+              transform:translate(-50%,-50%);
+              width:40px;height:40px;
+              border-radius:50%;
+              object-fit:contain;
+              background:transparent;
+            "/>
+          </div>
+        `,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2]
+      });
+    }
+
     const noteIcon = L.divIcon({
       className: '',
       html: `<div class="noteIconWrap"></div>`,
@@ -633,11 +670,10 @@
     });
 
     // ---------- state ----------
-    // entry: { type, marker, dbId, photo_url, data, isRented:boolean }
-    const markers = new Map();
+    const markers = new Map(); // leafletId -> entry
     let pendingPhotoTarget = null;
 
-    // Marker-move mode
+    // move mode
     let moveModeEntry = null;
 
     // ---------- DB helpers ----------
@@ -679,19 +715,27 @@
       return { fileName, publicUrl: data.publicUrl };
     }
 
-    function applyRentedState(entry){
-      entry.marker.setIcon(entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon);
-      // rented bikes always not movable manually
-      entry.marker.options.draggable = false;
-      if(entry.marker.dragging) entry.marker.dragging.disable();
+    function getNormalIconForEntry(entry){
+      if(entry.type === 'bike'){
+        return entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon;
+      }
+      return noteIcon;
     }
 
     function setMarkerDraggableOnce(entry){
-      // enable dragging until dragend
-      if(entry.isRented){
+      if(entry.type === 'bike' && entry.isRented){
         showStatus('rad ist ausgeliehen (nicht verschiebbar)');
         return;
       }
+
+      // set blink icon
+      if(entry.type === 'bike'){
+        entry.marker.setIcon(makeBikeMoveIcon());
+      }else{
+        // for note: we don't change icon, just allow move
+      }
+
+      // enable dragging until dragend
       if(entry.marker.dragging) entry.marker.dragging.enable();
       entry.marker.options.draggable = true;
       moveModeEntry = entry;
@@ -709,6 +753,10 @@
       }finally{
         if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.options.draggable = false;
+
+        // restore icon
+        entry.marker.setIcon(getNormalIconForEntry(entry));
+
         moveModeEntry = null;
       }
     }
@@ -716,30 +764,27 @@
     function wireMarkerEvents(entry){
       const marker = entry.marker;
 
-      // Disable drag by default
+      // not draggable by default
       marker.options.draggable = false;
       if(marker.dragging) marker.dragging.disable();
 
-      // Save position only when move-mode is active
       marker.on('dragstart', () => map.dragging.disable());
       marker.on('dragend', async () => {
         map.dragging.enable();
         if(moveModeEntry && moveModeEntry === entry){
           await finalizeMarkerMove(entry);
         }else{
-          // safety: disable drag if it was enabled somehow
           if(marker.dragging) marker.dragging.disable();
           marker.options.draggable = false;
+          marker.setIcon(getNormalIconForEntry(entry));
         }
       });
 
-      // Marker context menu
       marker.on('contextmenu', (e) => {
         L.DomEvent.preventDefault(e);
         openMarkerMenu(e.originalEvent, entry);
       });
 
-      // Also left-click opens window (like before)
       marker.on('click', (e) => {
         L.DomEvent.stop(e);
         if(entry.type === 'bike') openBikeWindow(entry);
@@ -770,7 +815,6 @@
         };
 
         markers.set(marker._leaflet_id, entry);
-        if(rented) applyRentedState(entry); // keep non-draggable
         wireMarkerEvents(entry);
         return entry;
       } else {
@@ -806,7 +850,7 @@
       showStatus('notitz erstellt');
     }
 
-    // ---------- Map context menu ----------
+    // ---------- context menus ----------
     const ctxMenuMap = document.getElementById('ctxMenuMap');
     const ctxMenuMarker = document.getElementById('ctxMenuMarker');
     let ctxLatLng = null;
@@ -822,14 +866,11 @@
     map.getContainer().addEventListener('contextmenu', (e) => e.preventDefault());
 
     map.on('contextmenu', (e) => {
-      // Right-click on map (not marker) -> map menu
       ctxLatLng = e.latlng;
       const oe = e.originalEvent;
 
-      // if a marker menu is open, close it
       hideAllMenus();
 
-      // show map menu
       ctxMenuMap.style.left = `${oe.clientX}px`;
       ctxMenuMap.style.top  = `${oe.clientY}px`;
       ctxMenuMap.style.display = 'block';
@@ -941,7 +982,6 @@
         <div>${photoCell}</div>
       `;
 
-      // photo upload for all users; auto-save
       const photoClick = () => { pendingPhotoTarget = entry; fileInput.click(); };
       const btn = document.getElementById('photoBtn');
       const prev = document.getElementById('photoPreview');
@@ -1026,16 +1066,15 @@
       rentBtn.addEventListener('click', async () => {
         try{
           if(entry.isRented){
-            // return
             await dbUpdate(entry.dbId, { is_rented: false });
             entry.isRented = false;
             entry.marker.setIcon(bikeLogoIcon);
-            showToast("Rückgabe erfolgreich :) Bitte prüfe, ob der Standort des Rades stimmt und verschiebe ihn, wenn nötig manuell.", 3000);
 
             rentBtn.textContent = "ausleihen";
             rentBtn.classList.remove('isRented');
+
+            showToast("Rückgabe erfolgreich :) Bitte prüfe, ob der Standort des Rades stimmt und verschiebe ihn, wenn nötig manuell.", 3000);
           }else{
-            // rent
             const ll = await moveToDeviceLocationOrShowHint();
             if(!ll) return;
 
@@ -1046,7 +1085,8 @@
             rentBtn.textContent = "abstellen";
             rentBtn.classList.add('isRented');
           }
-          // After rent/return, ensure marker is not draggable unless via menu
+
+          // always leave marker non-draggable unless move-menu
           entry.marker.options.draggable = false;
           if(entry.marker.dragging) entry.marker.dragging.disable();
         }catch(err){
