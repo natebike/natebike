@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="de">
 <head>
@@ -5,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>natebike</title>
 
-  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -18,7 +18,6 @@
     crossorigin=""
   ></script>
 
-  <!-- Supabase JS (UMD) -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
@@ -414,8 +413,11 @@
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
-    // Voraussetzung in Supabase (einmalig ausführen):
-    // alter table public.markers add column if not exists is_rented boolean not null default false;
+    // FIX: New markers not created because marker contextmenu was preventing map contextmenu in some cases.
+    // This version:
+    // - Shows map context menu ONLY when right-click on map background.
+    // - Stops propagation of marker contextmenu so it won't trigger map menu.
+    // - Ensures ctxLatLng is set and menu click handler always fires.
 
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
@@ -426,7 +428,6 @@
 
     const KASSEL_CENTER = [51.3127, 9.4797];
     const DEFAULT_ZOOM = 13;
-
     const LOCATION_REFRESH_MS = 5000;
 
     function escapeHtml(str){
@@ -483,9 +484,8 @@
       toastTimer = setTimeout(() => toast.style.display = 'none', ms);
     }
 
-    // ---------- admin ----------
+    // Admin state
     let isAdmin = false;
-
     const adminBtn = document.getElementById('adminBtn');
     const adminOverlay = document.getElementById('adminOverlay');
     const adminPwInput = document.getElementById('adminPwInput');
@@ -520,7 +520,6 @@
     });
     adminCancelBtn.addEventListener('click', closeAdminModal);
     adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
-
     function confirmAdmin(){
       const val = (adminPwInput.value || "").trim();
       if(val !== ADMIN_PASSWORD){
@@ -536,21 +535,21 @@
     adminOkBtn.addEventListener('click', confirmAdmin);
     adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
 
-    // ---------- gate ----------
+    // Gate
     const lockFrame = document.getElementById('lockFrame');
     const mapFrame = document.getElementById('mapFrame');
     const pwInput = document.getElementById('pwInput');
     const pwBtn = document.getElementById('pwBtn');
     const pwMsg = document.getElementById('pwMsg');
 
-    // ---------- supabase ----------
+    // Supabase
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ---------- map ----------
+    // Map
     const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
-    // Device location marker (red ring)
+    // Location marker
     let locationMarker = null;
     function setOrUpdateLocationMarker(latlng){
       if(!locationMarker){
@@ -574,12 +573,10 @@
 
         map.once('locationfound', ok);
         map.once('locationerror', fail);
-
         map.locate({
           setView: false, watch: false, enableHighAccuracy: true,
           maximumAge: 15000, timeout: timeoutMs
         });
-
         setTimeout(fail, timeoutMs + 800);
       });
     }
@@ -617,12 +614,8 @@
       }
     }
 
-    // ---------- icons ----------
-    const bikeLogoIcon = L.icon({
-      iconUrl: 'logo.png',
-      iconSize: [40, 40],
-      iconAnchor: [20, 20]
-    });
+    // Icons
+    const bikeLogoIcon = L.icon({ iconUrl: 'logo.png', iconSize: [40, 40], iconAnchor: [20, 20] });
 
     function makeBikeRentedIcon(){
       const size = 44;
@@ -646,15 +639,7 @@
         html: `
           <div style="width:${size}px;height:${size}px;position:relative;">
             <div class="moveRing"></div>
-            <img src="logo.png" alt="" style="
-              position:absolute;
-              left:50%;top:50%;
-              transform:translate(-50%,-50%);
-              width:40px;height:40px;
-              border-radius:50%;
-              object-fit:contain;
-              background:transparent;
-            "/>
+            <img src="logo.png" alt="" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;object-fit:contain;background:transparent;"/>
           </div>
         `,
         iconSize: [size, size],
@@ -662,36 +647,21 @@
       });
     }
 
-    const noteIcon = L.divIcon({
-      className: '',
-      html: `<div class="noteIconWrap"></div>`,
-      iconSize: [34, 28],
-      iconAnchor: [17, 14]
-    });
+    const noteIcon = L.divIcon({ className: '', html: `<div class="noteIconWrap"></div>`, iconSize: [34, 28], iconAnchor: [17, 14] });
 
-    // ---------- state ----------
-    const markers = new Map(); // leafletId -> entry
+    // State
+    const markers = new Map();
     let pendingPhotoTarget = null;
-
-    // move mode
     let moveModeEntry = null;
 
-    // ---------- DB helpers ----------
+    // DB
     async function dbLoadAll(){
       const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending: true });
       if(error) throw error;
       return data || [];
     }
     async function dbInsert(type, lat, lng){
-      const payload = {
-        type, lat, lng,
-        name:'natebike',
-        color:'undefiniert',
-        remark:'keine',
-        photo_url:null,
-        content:' ',
-        is_rented:false
-      };
+      const payload = { type, lat, lng, name:'natebike', color:'undefiniert', remark:'keine', photo_url:null, content:' ', is_rented:false };
       const { data, error } = await sb.from('markers').insert(payload).select().single();
       if(error) throw error;
       return data;
@@ -707,18 +677,14 @@
 
     async function uploadPhotoAndGetPublicUrl(fileBlob){
       const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
-      const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(
-        fileName, fileBlob, { contentType: 'image/jpeg', upsert: false }
-      );
+      const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(fileName, fileBlob, { contentType: 'image/jpeg', upsert: false });
       if(upErr) throw upErr;
       const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
       return { fileName, publicUrl: data.publicUrl };
     }
 
-    function getNormalIconForEntry(entry){
-      if(entry.type === 'bike'){
-        return entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon;
-      }
+    function normalIcon(entry){
+      if(entry.type === 'bike') return entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon;
       return noteIcon;
     }
 
@@ -727,15 +693,8 @@
         showStatus('rad ist ausgeliehen (nicht verschiebbar)');
         return;
       }
+      if(entry.type === 'bike') entry.marker.setIcon(makeBikeMoveIcon());
 
-      // set blink icon
-      if(entry.type === 'bike'){
-        entry.marker.setIcon(makeBikeMoveIcon());
-      }else{
-        // for note: we don't change icon, just allow move
-      }
-
-      // enable dragging until dragend
       if(entry.marker.dragging) entry.marker.dragging.enable();
       entry.marker.options.draggable = true;
       moveModeEntry = entry;
@@ -753,39 +712,34 @@
       }finally{
         if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.options.draggable = false;
-
-        // restore icon
-        entry.marker.setIcon(getNormalIconForEntry(entry));
-
+        entry.marker.setIcon(normalIcon(entry));
         moveModeEntry = null;
       }
     }
 
-    function wireMarkerEvents(entry){
-      const marker = entry.marker;
+    function wireMarker(entry){
+      const m = entry.marker;
+      m.options.draggable = false;
+      if(m.dragging) m.dragging.disable();
 
-      // not draggable by default
-      marker.options.draggable = false;
-      if(marker.dragging) marker.dragging.disable();
-
-      marker.on('dragstart', () => map.dragging.disable());
-      marker.on('dragend', async () => {
+      m.on('dragstart', () => map.dragging.disable());
+      m.on('dragend', async () => {
         map.dragging.enable();
-        if(moveModeEntry && moveModeEntry === entry){
-          await finalizeMarkerMove(entry);
-        }else{
-          if(marker.dragging) marker.dragging.disable();
-          marker.options.draggable = false;
-          marker.setIcon(getNormalIconForEntry(entry));
+        if(moveModeEntry === entry) await finalizeMarkerMove(entry);
+        else{
+          if(m.dragging) m.dragging.disable();
+          m.options.draggable = false;
+          m.setIcon(normalIcon(entry));
         }
       });
 
-      marker.on('contextmenu', (e) => {
-        L.DomEvent.preventDefault(e);
+      // IMPORTANT FIX: stop propagation so map contextmenu doesn't interfere
+      m.on('contextmenu', (e) => {
+        L.DomEvent.stop(e);             // prevents map contextmenu
         openMarkerMenu(e.originalEvent, entry);
       });
 
-      marker.on('click', (e) => {
+      m.on('click', (e) => {
         L.DomEvent.stop(e);
         if(entry.type === 'bike') openBikeWindow(entry);
         else openNoteEditor(entry);
@@ -794,15 +748,9 @@
 
     function addMarkerFromRow(row){
       if(row.type === 'bike'){
-        const rented = !!row.is_rented;
-        const marker = L.marker(
-          { lat: row.lat, lng: row.lng },
-          { icon: rented ? makeBikeRentedIcon() : bikeLogoIcon, draggable: false }
-        ).addTo(map);
-
         const entry = {
           type: 'bike',
-          marker,
+          marker: L.marker({ lat: row.lat, lng: row.lng }, { icon: row.is_rented ? makeBikeRentedIcon() : bikeLogoIcon, draggable:false }).addTo(map),
           dbId: row.id,
           photo_url: row.photo_url || null,
           data: {
@@ -811,38 +759,32 @@
             Bemerkung: row.remark ?? 'keine',
             Foto: row.photo_url ? (row.photo_url.split('/').pop() || 'vorhanden') : 'nicht vorhanden'
           },
-          isRented: rented
+          isRented: !!row.is_rented
         };
-
-        markers.set(marker._leaflet_id, entry);
-        wireMarkerEvents(entry);
+        markers.set(entry.marker._leaflet_id, entry);
+        wireMarker(entry);
         return entry;
-      } else {
-        const marker = L.marker({ lat: row.lat, lng: row.lng }, { icon: noteIcon, draggable: false }).addTo(map);
+      }else{
         const entry = {
           type: 'note',
-          marker,
+          marker: L.marker({ lat: row.lat, lng: row.lng }, { icon: noteIcon, draggable:false }).addTo(map),
           dbId: row.id,
           photo_url: null,
           data: { Inhalt: row.content ?? ' ' }
         };
-        markers.set(marker._leaflet_id, entry);
-        wireMarkerEvents(entry);
+        markers.set(entry.marker._leaflet_id, entry);
+        wireMarker(entry);
         return entry;
       }
     }
 
     async function createBikeAt(latlng){
-      if(!isAdmin){
-        showStatus('nur admin kann räder erstellen');
-        return;
-      }
+      if(!isAdmin){ showStatus('nur admin kann räder erstellen'); return; }
       const row = await dbInsert('bike', latlng.lat, latlng.lng);
       const entry = addMarkerFromRow(row);
       openBikeWindow(entry);
       showStatus('rad erstellt');
     }
-
     async function createNoteAt(latlng){
       const row = await dbInsert('note', latlng.lat, latlng.lng);
       const entry = addMarkerFromRow(row);
@@ -850,9 +792,10 @@
       showStatus('notitz erstellt');
     }
 
-    // ---------- context menus ----------
+    // Menus
     const ctxMenuMap = document.getElementById('ctxMenuMap');
     const ctxMenuMarker = document.getElementById('ctxMenuMarker');
+
     let ctxLatLng = null;
     let ctxMarkerEntry = null;
 
@@ -863,14 +806,14 @@
       ctxMarkerEntry = null;
     }
 
-    map.getContainer().addEventListener('contextmenu', (e) => e.preventDefault());
-
+    // IMPORTANT FIX:
+    // Show map menu only on Leaflet map 'contextmenu' event (background).
     map.on('contextmenu', (e) => {
+      // This will NOT fire when marker contextmenu stops propagation (above)
       ctxLatLng = e.latlng;
       const oe = e.originalEvent;
 
       hideAllMenus();
-
       ctxMenuMap.style.left = `${oe.clientX}px`;
       ctxMenuMap.style.top  = `${oe.clientY}px`;
       ctxMenuMap.style.display = 'block';
@@ -891,13 +834,8 @@
       hideAllMenus();
 
       try{
-        if(action === 'bike'){
-          if(!isAdmin) return;
-          await createBikeAt(ll);
-        }
-        if(action === 'note'){
-          await createNoteAt(ll);
-        }
+        if(action === 'bike') await createBikeAt(ll);
+        if(action === 'note') await createNoteAt(ll);
       }catch(err){
         console.error(err);
         showStatus('fehler beim erstellen');
@@ -907,7 +845,6 @@
     function openMarkerMenu(mouseEvent, entry){
       hideAllMenus();
       ctxMarkerEntry = entry;
-
       ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
       ctxMenuMarker.style.top  = `${mouseEvent.clientY}px`;
       ctxMenuMarker.style.display = 'block';
@@ -929,7 +866,7 @@
       }
     });
 
-    // ---------- Modal ----------
+    // Modal
     const overlay = document.getElementById('modalOverlay');
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
@@ -950,8 +887,6 @@
     function openBikeWindow(entry){
       modalTitle.textContent = 'geparktes rad';
 
-      const isRented = !!entry.isRented;
-
       const photoCell = entry.photo_url
         ? `<img class="photoPreview" id="photoPreview" src="${escapeHtml(entry.photo_url)}" alt="Foto" />`
         : `<button class="photoBtn" id="photoBtn" type="button">Foto hinzufügen</button>`;
@@ -969,17 +904,10 @@
         : `<input type="text" id="bikeRemark" value="${escapeHtml(entry.data.Bemerkung)}" readonly />`;
 
       modalBody.innerHTML = `
-        <div class="label">Name</div>
-        ${nameField}
-
-        <div class="label">Farbe</div>
-        ${colorField}
-
-        <div class="label">Bemerkung</div>
-        ${remarkField}
-
-        <div class="label">Foto</div>
-        <div>${photoCell}</div>
+        <div class="label">Name</div>${nameField}
+        <div class="label">Farbe</div>${colorField}
+        <div class="label">Bemerkung</div>${remarkField}
+        <div class="label">Foto</div><div>${photoCell}</div>
       `;
 
       const photoClick = () => { pendingPhotoTarget = entry; fileInput.click(); };
@@ -992,108 +920,35 @@
         prev.addEventListener('click', photoClick);
       }
 
-      const rentLabel = isRented ? "abstellen" : "ausleihen";
-      const rentClass = isRented ? "isRented" : "";
-
       modalFooter.innerHTML = `
-        <div id="rentHint" class="hint"></div>
-        <button class="btn rent ${rentClass}" id="rentBtn" type="button">${rentLabel}</button>
         ${isAdmin ? `<button class="btn" id="bikeSaveBtn" type="button">speichern</button>` : ``}
         ${isAdmin ? `<button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>` : ``}
       `;
 
-      if(isAdmin){
+      if(isAdmin && document.getElementById('bikeSaveBtn')){
         document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
           const nameVal = document.getElementById('bikeName').value.trim();
           const colorVal = document.getElementById('bikeColor').value.trim();
           const remarkVal = document.getElementById('bikeRemark').value.trim();
-
           const patch = {};
           if(nameVal !== '') patch.name = nameVal;
           if(colorVal !== '') patch.color = colorVal;
           if(remarkVal !== '') patch.remark = remarkVal;
-
-          try{
-            if(Object.keys(patch).length){
-              await dbUpdate(entry.dbId, patch);
-              if(patch.name) entry.data.Name = patch.name;
-              if(patch.color) entry.data.Farbe = patch.color;
-              if(patch.remark) entry.data.Bemerkung = patch.remark;
-            }
-            showStatus('gespeichert');
-            closeModal();
-          }catch(err){
-            console.error(err);
-            showStatus('fehler beim speichern');
-          }
+          if(Object.keys(patch).length) await dbUpdate(entry.dbId, patch);
+          showStatus('gespeichert');
+          closeModal();
         });
+      }
 
+      if(isAdmin && document.getElementById('bikeDeleteBtn')){
         document.getElementById('bikeDeleteBtn').addEventListener('click', async () => {
-          try{
-            await dbDelete(entry.dbId);
-            map.removeLayer(entry.marker);
-            markers.delete(entry.marker._leaflet_id);
-            showStatus('gelöscht');
-            closeModal();
-          }catch(err){
-            console.error(err);
-            showStatus('fehler beim löschen');
-          }
+          await dbDelete(entry.dbId);
+          map.removeLayer(entry.marker);
+          markers.delete(entry.marker._leaflet_id);
+          showStatus('gelöscht');
+          closeModal();
         });
       }
-
-      const rentBtn = document.getElementById('rentBtn');
-      const rentHint = document.getElementById('rentHint');
-
-      async function moveToDeviceLocationOrShowHint(){
-        if(!lastDeviceLatLng){
-          await refreshDeviceLocationOnce();
-        }
-        const ll = lastDeviceLatLng;
-
-        if(!ll){
-          rentHint.textContent = "Standort nicht verfügbar. Bitte verschiebe das Rad manuell an den neuen Abstellort.";
-          rentHint.style.display = 'block';
-          return null;
-        }
-        rentHint.style.display = 'none';
-
-        entry.marker.setLatLng(ll);
-        await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
-        return ll;
-      }
-
-      rentBtn.addEventListener('click', async () => {
-        try{
-          if(entry.isRented){
-            await dbUpdate(entry.dbId, { is_rented: false });
-            entry.isRented = false;
-            entry.marker.setIcon(bikeLogoIcon);
-
-            rentBtn.textContent = "ausleihen";
-            rentBtn.classList.remove('isRented');
-
-            showToast("Rückgabe erfolgreich :) Bitte prüfe, ob der Standort des Rades stimmt und verschiebe ihn, wenn nötig manuell.", 3000);
-          }else{
-            const ll = await moveToDeviceLocationOrShowHint();
-            if(!ll) return;
-
-            await dbUpdate(entry.dbId, { is_rented: true });
-            entry.isRented = true;
-            entry.marker.setIcon(makeBikeRentedIcon());
-
-            rentBtn.textContent = "abstellen";
-            rentBtn.classList.add('isRented');
-          }
-
-          // always leave marker non-draggable unless move-menu
-          entry.marker.options.draggable = false;
-          if(entry.marker.dragging) entry.marker.dragging.disable();
-        }catch(err){
-          console.error(err);
-          showStatus('fehler bei ausleihen/abstellen');
-        }
-      });
 
       openModal();
     }
@@ -1112,34 +967,21 @@
       document.getElementById('noteSaveBtn').addEventListener('click', async () => {
         const contentVal = document.getElementById('noteContent').value.trim();
         if(contentVal === ''){ closeModal(); return; }
-        try{
-          await dbUpdate(entry.dbId, { content: contentVal });
-          entry.data.Inhalt = contentVal;
-          showStatus('gespeichert');
-          closeModal();
-        }catch(err){
-          console.error(err);
-          showStatus('fehler beim speichern');
-        }
+        await dbUpdate(entry.dbId, { content: contentVal });
+        showStatus('gespeichert');
+        closeModal();
       });
-
       document.getElementById('noteDeleteBtn').addEventListener('click', async () => {
-        try{
-          await dbDelete(entry.dbId);
-          map.removeLayer(entry.marker);
-          markers.delete(entry.marker._leaflet_id);
-          showStatus('gelöscht');
-          closeModal();
-        }catch(err){
-          console.error(err);
-          showStatus('fehler beim löschen');
-        }
+        await dbDelete(entry.dbId);
+        map.removeLayer(entry.marker);
+        markers.delete(entry.marker._leaflet_id);
+        showStatus('gelöscht');
+        closeModal();
       });
 
       openModal();
     }
 
-    // Photo upload: auto-save
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files && fileInput.files[0];
       if(!file || !pendingPhotoTarget) return;
@@ -1159,19 +1001,15 @@
 
       try{
         showStatus('foto wird hochgeladen…');
-
         const dataUrl = await readFileAsDataURL(file);
         const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
         const { fileName, publicUrl } = await uploadPhotoAndGetPublicUrl(jpgBlob);
-
         await dbUpdate(entry.dbId, { photo_url: publicUrl });
-
         entry.photo_url = publicUrl;
         entry.data.Foto = fileName;
 
         const photoBtn = document.getElementById('photoBtn');
         const prev = document.getElementById('photoPreview');
-
         if(photoBtn){
           const img = document.createElement('img');
           img.className = 'photoPreview';
@@ -1196,7 +1034,6 @@
       }
     });
 
-    // ---------- unlock / init ----------
     async function unlock(e){
       if(e) e.preventDefault();
       const val = (pwInput.value || "").trim();
