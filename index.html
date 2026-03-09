@@ -49,18 +49,8 @@
       justify-content: space-between;
       gap: 12px;
     }
-    .headerLeft{
-      display:flex;
-      align-items:center;
-      gap: 12px;
-      min-width: 0;
-    }
-    #logo{
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      object-fit: contain;
-    }
+    .headerLeft{ display:flex; align-items:center; gap: 12px; min-width: 0; }
+    #logo{ width: 40px; height: 40px; border-radius: 8px; object-fit: contain; }
     h1{
       margin: 0;
       font-size: 30px;
@@ -135,22 +125,9 @@
       box-sizing: border-box;
       outline: none;
     }
-    textarea{
-      min-height: 72px;
-      resize: vertical;
-      padding: 9px 10px;
-    }
-    .lockFooter{
-      display:flex;
-      justify-content: flex-end;
-      margin-top: 14px;
-    }
-    #pwMsg{
-      margin-top:10px;
-      color: var(--danger);
-      font-size: 13px;
-      display:none;
-    }
+    textarea{ min-height: 72px; resize: vertical; padding: 9px 10px; }
+    .lockFooter{ display:flex; justify-content: flex-end; margin-top: 14px; }
+    #pwMsg{ margin-top:10px; color: var(--danger); font-size: 13px; display:none; }
 
     /* Context menus */
     .ctx-menu{
@@ -172,10 +149,7 @@
       font-size: 14px;
     }
     .ctx-item:hover{ background: rgba(0,74,149,0.08); }
-    .ctx-item.disabled{
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
+    .ctx-item.disabled{ opacity: 0.45; cursor: not-allowed; }
 
     /* Modal */
     .modal-overlay{
@@ -213,8 +187,7 @@
     .label{ font-size: 14px; }
 
     .photoBtn{
-      width: 100px;
-      height: 100px;
+      width: 100px; height: 100px;
       background: var(--blue);
       color: #fff;
       border: none;
@@ -226,8 +199,7 @@
       line-height: 1.15;
     }
     .photoPreview{
-      width: 100px;
-      height: 100px;
+      width: 100px; height: 100px;
       border-radius: 10px;
       border: 1px solid #cfd7e6;
       object-fit: contain;
@@ -262,17 +234,11 @@
     .btn.rent{ background: var(--blue); }
     .btn.rent.isRented{ background: var(--rentRed); }
 
-    .hint{
-      color: var(--danger);
-      font-size: 13px;
-      margin-right: auto;
-      display: none;
-    }
+    .hint{ color: var(--danger); font-size: 13px; margin-right: auto; display: none; }
 
     .statusBar{
       position:absolute;
-      left: 10px;
-      bottom: 10px;
+      left: 10px; bottom: 10px;
       z-index: 5000;
       background: rgba(255,255,255,0.92);
       border: 1px solid #cfd7e6;
@@ -284,7 +250,6 @@
       max-width: 70%;
     }
 
-    /* Notiz icon */
     .noteIconWrap{
       width: 34px; height: 28px;
       background: var(--note);
@@ -305,11 +270,9 @@
       transform-origin: top right;
     }
 
-    /* 3s toast */
     #toast{
       position: fixed;
-      left: 50%;
-      bottom: 18px;
+      left: 50%; bottom: 18px;
       transform: translateX(-50%);
       background: #fff;
       border: 3px solid var(--blue);
@@ -323,7 +286,6 @@
       box-shadow: 0 10px 24px rgba(0,0,0,0.18);
     }
 
-    /* blinking ring for "move mode" */
     @keyframes blinkRing {
       0%, 100% { opacity: 0.15; transform: translate(-50%,-50%) scale(0.98); }
       50%      { opacity: 1.00; transform: translate(-50%,-50%) scale(1.08); }
@@ -347,7 +309,6 @@
       <img id="logo" alt="logo" src="logo.png" />
       <h1>natebike</h1>
     </div>
-
     <button id="adminBtn" class="adminBtn" type="button">Admin</button>
   </header>
 
@@ -371,13 +332,11 @@
     </div>
   </div>
 
-  <!-- Map context menu -->
   <div id="ctxMenuMap" class="ctx-menu">
     <div class="ctx-item" data-action="bike" id="ctxBike">neues Rad hinzufügen</div>
     <div class="ctx-item" data-action="note">Notitz hinzufügen</div>
   </div>
 
-  <!-- Marker context menu -->
   <div id="ctxMenuMarker" class="ctx-menu">
     <div class="ctx-item" data-action="open">öffnen</div>
     <div class="ctx-item" data-action="move">verschieben</div>
@@ -409,16 +368,9 @@
   </div>
 
   <div id="toast"></div>
-
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
-    // FIX: New markers not created because marker contextmenu was preventing map contextmenu in some cases.
-    // This version:
-    // - Shows map context menu ONLY when right-click on map background.
-    // - Stops propagation of marker contextmenu so it won't trigger map menu.
-    // - Ensures ctxLatLng is set and menu click handler always fires.
-
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
     const SUPABASE_BUCKET = "marker-photos";
@@ -430,6 +382,18 @@
     const DEFAULT_ZOOM = 13;
     const LOCATION_REFRESH_MS = 5000;
 
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+
+    // ----- util -----
+    function randId(n=10){
+      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+      let s = "";
+      for(let i=0;i<n;i++) s += chars[Math.floor(Math.random()*chars.length)];
+      return s;
+    }
     function escapeHtml(str){
       return String(str ?? "")
         .replaceAll('&','&amp;')
@@ -438,34 +402,8 @@
         .replaceAll('"','&quot;')
         .replaceAll("'","&#039;");
     }
-    function randId(n=10){
-      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-      let s = "";
-      for(let i=0;i<n;i++) s += chars[Math.floor(Math.random()*chars.length)];
-      return s;
-    }
-    async function readFileAsDataURL(file){
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-    async function scaleToJpegBlob(dataUrl, maxSidePx, quality=0.9){
-      const img = new Image();
-      img.src = dataUrl;
-      await img.decode();
-      const w = img.naturalWidth, h = img.naturalHeight;
-      const scale = Math.min(1, maxSidePx / Math.max(w, h));
-      const nw = Math.max(1, Math.round(w * scale));
-      const nh = Math.max(1, Math.round(h * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = nw; canvas.height = nh;
-      canvas.getContext('2d').drawImage(img, 0, 0, nw, nh);
-      return await new Promise((resolve) => canvas.toBlob(b => resolve(b), 'image/jpeg', quality));
-    }
 
+    // ----- status / toast -----
     const statusBar = document.getElementById('statusBar');
     let statusTimer = null;
     function showStatus(msg){
@@ -474,7 +412,6 @@
       clearTimeout(statusTimer);
       statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
     }
-
     const toast = document.getElementById('toast');
     let toastTimer = null;
     function showToast(msg, ms=3000){
@@ -484,7 +421,7 @@
       toastTimer = setTimeout(() => toast.style.display = 'none', ms);
     }
 
-    // Admin state
+    // ----- admin -----
     let isAdmin = false;
     const adminBtn = document.getElementById('adminBtn');
     const adminOverlay = document.getElementById('adminOverlay');
@@ -513,7 +450,6 @@
       updateAdminUI();
       showStatus('admin abgemeldet');
     }
-
     adminBtn.addEventListener('click', () => {
       if(isAdmin) logoutAdmin();
       else openAdminModal();
@@ -535,49 +471,35 @@
     adminOkBtn.addEventListener('click', confirmAdmin);
     adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
 
-    // Gate
+    // ----- lock gate -----
     const lockFrame = document.getElementById('lockFrame');
     const mapFrame = document.getElementById('mapFrame');
     const pwInput = document.getElementById('pwInput');
     const pwBtn = document.getElementById('pwBtn');
     const pwMsg = document.getElementById('pwMsg');
 
-    // Supabase
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // Map
-    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-
-    // Location marker
+    // ----- geolocation refresh -----
     let locationMarker = null;
+    let lastDeviceLatLng = null;
+    let locationTimer = null;
+
     function setOrUpdateLocationMarker(latlng){
       if(!locationMarker){
-        locationMarker = L.circleMarker(latlng, {
-          radius: 10, color: '#ff0000', weight: 3,
-          fillColor: 'transparent', fillOpacity: 0
-        }).addTo(map);
+        locationMarker = L.circleMarker(latlng, { radius: 10, color:'#ff0000', weight:3, fillOpacity:0 }).addTo(map);
       }else{
         locationMarker.setLatLng(latlng);
       }
     }
 
-    let lastDeviceLatLng = null;
-    let locationTimer = null;
-
-    async function getDeviceLatLng(timeoutMs=7000){
+    async function getDeviceLatLng(timeoutMs=4000){
       return new Promise((resolve) => {
-        let done = false;
-        const ok = (e) => { if(done) return; done = true; resolve(e.latlng); };
-        const fail = () => { if(done) return; done = true; resolve(null); };
-
+        let done=false;
+        const ok = (e)=>{ if(done) return; done=true; resolve(e.latlng); };
+        const fail = ()=>{ if(done) return; done=true; resolve(null); };
         map.once('locationfound', ok);
         map.once('locationerror', fail);
-        map.locate({
-          setView: false, watch: false, enableHighAccuracy: true,
-          maximumAge: 15000, timeout: timeoutMs
-        });
-        setTimeout(fail, timeoutMs + 800);
+        map.locate({ setView:false, watch:false, enableHighAccuracy:true, maximumAge:15000, timeout: timeoutMs });
+        setTimeout(fail, timeoutMs+800);
       });
     }
 
@@ -592,71 +514,62 @@
     }
 
     function startLocationUpdates(){
-      stopLocationUpdates();
+      if(locationTimer) clearInterval(locationTimer);
       refreshDeviceLocationOnce();
       locationTimer = setInterval(refreshDeviceLocationOnce, LOCATION_REFRESH_MS);
-    }
-    function stopLocationUpdates(){
-      if(locationTimer){
-        clearInterval(locationTimer);
-        locationTimer = null;
-      }
     }
 
     async function centerOnDeviceOrKassel(){
       const ok = await refreshDeviceLocationOnce();
       if(ok){
-        map.setView(lastDeviceLatLng, 16, { animate: true });
+        map.setView(lastDeviceLatLng, 16);
         return true;
-      }else{
-        map.setView(KASSEL_CENTER, DEFAULT_ZOOM, { animate: false });
-        return false;
       }
+      map.setView(KASSEL_CENTER, DEFAULT_ZOOM);
+      return false;
     }
 
-    // Icons
-    const bikeLogoIcon = L.icon({ iconUrl: 'logo.png', iconSize: [40, 40], iconAnchor: [20, 20] });
-
+    // ----- icons -----
+    const bikeLogoIcon = L.icon({ iconUrl:'logo.png', iconSize:[40,40], iconAnchor:[20,20] });
     function makeBikeRentedIcon(){
-      const size = 44;
+      const size=44;
       return L.divIcon({
-        className: '',
-        html: `
-          <div style="width:${size}px;height:${size}px;position:relative;">
-            <div style="position:absolute;inset:0;border:4px solid var(--rentRed);border-radius:50%;box-sizing:border-box;"></div>
-            <img src="logo.png" alt="" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;object-fit:contain;background:transparent;"/>
-          </div>
-        `,
-        iconSize: [size, size],
-        iconAnchor: [size/2, size/2]
+        className:'',
+        html:`<div style="width:${size}px;height:${size}px;position:relative;">
+                <div style="position:absolute;inset:0;border:4px solid var(--rentRed);border-radius:50%;box-sizing:border-box;"></div>
+                <img src="logo.png" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;object-fit:contain;"/>
+              </div>`,
+        iconSize:[size,size],
+        iconAnchor:[size/2,size/2]
       });
     }
-
     function makeBikeMoveIcon(){
-      const size = 56;
+      const size=56;
       return L.divIcon({
-        className: '',
-        html: `
-          <div style="width:${size}px;height:${size}px;position:relative;">
-            <div class="moveRing"></div>
-            <img src="logo.png" alt="" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;object-fit:contain;background:transparent;"/>
-          </div>
-        `,
-        iconSize: [size, size],
-        iconAnchor: [size/2, size/2]
+        className:'',
+        html:`<div style="width:${size}px;height:${size}px;position:relative;">
+                <div class="moveRing"></div>
+                <img src="logo.png" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;object-fit:contain;"/>
+              </div>`,
+        iconSize:[size,size],
+        iconAnchor:[size/2,size/2]
       });
     }
+    const noteIcon = L.divIcon({ className:'', html:`<div class="noteIconWrap"></div>`, iconSize:[34,28], iconAnchor:[17,14] });
 
-    const noteIcon = L.divIcon({ className: '', html: `<div class="noteIconWrap"></div>`, iconSize: [34, 28], iconAnchor: [17, 14] });
-
-    // State
-    const markers = new Map();
-    let pendingPhotoTarget = null;
+    // ----- data -----
+    const markers = new Map(); // leafletId -> entry
     let moveModeEntry = null;
+    let pendingPhotoTarget = null;
 
-    // DB
+    function normalIcon(entry){
+      if(entry.type === 'bike') return entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon;
+      return noteIcon;
+    }
+
+    // ----- DB ops -----
     async function dbLoadAll(){
-      const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending: true });
+      const { data, error } = await sb.from('markers').select('*').order('created_at', {ascending:true});
       if(error) throw error;
       return data || [];
     }
@@ -675,17 +588,18 @@
       if(error) throw error;
     }
 
-    async function uploadPhotoAndGetPublicUrl(fileBlob){
-      const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
-      const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(fileName, fileBlob, { contentType: 'image/jpeg', upsert: false });
-      if(upErr) throw upErr;
-      const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
-      return { fileName, publicUrl: data.publicUrl };
-    }
-
-    function normalIcon(entry){
-      if(entry.type === 'bike') return entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon;
-      return noteIcon;
+    // ----- marker logic -----
+    async function finalizeMarkerMove(entry){
+      try{
+        const ll = entry.marker.getLatLng();
+        await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
+        showStatus('position gespeichert');
+      } finally {
+        if(entry.marker.dragging) entry.marker.dragging.disable();
+        entry.marker.options.draggable = false;
+        entry.marker.setIcon(normalIcon(entry));
+        moveModeEntry = null;
+      }
     }
 
     function setMarkerDraggableOnce(entry){
@@ -694,27 +608,10 @@
         return;
       }
       if(entry.type === 'bike') entry.marker.setIcon(makeBikeMoveIcon());
-
       if(entry.marker.dragging) entry.marker.dragging.enable();
       entry.marker.options.draggable = true;
       moveModeEntry = entry;
       showStatus('marker verschieben: ziehen und loslassen');
-    }
-
-    async function finalizeMarkerMove(entry){
-      try{
-        const ll = entry.marker.getLatLng();
-        await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
-        showStatus('position gespeichert');
-      }catch(err){
-        console.error(err);
-        showStatus('fehler beim speichern der position');
-      }finally{
-        if(entry.marker.dragging) entry.marker.dragging.disable();
-        entry.marker.options.draggable = false;
-        entry.marker.setIcon(normalIcon(entry));
-        moveModeEntry = null;
-      }
     }
 
     function wireMarker(entry){
@@ -726,16 +623,11 @@
       m.on('dragend', async () => {
         map.dragging.enable();
         if(moveModeEntry === entry) await finalizeMarkerMove(entry);
-        else{
-          if(m.dragging) m.dragging.disable();
-          m.options.draggable = false;
-          m.setIcon(normalIcon(entry));
-        }
       });
 
-      // IMPORTANT FIX: stop propagation so map contextmenu doesn't interfere
+      // stop propagation so map menu won't open
       m.on('contextmenu', (e) => {
-        L.DomEvent.stop(e);             // prevents map contextmenu
+        L.DomEvent.stop(e);
         openMarkerMenu(e.originalEvent, entry);
       });
 
@@ -748,9 +640,10 @@
 
     function addMarkerFromRow(row){
       if(row.type === 'bike'){
+        const rented = !!row.is_rented;
         const entry = {
           type: 'bike',
-          marker: L.marker({ lat: row.lat, lng: row.lng }, { icon: row.is_rented ? makeBikeRentedIcon() : bikeLogoIcon, draggable:false }).addTo(map),
+          marker: L.marker({lat:row.lat, lng:row.lng}, { icon: rented ? makeBikeRentedIcon() : bikeLogoIcon, draggable:false }).addTo(map),
           dbId: row.id,
           photo_url: row.photo_url || null,
           data: {
@@ -759,17 +652,16 @@
             Bemerkung: row.remark ?? 'keine',
             Foto: row.photo_url ? (row.photo_url.split('/').pop() || 'vorhanden') : 'nicht vorhanden'
           },
-          isRented: !!row.is_rented
+          isRented: rented
         };
         markers.set(entry.marker._leaflet_id, entry);
         wireMarker(entry);
         return entry;
-      }else{
+      } else {
         const entry = {
           type: 'note',
-          marker: L.marker({ lat: row.lat, lng: row.lng }, { icon: noteIcon, draggable:false }).addTo(map),
+          marker: L.marker({lat:row.lat, lng:row.lng}, { icon: noteIcon, draggable:false }).addTo(map),
           dbId: row.id,
-          photo_url: null,
           data: { Inhalt: row.content ?? ' ' }
         };
         markers.set(entry.marker._leaflet_id, entry);
@@ -785,6 +677,7 @@
       openBikeWindow(entry);
       showStatus('rad erstellt');
     }
+
     async function createNoteAt(latlng){
       const row = await dbInsert('note', latlng.lat, latlng.lng);
       const entry = addMarkerFromRow(row);
@@ -792,50 +685,58 @@
       showStatus('notitz erstellt');
     }
 
-    // Menus
+    // ----- context menus (FIXED) -----
     const ctxMenuMap = document.getElementById('ctxMenuMap');
     const ctxMenuMarker = document.getElementById('ctxMenuMarker');
 
-    let ctxLatLng = null;
+    // store map click position separately and NEVER clear it on hide
+    let ctxMapLatLng = null;
     let ctxMarkerEntry = null;
 
-    function hideAllMenus(){
+    function hideMenusOnly(){
       ctxMenuMap.style.display = 'none';
       ctxMenuMarker.style.display = 'none';
-      ctxLatLng = null;
       ctxMarkerEntry = null;
     }
 
-    // IMPORTANT FIX:
-    // Show map menu only on Leaflet map 'contextmenu' event (background).
+    // prevent browser menu
+    map.getContainer().addEventListener('contextmenu', (e)=>e.preventDefault());
+
+    // map menu open
     map.on('contextmenu', (e) => {
-      // This will NOT fire when marker contextmenu stops propagation (above)
-      ctxLatLng = e.latlng;
+      // if you right-click on a marker, its handler stops propagation -> map handler won't run
+      ctxMapLatLng = e.latlng;
       const oe = e.originalEvent;
 
-      hideAllMenus();
+      hideMenusOnly();
       ctxMenuMap.style.left = `${oe.clientX}px`;
       ctxMenuMap.style.top  = `${oe.clientY}px`;
       ctxMenuMap.style.display = 'block';
       updateAdminUI();
     });
 
-    map.on('click', hideAllMenus);
-    map.on('movestart', hideAllMenus);
-    document.addEventListener('click', (e) => {
-      if (!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target)) hideAllMenus();
+    // important: do NOT close menus when clicking inside them
+    ctxMenuMap.addEventListener('pointerdown', (e) => e.stopPropagation());
+    ctxMenuMarker.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+    // close menus on outside interactions
+    map.on('click', hideMenusOnly);
+    map.on('movestart', hideMenusOnly);
+    document.addEventListener('pointerdown', (e) => {
+      if (!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target)) hideMenusOnly();
     });
 
-    ctxMenuMap.addEventListener('click', async (e) => {
+    // robust selection: pointerdown (not click)
+    ctxMenuMap.addEventListener('pointerdown', async (e) => {
       const item = e.target.closest('.ctx-item');
-      if(!item || !ctxLatLng) return;
+      if(!item || !ctxMapLatLng) return;
       const action = item.dataset.action;
-      const ll = ctxLatLng;
-      hideAllMenus();
+
+      hideMenusOnly();
 
       try{
-        if(action === 'bike') await createBikeAt(ll);
-        if(action === 'note') await createNoteAt(ll);
+        if(action === 'bike') await createBikeAt(ctxMapLatLng);
+        if(action === 'note') await createNoteAt(ctxMapLatLng);
       }catch(err){
         console.error(err);
         showStatus('fehler beim erstellen');
@@ -843,19 +744,20 @@
     });
 
     function openMarkerMenu(mouseEvent, entry){
-      hideAllMenus();
+      hideMenusOnly();
       ctxMarkerEntry = entry;
       ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
       ctxMenuMarker.style.top  = `${mouseEvent.clientY}px`;
       ctxMenuMarker.style.display = 'block';
     }
 
-    ctxMenuMarker.addEventListener('click', (e) => {
+    ctxMenuMarker.addEventListener('pointerdown', (e) => {
       const item = e.target.closest('.ctx-item');
       if(!item || !ctxMarkerEntry) return;
       const action = item.dataset.action;
       const entry = ctxMarkerEntry;
-      hideAllMenus();
+
+      hideMenusOnly();
 
       if(action === 'open'){
         if(entry.type === 'bike') openBikeWindow(entry);
@@ -866,7 +768,7 @@
       }
     });
 
-    // Modal
+    // ----- modal + photo upload (wie zuvor, kompakt) -----
     const overlay = document.getElementById('modalOverlay');
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
@@ -882,43 +784,87 @@
       pendingPhotoTarget = null;
       fileInput.value = '';
     }
-    overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
+
+    async function uploadPhotoAndGetPublicUrl(fileBlob){
+      const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
+      const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(fileName, fileBlob, { contentType:'image/jpeg', upsert:false });
+      if(upErr) throw upErr;
+      const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
+      return { fileName, publicUrl: data.publicUrl };
+    }
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if(!file || !pendingPhotoTarget) return;
+
+      if(file.type !== 'image/jpeg'){
+        alert('Bitte eine JPG-Datei auswählen.');
+        fileInput.value = '';
+        return;
+      }
+      if(file.size > 5*1024*1024){
+        alert('Bitte Maximalgröße von 5 MB beachten!');
+        fileInput.value = '';
+        return;
+      }
+
+      const entry = pendingPhotoTarget;
+      try{
+        const reader = new FileReader();
+        const dataUrl = await new Promise((res, rej)=>{ reader.onload=()=>res(reader.result); reader.onerror=rej; reader.readAsDataURL(file); });
+        const blob = await scaleToJpegBlob(dataUrl, 100, 0.9);
+        const { publicUrl } = await uploadPhotoAndGetPublicUrl(blob);
+        await dbUpdate(entry.dbId, { photo_url: publicUrl });
+        entry.photo_url = publicUrl;
+
+        const prev = document.getElementById('photoPreview');
+        const btn = document.getElementById('photoBtn');
+        if(btn){
+          const img = document.createElement('img');
+          img.id='photoPreview';
+          img.className='photoPreview';
+          img.src = publicUrl;
+          img.alt='Foto';
+          img.addEventListener('click', ()=>{ pendingPhotoTarget = entry; fileInput.click(); });
+          btn.replaceWith(img);
+        } else if(prev){
+          prev.src = publicUrl;
+        }
+      }catch(err){
+        console.error(err);
+        showStatus('fehler beim foto-upload');
+      }finally{
+        pendingPhotoTarget = null;
+        fileInput.value = '';
+      }
+    });
 
     function openBikeWindow(entry){
       modalTitle.textContent = 'geparktes rad';
-
       const photoCell = entry.photo_url
         ? `<img class="photoPreview" id="photoPreview" src="${escapeHtml(entry.photo_url)}" alt="Foto" />`
         : `<button class="photoBtn" id="photoBtn" type="button">Foto hinzufügen</button>`;
 
-      const nameField = isAdmin
-        ? `<input type="text" id="bikeName" value="${escapeHtml(entry.data.Name)}" />`
-        : `<input type="text" id="bikeName" value="${escapeHtml(entry.data.Name)}" readonly />`;
-
-      const colorField = isAdmin
-        ? `<input type="text" id="bikeColor" value="${escapeHtml(entry.data.Farbe)}" />`
-        : `<input type="text" id="bikeColor" value="${escapeHtml(entry.data.Farbe)}" readonly />`;
-
-      const remarkField = isAdmin
-        ? `<input type="text" id="bikeRemark" value="${escapeHtml(entry.data.Bemerkung)}" />`
-        : `<input type="text" id="bikeRemark" value="${escapeHtml(entry.data.Bemerkung)}" readonly />`;
-
       modalBody.innerHTML = `
-        <div class="label">Name</div>${nameField}
-        <div class="label">Farbe</div>${colorField}
-        <div class="label">Bemerkung</div>${remarkField}
-        <div class="label">Foto</div><div>${photoCell}</div>
+        <div class="label">Name</div>
+        <input type="text" value="${escapeHtml(entry.data.Name)}" ${isAdmin?'':'readonly'} id="bikeName"/>
+
+        <div class="label">Farbe</div>
+        <input type="text" value="${escapeHtml(entry.data.Farbe)}" ${isAdmin?'':'readonly'} id="bikeColor"/>
+
+        <div class="label">Bemerkung</div>
+        <input type="text" value="${escapeHtml(entry.data.Bemerkung)}" ${isAdmin?'':'readonly'} id="bikeRemark"/>
+
+        <div class="label">Foto</div>
+        <div>${photoCell}</div>
       `;
 
       const photoClick = () => { pendingPhotoTarget = entry; fileInput.click(); };
       const btn = document.getElementById('photoBtn');
       const prev = document.getElementById('photoPreview');
       if(btn) btn.addEventListener('click', photoClick);
-      if(prev){
-        prev.style.cursor = 'pointer';
-        prev.title = 'klicken zum foto ersetzen';
-        prev.addEventListener('click', photoClick);
-      }
+      if(prev) prev.addEventListener('click', photoClick);
 
       modalFooter.innerHTML = `
         ${isAdmin ? `<button class="btn" id="bikeSaveBtn" type="button">speichern</button>` : ``}
@@ -927,25 +873,26 @@
 
       if(isAdmin && document.getElementById('bikeSaveBtn')){
         document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
-          const nameVal = document.getElementById('bikeName').value.trim();
-          const colorVal = document.getElementById('bikeColor').value.trim();
-          const remarkVal = document.getElementById('bikeRemark').value.trim();
-          const patch = {};
-          if(nameVal !== '') patch.name = nameVal;
-          if(colorVal !== '') patch.color = colorVal;
-          if(remarkVal !== '') patch.remark = remarkVal;
-          if(Object.keys(patch).length) await dbUpdate(entry.dbId, patch);
-          showStatus('gespeichert');
+          const patch = {
+            name: document.getElementById('bikeName').value.trim(),
+            color: document.getElementById('bikeColor').value.trim(),
+            remark: document.getElementById('bikeRemark').value.trim()
+          };
+          // don't overwrite with empty
+          const out = {};
+          if(patch.name) out.name = patch.name;
+          if(patch.color) out.color = patch.color;
+          if(patch.remark) out.remark = patch.remark;
+
+          await dbUpdate(entry.dbId, out);
           closeModal();
         });
       }
-
       if(isAdmin && document.getElementById('bikeDeleteBtn')){
         document.getElementById('bikeDeleteBtn').addEventListener('click', async () => {
           await dbDelete(entry.dbId);
           map.removeLayer(entry.marker);
           markers.delete(entry.marker._leaflet_id);
-          showStatus('gelöscht');
           closeModal();
         });
       }
@@ -963,115 +910,43 @@
         <button class="btn" id="noteSaveBtn" type="button">speichern</button>
         <button class="btn danger" id="noteDeleteBtn" type="button">löschen</button>
       `;
-
       document.getElementById('noteSaveBtn').addEventListener('click', async () => {
-        const contentVal = document.getElementById('noteContent').value.trim();
-        if(contentVal === ''){ closeModal(); return; }
-        await dbUpdate(entry.dbId, { content: contentVal });
-        showStatus('gespeichert');
+        const v = document.getElementById('noteContent').value.trim();
+        if(!v){ closeModal(); return; }
+        await dbUpdate(entry.dbId, { content: v });
         closeModal();
       });
       document.getElementById('noteDeleteBtn').addEventListener('click', async () => {
         await dbDelete(entry.dbId);
         map.removeLayer(entry.marker);
         markers.delete(entry.marker._leaflet_id);
-        showStatus('gelöscht');
         closeModal();
       });
-
       openModal();
     }
 
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files && fileInput.files[0];
-      if(!file || !pendingPhotoTarget) return;
-
-      if(file.type !== 'image/jpeg'){
-        alert('Bitte eine JPG-Datei auswählen.');
-        fileInput.value = '';
-        return;
-      }
-      if(file.size > 5 * 1024 * 1024){
-        alert('Bitte Maximalgröße von 5 MB beachten!');
-        fileInput.value = '';
-        return;
-      }
-
-      const entry = pendingPhotoTarget;
-
-      try{
-        showStatus('foto wird hochgeladen…');
-        const dataUrl = await readFileAsDataURL(file);
-        const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
-        const { fileName, publicUrl } = await uploadPhotoAndGetPublicUrl(jpgBlob);
-        await dbUpdate(entry.dbId, { photo_url: publicUrl });
-        entry.photo_url = publicUrl;
-        entry.data.Foto = fileName;
-
-        const photoBtn = document.getElementById('photoBtn');
-        const prev = document.getElementById('photoPreview');
-        if(photoBtn){
-          const img = document.createElement('img');
-          img.className = 'photoPreview';
-          img.id = 'photoPreview';
-          img.src = publicUrl;
-          img.alt = 'Foto';
-          img.style.cursor = 'pointer';
-          img.title = 'klicken zum foto ersetzen';
-          img.addEventListener('click', () => { pendingPhotoTarget = entry; fileInput.click(); });
-          photoBtn.replaceWith(img);
-        }else if(prev){
-          prev.src = publicUrl;
-        }
-
-        showStatus('foto gespeichert');
-      }catch(err){
-        console.error(err);
-        showStatus('fehler beim foto-upload');
-      }finally{
-        pendingPhotoTarget = null;
-        fileInput.value = '';
-      }
-    });
-
-    async function unlock(e){
-      if(e) e.preventDefault();
+    // ----- unlock -----
+    async function unlock(){
       const val = (pwInput.value || "").trim();
-
       if(val !== APP_PASSWORD){
         pwMsg.textContent = "falsches Passwort";
         pwMsg.style.display = 'block';
         return;
       }
-
       pwMsg.style.display = 'none';
       lockFrame.style.display = 'none';
-      lockFrame.hidden = true;
-
       mapFrame.style.display = 'block';
-      mapFrame.hidden = false;
+      setTimeout(()=>map.invalidateSize(), 100);
 
-      setTimeout(() => map.invalidateSize(), 150);
-
-      const ok = await centerOnDeviceOrKassel();
-      if(!ok) showStatus('standort nicht verfügbar – kassel');
-
+      await centerOnDeviceOrKassel();
       startLocationUpdates();
 
-      try{
-        updateAdminUI();
-        showStatus('lade marker…');
-        const rows = await dbLoadAll();
-        for(const row of rows) addMarkerFromRow(row);
-        showStatus('fertig');
-      }catch(err){
-        console.error(err);
-        showStatus('fehler beim laden');
-      }
+      const rows = await dbLoadAll();
+      rows.forEach(addMarkerFromRow);
+      updateAdminUI();
     }
-
     pwBtn.addEventListener('click', unlock);
-    pwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') unlock(e); });
+    pwInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') unlock(); });
 
     updateAdminUI();
   </script>
