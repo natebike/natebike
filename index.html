@@ -371,6 +371,10 @@
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
+    // Voraussetzung in Supabase (einmalig):
+    // alter table public.markers add column if not exists is_rented boolean not null default false;
+    // Realtime aktivieren: Database -> Replication/Realtime -> public.markers
+
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
     const SUPABASE_BUCKET = "marker-photos";
@@ -384,10 +388,6 @@
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-
-    // ----- util -----
     function randId(n=10){
       const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
       let s = "";
@@ -402,8 +402,28 @@
         .replaceAll('"','&quot;')
         .replaceAll("'","&#039;");
     }
+    async function readFileAsDataURL(file){
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    async function scaleToJpegBlob(dataUrl, maxSidePx, quality=0.9){
+      const img = new Image();
+      img.src = dataUrl;
+      await img.decode();
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const scale = Math.min(1, maxSidePx / Math.max(w, h));
+      const nw = Math.max(1, Math.round(w * scale));
+      const nh = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = nw; canvas.height = nh;
+      canvas.getContext('2d').drawImage(img, 0, 0, nw, nh);
+      return await new Promise((resolve) => canvas.toBlob(b => resolve(b), 'image/jpeg', quality));
+    }
 
-    // ----- status / toast -----
     const statusBar = document.getElementById('statusBar');
     let statusTimer = null;
     function showStatus(msg){
@@ -412,6 +432,7 @@
       clearTimeout(statusTimer);
       statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
     }
+
     const toast = document.getElementById('toast');
     let toastTimer = null;
     function showToast(msg, ms=3000){
@@ -421,7 +442,7 @@
       toastTimer = setTimeout(() => toast.style.display = 'none', ms);
     }
 
-    // ----- admin -----
+    // Admin
     let isAdmin = false;
     const adminBtn = document.getElementById('adminBtn');
     const adminOverlay = document.getElementById('adminOverlay');
@@ -471,25 +492,32 @@
     adminOkBtn.addEventListener('click', confirmAdmin);
     adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
 
-    // ----- lock gate -----
+    // Gate
     const lockFrame = document.getElementById('lockFrame');
     const mapFrame = document.getElementById('mapFrame');
     const pwInput = document.getElementById('pwInput');
     const pwBtn = document.getElementById('pwBtn');
     const pwMsg = document.getElementById('pwMsg');
 
-    // ----- geolocation refresh -----
-    let locationMarker = null;
-    let lastDeviceLatLng = null;
-    let locationTimer = null;
+    // Map
+    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
+    // Device location marker (red ring)
+    let locationMarker = null;
     function setOrUpdateLocationMarker(latlng){
       if(!locationMarker){
-        locationMarker = L.circleMarker(latlng, { radius: 10, color:'#ff0000', weight:3, fillOpacity:0 }).addTo(map);
+        locationMarker = L.circleMarker(latlng, {
+          radius: 10, color: '#ff0000', weight: 3,
+          fillColor: 'transparent', fillOpacity: 0
+        }).addTo(map);
       }else{
         locationMarker.setLatLng(latlng);
       }
     }
+
+    let lastDeviceLatLng = null;
+    let locationTimer = null;
 
     async function getDeviceLatLng(timeoutMs=4000){
       return new Promise((resolve) => {
@@ -529,8 +557,9 @@
       return false;
     }
 
-    // ----- icons -----
+    // Icons
     const bikeLogoIcon = L.icon({ iconUrl:'logo.png', iconSize:[40,40], iconAnchor:[20,20] });
+
     function makeBikeRentedIcon(){
       const size=44;
       return L.divIcon({
@@ -543,6 +572,7 @@
         iconAnchor:[size/2,size/2]
       });
     }
+
     function makeBikeMoveIcon(){
       const size=56;
       return L.divIcon({
@@ -555,21 +585,56 @@
         iconAnchor:[size/2,size/2]
       });
     }
+
     const noteIcon = L.divIcon({ className:'', html:`<div class="noteIconWrap"></div>`, iconSize:[34,28], iconAnchor:[17,14] });
 
-    // ----- data -----
+    // State
     const markers = new Map(); // leafletId -> entry
     let moveModeEntry = null;
     let pendingPhotoTarget = null;
 
-    function normalIcon(entry){
-      if(entry.type === 'bike') return entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon;
-      return noteIcon;
+    // --- Realtime helpers (NEW) ---
+    function findEntryByDbId(dbId){
+      for (const entry of markers.values()){
+        if(entry.dbId === dbId) return entry;
+      }
+      return null;
     }
 
-    // ----- DB ops -----
+    function iconForEntry(entry){
+      if(entry.type !== 'bike') return noteIcon;
+      if (moveModeEntry && moveModeEntry === entry) return makeBikeMoveIcon();
+      return entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon;
+    }
+
+    function applyRowToEntry(entry, row){
+      // update position if not in move mode
+      if (!(moveModeEntry && moveModeEntry === entry) && typeof row.lat === 'number' && typeof row.lng === 'number'){
+        entry.marker.setLatLng([row.lat, row.lng]);
+      }
+
+      if(entry.type === 'bike'){
+        entry.isRented = !!row.is_rented;
+        entry.data.Name = row.name ?? entry.data.Name;
+        entry.data.Farbe = row.color ?? entry.data.Farbe;
+        entry.data.Bemerkung = row.remark ?? entry.data.Bemerkung;
+        entry.photo_url = row.photo_url ?? entry.photo_url ?? null;
+
+        entry.marker.setIcon(iconForEntry(entry));
+
+        // ensure not draggable when rented
+        if(entry.isRented){
+          if(entry.marker.dragging) entry.marker.dragging.disable();
+          entry.marker.options.draggable = false;
+        }
+      } else if(entry.type === 'note'){
+        entry.data.Inhalt = row.content ?? entry.data.Inhalt;
+      }
+    }
+
+    // DB
     async function dbLoadAll(){
-      const { data, error } = await sb.from('markers').select('*').order('created_at', {ascending:true});
+      const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending:true });
       if(error) throw error;
       return data || [];
     }
@@ -588,16 +653,27 @@
       if(error) throw error;
     }
 
-    // ----- marker logic -----
+    async function uploadPhotoAndGetPublicUrl(fileBlob){
+      const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
+      const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(fileName, fileBlob, { contentType:'image/jpeg', upsert:false });
+      if(upErr) throw upErr;
+      const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
+      return { fileName, publicUrl: data.publicUrl };
+    }
+
+    // marker logic
     async function finalizeMarkerMove(entry){
       try{
         const ll = entry.marker.getLatLng();
         await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
         showStatus('position gespeichert');
-      } finally {
+      }catch(err){
+        console.error(err);
+        showStatus('fehler beim speichern der position');
+      }finally{
         if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.options.draggable = false;
-        entry.marker.setIcon(normalIcon(entry));
+        entry.marker.setIcon(iconForEntry(entry));
         moveModeEntry = null;
       }
     }
@@ -625,7 +701,6 @@
         if(moveModeEntry === entry) await finalizeMarkerMove(entry);
       });
 
-      // stop propagation so map menu won't open
       m.on('contextmenu', (e) => {
         L.DomEvent.stop(e);
         openMarkerMenu(e.originalEvent, entry);
@@ -640,10 +715,12 @@
 
     function addMarkerFromRow(row){
       if(row.type === 'bike'){
-        const rented = !!row.is_rented;
         const entry = {
           type: 'bike',
-          marker: L.marker({lat:row.lat, lng:row.lng}, { icon: rented ? makeBikeRentedIcon() : bikeLogoIcon, draggable:false }).addTo(map),
+          marker: L.marker(
+            {lat:row.lat, lng:row.lng},
+            { icon: row.is_rented ? makeBikeRentedIcon() : bikeLogoIcon, draggable:false }
+          ).addTo(map),
           dbId: row.id,
           photo_url: row.photo_url || null,
           data: {
@@ -652,7 +729,7 @@
             Bemerkung: row.remark ?? 'keine',
             Foto: row.photo_url ? (row.photo_url.split('/').pop() || 'vorhanden') : 'nicht vorhanden'
           },
-          isRented: rented
+          isRented: !!row.is_rented
         };
         markers.set(entry.marker._leaflet_id, entry);
         wireMarker(entry);
@@ -685,11 +762,47 @@
       showStatus('notitz erstellt');
     }
 
-    // ----- context menus (FIXED) -----
+    // --------- Realtime subscription (NEW) ----------
+    const realtimeChannel = sb
+      .channel('markers-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'markers' },
+        (payload) => {
+          if(payload.eventType === 'INSERT'){
+            const row = payload.new;
+            if(findEntryByDbId(row.id)) return;
+            addMarkerFromRow(row);
+            return;
+          }
+          if(payload.eventType === 'UPDATE'){
+            const row = payload.new;
+            let entry = findEntryByDbId(row.id);
+            if(!entry){
+              addMarkerFromRow(row);
+              return;
+            }
+            applyRowToEntry(entry, row);
+            return;
+          }
+          if(payload.eventType === 'DELETE'){
+            const row = payload.old;
+            const entry = findEntryByDbId(row.id);
+            if(!entry) return;
+            map.removeLayer(entry.marker);
+            markers.delete(entry.marker._leaflet_id);
+          }
+        }
+      )
+      .subscribe();
+
+    window.addEventListener('beforeunload', () => {
+      try { sb.removeChannel(realtimeChannel); } catch {}
+    });
+
+    // Menus
     const ctxMenuMap = document.getElementById('ctxMenuMap');
     const ctxMenuMarker = document.getElementById('ctxMenuMarker');
-
-    // store map click position separately and NEVER clear it on hide
     let ctxMapLatLng = null;
     let ctxMarkerEntry = null;
 
@@ -699,15 +812,11 @@
       ctxMarkerEntry = null;
     }
 
-    // prevent browser menu
     map.getContainer().addEventListener('contextmenu', (e)=>e.preventDefault());
 
-    // map menu open
     map.on('contextmenu', (e) => {
-      // if you right-click on a marker, its handler stops propagation -> map handler won't run
       ctxMapLatLng = e.latlng;
       const oe = e.originalEvent;
-
       hideMenusOnly();
       ctxMenuMap.style.left = `${oe.clientX}px`;
       ctxMenuMap.style.top  = `${oe.clientY}px`;
@@ -715,25 +824,20 @@
       updateAdminUI();
     });
 
-    // important: do NOT close menus when clicking inside them
-    ctxMenuMap.addEventListener('pointerdown', (e) => e.stopPropagation());
-    ctxMenuMarker.addEventListener('pointerdown', (e) => e.stopPropagation());
+    ctxMenuMap.addEventListener('pointerdown', (e)=>e.stopPropagation());
+    ctxMenuMarker.addEventListener('pointerdown', (e)=>e.stopPropagation());
 
-    // close menus on outside interactions
     map.on('click', hideMenusOnly);
     map.on('movestart', hideMenusOnly);
     document.addEventListener('pointerdown', (e) => {
       if (!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target)) hideMenusOnly();
     });
 
-    // robust selection: pointerdown (not click)
     ctxMenuMap.addEventListener('pointerdown', async (e) => {
       const item = e.target.closest('.ctx-item');
       if(!item || !ctxMapLatLng) return;
       const action = item.dataset.action;
-
       hideMenusOnly();
-
       try{
         if(action === 'bike') await createBikeAt(ctxMapLatLng);
         if(action === 'note') await createNoteAt(ctxMapLatLng);
@@ -756,9 +860,7 @@
       if(!item || !ctxMarkerEntry) return;
       const action = item.dataset.action;
       const entry = ctxMarkerEntry;
-
       hideMenusOnly();
-
       if(action === 'open'){
         if(entry.type === 'bike') openBikeWindow(entry);
         else openNoteEditor(entry);
@@ -768,7 +870,7 @@
       }
     });
 
-    // ----- modal + photo upload (wie zuvor, kompakt) -----
+    // Modal
     const overlay = document.getElementById('modalOverlay');
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
@@ -786,62 +888,9 @@
     }
     overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
 
-    async function uploadPhotoAndGetPublicUrl(fileBlob){
-      const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
-      const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(fileName, fileBlob, { contentType:'image/jpeg', upsert:false });
-      if(upErr) throw upErr;
-      const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
-      return { fileName, publicUrl: data.publicUrl };
-    }
-
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files && fileInput.files[0];
-      if(!file || !pendingPhotoTarget) return;
-
-      if(file.type !== 'image/jpeg'){
-        alert('Bitte eine JPG-Datei auswählen.');
-        fileInput.value = '';
-        return;
-      }
-      if(file.size > 5*1024*1024){
-        alert('Bitte Maximalgröße von 5 MB beachten!');
-        fileInput.value = '';
-        return;
-      }
-
-      const entry = pendingPhotoTarget;
-      try{
-        const reader = new FileReader();
-        const dataUrl = await new Promise((res, rej)=>{ reader.onload=()=>res(reader.result); reader.onerror=rej; reader.readAsDataURL(file); });
-        const blob = await scaleToJpegBlob(dataUrl, 100, 0.9);
-        const { publicUrl } = await uploadPhotoAndGetPublicUrl(blob);
-        await dbUpdate(entry.dbId, { photo_url: publicUrl });
-        entry.photo_url = publicUrl;
-
-        const prev = document.getElementById('photoPreview');
-        const btn = document.getElementById('photoBtn');
-        if(btn){
-          const img = document.createElement('img');
-          img.id='photoPreview';
-          img.className='photoPreview';
-          img.src = publicUrl;
-          img.alt='Foto';
-          img.addEventListener('click', ()=>{ pendingPhotoTarget = entry; fileInput.click(); });
-          btn.replaceWith(img);
-        } else if(prev){
-          prev.src = publicUrl;
-        }
-      }catch(err){
-        console.error(err);
-        showStatus('fehler beim foto-upload');
-      }finally{
-        pendingPhotoTarget = null;
-        fileInput.value = '';
-      }
-    });
-
     function openBikeWindow(entry){
       modalTitle.textContent = 'geparktes rad';
+
       const photoCell = entry.photo_url
         ? `<img class="photoPreview" id="photoPreview" src="${escapeHtml(entry.photo_url)}" alt="Foto" />`
         : `<button class="photoBtn" id="photoBtn" type="button">Foto hinzufügen</button>`;
@@ -873,24 +922,22 @@
 
       if(isAdmin && document.getElementById('bikeSaveBtn')){
         document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
-          const patch = {
-            name: document.getElementById('bikeName').value.trim(),
-            color: document.getElementById('bikeColor').value.trim(),
-            remark: document.getElementById('bikeRemark').value.trim()
-          };
-          // don't overwrite with empty
+          const nameVal = document.getElementById('bikeName').value.trim();
+          const colorVal = document.getElementById('bikeColor').value.trim();
+          const remarkVal = document.getElementById('bikeRemark').value.trim();
           const out = {};
-          if(patch.name) out.name = patch.name;
-          if(patch.color) out.color = patch.color;
-          if(patch.remark) out.remark = patch.remark;
-
-          await dbUpdate(entry.dbId, out);
+          if(nameVal) out.name = nameVal;
+          if(colorVal) out.color = colorVal;
+          if(remarkVal) out.remark = remarkVal;
+          if(Object.keys(out).length) await dbUpdate(entry.dbId, out);
           closeModal();
         });
       }
+
       if(isAdmin && document.getElementById('bikeDeleteBtn')){
         document.getElementById('bikeDeleteBtn').addEventListener('click', async () => {
           await dbDelete(entry.dbId);
+          // realtime will remove for everyone; remove locally too
           map.removeLayer(entry.marker);
           markers.delete(entry.marker._leaflet_id);
           closeModal();
@@ -925,7 +972,54 @@
       openModal();
     }
 
-    // ----- unlock -----
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if(!file || !pendingPhotoTarget) return;
+
+      if(file.type !== 'image/jpeg'){
+        alert('Bitte eine JPG-Datei auswählen.');
+        fileInput.value = '';
+        return;
+      }
+      if(file.size > 5*1024*1024){
+        alert('Bitte Maximalgröße von 5 MB beachten!');
+        fileInput.value = '';
+        return;
+      }
+
+      const entry = pendingPhotoTarget;
+      try{
+        showStatus('foto wird hochgeladen…');
+        const dataUrl = await readFileAsDataURL(file);
+        const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
+        const { fileName, publicUrl } = await uploadPhotoAndGetPublicUrl(jpgBlob);
+        await dbUpdate(entry.dbId, { photo_url: publicUrl });
+        entry.photo_url = publicUrl;
+        entry.data.Foto = fileName;
+
+        const photoBtn = document.getElementById('photoBtn');
+        const prev = document.getElementById('photoPreview');
+        if(photoBtn){
+          const img = document.createElement('img');
+          img.className='photoPreview';
+          img.id='photoPreview';
+          img.src = publicUrl;
+          img.alt='Foto';
+          img.addEventListener('click', ()=>{ pendingPhotoTarget = entry; fileInput.click(); });
+          photoBtn.replaceWith(img);
+        } else if(prev){
+          prev.src = publicUrl;
+        }
+        showStatus('foto gespeichert');
+      }catch(err){
+        console.error(err);
+        showStatus('fehler beim foto-upload');
+      }finally{
+        pendingPhotoTarget = null;
+        fileInput.value = '';
+      }
+    });
+
     async function unlock(){
       const val = (pwInput.value || "").trim();
       if(val !== APP_PASSWORD){
@@ -941,10 +1035,13 @@
       await centerOnDeviceOrKassel();
       startLocationUpdates();
 
-      const rows = await dbLoadAll();
-      rows.forEach(addMarkerFromRow);
       updateAdminUI();
+
+      // initial load
+      const rows = await dbLoadAll();
+      rows.forEach((row) => { if(!findEntryByDbId(row.id)) addMarkerFromRow(row); });
     }
+
     pwBtn.addEventListener('click', unlock);
     pwInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') unlock(); });
 
