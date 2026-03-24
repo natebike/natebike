@@ -1,4 +1,5 @@
 
+
 <!doctype html>
 <html lang="de">
 <head>
@@ -255,8 +256,8 @@
     /* Bike marker: violet circle + number text (1.5x size) */
     .bikeWrap{
       position: relative;
-      width: 24px;   /* 16 * 1.5 */
-      height: 24px;  /* 16 * 1.5 */
+      width: 24px;
+      height: 24px;
       pointer-events: none;
     }
     .bikeDot{
@@ -642,13 +643,27 @@
         }
       });
 
-      m.on('contextmenu', (e)=>{ L.DomEvent.stop(e); openMarkerMenu(e.originalEvent, entry); });
-      m.on('click', (e)=>{ L.DomEvent.stop(e); entry.type === 'bike' ? openBikeWindow(entry) : openStationWindow(entry); });
+      // RIGHT-CLICK MENU:
+      // - bikes: always
+      // - stations: admin only
+      m.on('contextmenu', (e)=>{
+        L.DomEvent.stop(e);
+        if(entry.type === 'note' && !isAdmin) return;   // <-- change
+        openMarkerMenu(e.originalEvent, entry);
+      });
+
+      // CLICK OPEN:
+      // - bikes: always open window
+      // - stations: open window always, but editable only for admin (modal already handles that)
+      m.on('click', (e)=>{
+        L.DomEvent.stop(e);
+        entry.type === 'bike' ? openBikeWindow(entry) : openStationWindow(entry);
+      });
     }
 
     function addMarkerFromRow(row){
       const entry = {
-        type: row.type,
+        type: row.type, // 'bike' or 'note'
         dbId: row.id,
         isRented: !!row.is_rented,
         data: row.type === 'bike'
@@ -761,7 +776,11 @@
       if(action === 'open'){
         entry.type === 'bike' ? openBikeWindow(entry) : openStationWindow(entry);
       }
+
       if(action === 'move'){
+        // bikes unchanged; stations only admin
+        if(entry.type === 'note' && !isAdmin){ showStatus('nur admin'); return; } // <-- change
+
         if(entry.isRented){ showStatus('nicht verschiebbar'); return; }
         if(entry.marker.dragging) entry.marker.dragging.enable();
         entry.marker.options.draggable = true;
@@ -836,11 +855,13 @@
     function openStationWindow(entry){
       modalTitle.textContent = 'natebikestation';
       const ro = isAdmin ? '' : 'readonly';
+
       modalBody.innerHTML = `
         <div class="label">Name</div>
         <textarea id="stationName" ${ro}>${escapeHtml(entry.data.Name)}</textarea>
       `;
 
+      // edit/delete only for admin (already)
       if(isAdmin){
         modalFooter.innerHTML = `
           <button class="btn" id="stationSaveBtn" type="button">speichern</button>
