@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="de">
 <head>
@@ -5,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>natebike</title>
 
+  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -17,6 +19,7 @@
     crossorigin=""
   ></script>
 
+  <!-- Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
@@ -244,7 +247,7 @@
       50%      { opacity: 1.00; transform: translate(-50%,-50%) scale(1.08); }
     }
 
-    /* Bike: small position symbol */
+    /* Bike marker: small position symbol */
     .posPin{
       width: 14px; height: 14px;
       border-radius: 50%;
@@ -357,84 +360,26 @@
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
-    // status
-    const statusBar = document.getElementById('statusBar');
-    let statusTimer = null;
-    function showStatus(msg){
-      statusBar.textContent = msg;
-      statusBar.style.display = 'block';
-      clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
-    }
-
-    // lock
-    const lockFrame = document.getElementById('lockFrame');
-    const mapFrame = document.getElementById('mapFrame');
-    const pwInput = document.getElementById('pwInput');
-    const pwBtn = document.getElementById('pwBtn');
-    const pwMsg = document.getElementById('pwMsg');
-
-    // admin
-    let isAdmin = false;
-    const adminBtn = document.getElementById('adminBtn');
-    const adminOverlay = document.getElementById('adminOverlay');
-    const adminPwInput = document.getElementById('adminPwInput');
-    const adminMsg = document.getElementById('adminMsg');
-    const adminOkBtn = document.getElementById('adminOkBtn');
-    const adminCancelBtn = document.getElementById('adminCancelBtn');
-
-    function updateAdminUI(){
-      adminBtn.classList.toggle('isAdmin', isAdmin);
-      const ctxBike = document.getElementById('ctxBike');
-      if(ctxBike){
-        if(isAdmin) ctxBike.classList.remove('disabled');
-        else ctxBike.classList.add('disabled');
-      }
-    }
-    function openAdminModal(){
-      adminMsg.style.display = 'none';
-      adminPwInput.value = '';
-      adminOverlay.style.display = 'flex';
-      adminPwInput.focus();
-    }
-    function closeAdminModal(){ adminOverlay.style.display = 'none'; }
-    function logoutAdmin(){
-      isAdmin = false;
-      updateAdminUI();
-      showStatus('admin abgemeldet');
-    }
-    adminBtn.addEventListener('click', () => {
-      if(isAdmin) logoutAdmin();
-      else openAdminModal();
-    });
-    adminCancelBtn.addEventListener('click', closeAdminModal);
-    adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
-    function confirmAdmin(){
-      const val = (adminPwInput.value || "").trim();
-      if(val !== "eseldraht"){
-        adminMsg.textContent = "falsches Passwort";
-        adminMsg.style.display = 'block';
-        return;
-      }
-      isAdmin = true;
-      updateAdminUI();
-      closeAdminModal();
-      showStatus('admin aktiv');
-    }
-    adminOkBtn.addEventListener('click', confirmAdmin);
-    adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
-
-    // supabase
-    const sb = supabase.createClient("https://lczpdudidvzbcalzprzl.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4"
-    );
+    // ---------------- CONFIG ----------------
+    const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
     const SUPABASE_BUCKET = "marker-photos";
 
-    // map
-    const map = L.map('map', { center: [51.3127, 9.4797], zoom: 13, dragging: true });
+    const APP_PASSWORD = "drahtesel";
+    const ADMIN_PASSWORD = "eseldraht";
+
+    const KASSEL_CENTER = [51.3127, 9.4797];
+    const DEFAULT_ZOOM = 13;
+    const LOCATION_REFRESH_MS = 5000;
+
+    // ---------------- SUPABASE ----------------
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ---------------- MAP ----------------
+    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
-    // locate control
+    // Locate control (crosshair)
     const LocateControl = L.Control.extend({
       options: { position: 'bottomright' },
       onAdd: function() {
@@ -451,7 +396,7 @@
     });
     map.addControl(new LocateControl());
 
-    // location marker
+    // Device location marker (red ring)
     let locationMarker = null;
     function setOrUpdateLocationMarker(latlng){
       if(!locationMarker){
@@ -489,7 +434,7 @@
     function startLocationUpdates(){
       if(locationTimer) clearInterval(locationTimer);
       refreshDeviceLocationOnce();
-      locationTimer = setInterval(refreshDeviceLocationOnce, 5000);
+      locationTimer = setInterval(refreshDeviceLocationOnce, LOCATION_REFRESH_MS);
     }
 
     async function centerOnDeviceOrKassel(forceCenter=false){
@@ -499,20 +444,98 @@
         return true;
       }
       if(ok) return true;
-      if(forceCenter) map.setView([51.3127, 9.4797], 13);
+      if(forceCenter) map.setView(KASSEL_CENTER, DEFAULT_ZOOM);
       return false;
     }
 
-    // icons
+    // ---------------- UI helpers ----------------
+    function randId(n=10){
+      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+      let s = "";
+      for(let i=0;i<n;i++) s += chars[Math.floor(Math.random()*chars.length)];
+      return s;
+    }
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
+    }
+
+    const statusBar = document.getElementById('statusBar');
+    let statusTimer = null;
+    function showStatus(msg){
+      statusBar.textContent = msg;
+      statusBar.style.display = 'block';
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
+    }
+
+    // ---------------- ADMIN ----------------
+    let isAdmin = false;
+    const adminBtn = document.getElementById('adminBtn');
+    const adminOverlay = document.getElementById('adminOverlay');
+    const adminPwInput = document.getElementById('adminPwInput');
+    const adminMsg = document.getElementById('adminMsg');
+    const adminOkBtn = document.getElementById('adminOkBtn');
+    const adminCancelBtn = document.getElementById('adminCancelBtn');
+
+    function updateAdminUI(){
+      adminBtn.classList.toggle('isAdmin', isAdmin);
+      const ctxBike = document.getElementById('ctxBike');
+      if(ctxBike){
+        if(isAdmin) ctxBike.classList.remove('disabled');
+        else ctxBike.classList.add('disabled');
+      }
+    }
+    function openAdminModal(){
+      adminMsg.style.display = 'none';
+      adminPwInput.value = '';
+      adminOverlay.style.display = 'flex';
+      adminPwInput.focus();
+    }
+    function closeAdminModal(){ adminOverlay.style.display = 'none'; }
+    function logoutAdmin(){
+      isAdmin = false;
+      updateAdminUI();
+      showStatus('admin abgemeldet');
+    }
+    adminBtn.addEventListener('click', () => {
+      if(isAdmin) logoutAdmin();
+      else openAdminModal();
+    });
+    adminCancelBtn.addEventListener('click', closeAdminModal);
+    adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
+
+    function confirmAdmin(){
+      const val = (adminPwInput.value || "").trim();
+      if(val !== ADMIN_PASSWORD){
+        adminMsg.textContent = "falsches Passwort";
+        adminMsg.style.display = 'block';
+        return;
+      }
+      isAdmin = true;
+      updateAdminUI();
+      closeAdminModal();
+      showStatus('admin aktiv');
+    }
+    adminOkBtn.addEventListener('click', confirmAdmin);
+    adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
+
+    // ---------------- ICONS ----------------
+    // Notes use the old "bike" icon (=logo)
     const logoIcon = L.icon({ iconUrl:'logo.png', iconSize:[40,40], iconAnchor:[20,20] });
 
+    // Bikes use small position marker
     function makePosIcon(rented=false, moving=false){
       const cls = `posPin ${rented ? 'rented' : ''} ${moving ? 'move' : ''}`;
       return L.divIcon({ className:'', html:`<div class="${cls}"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
     }
 
-    // state
-    const markers = new Map();
+    // ---------------- DATA / MARKERS ----------------
+    const markers = new Map(); // leafletId -> entry
     let moveModeEntry = null;
     let pendingPhotoTarget = null;
 
@@ -525,8 +548,10 @@
 
     function iconForEntry(entry){
       const moving = (moveModeEntry && moveModeEntry === entry);
-      if(entry.type === 'bike') return makePosIcon(entry.isRented, moving);
-      // notes use logo
+      if(entry.type === 'bike'){
+        return makePosIcon(entry.isRented, moving);
+      }
+      // note
       return logoIcon;
     }
 
@@ -537,10 +562,10 @@
       entry.isRented = !!row.is_rented;
 
       if(entry.type === 'bike'){
+        entry.data.Nummer = row.bike_number ?? entry.data.Nummer;
         entry.data.Name = row.name ?? entry.data.Name;
         entry.data.Farbe = row.color ?? entry.data.Farbe;
         entry.data.Bemerkung = row.remark ?? entry.data.Bemerkung;
-        entry.data.Nummer = row.bike_number ?? entry.data.Nummer;
         entry.data.Schlosscode = row.code ?? entry.data.Schlosscode;
         entry.photo_url = row.photo_url ?? entry.photo_url ?? null;
       } else {
@@ -550,6 +575,7 @@
       entry.marker.setIcon(iconForEntry(entry));
     }
 
+    // DB ops
     async function dbLoadAll(){
       const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending:true });
       if(error) throw error;
@@ -570,14 +596,7 @@
       if(error) throw error;
     }
 
-    async function uploadPhotoAndGetPublicUrl(fileBlob){
-      const fileName = `bike_${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
-      const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(fileName, fileBlob, { contentType:'image/jpeg', upsert:false });
-      if(upErr) throw upErr;
-      const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
-      return { fileName, publicUrl: data.publicUrl };
-    }
-
+    // Move mode
     async function finalizeMarkerMove(entry){
       try{
         const ll = entry.marker.getLatLng();
@@ -629,34 +648,30 @@
       });
     }
 
+    // FIXED: create marker with icon immediately (no icon:null)
     function addMarkerFromRow(row){
-  const entry = {
-    type: row.type,
-    marker: null,
-    dbId: row.id,
-    photo_url: row.photo_url || null,
-    isRented: !!row.is_rented,
-    data: row.type === 'bike'
-      ? {
-          Nummer: row.bike_number ?? '',
-          Name: row.name ?? 'natebike',
-          Farbe: row.color ?? 'undefiniert',
-          Bemerkung: row.remark ?? 'keine',
-          Schlosscode: row.code ?? ''
-        }
-      : { Inhalt: row.content ?? ' ' }
-  };
+      const entry = {
+        type: row.type,
+        marker: null,
+        dbId: row.id,
+        photo_url: row.photo_url || null,
+        isRented: !!row.is_rented,
+        data: row.type === 'bike'
+          ? {
+              Nummer: row.bike_number ?? '',
+              Name: row.name ?? 'natebike',
+              Farbe: row.color ?? 'undefiniert',
+              Bemerkung: row.remark ?? 'keine',
+              Schlosscode: row.code ?? ''
+            }
+          : { Inhalt: row.content ?? ' ' }
+      };
 
-  entry.marker = L.marker(
-    { lat: row.lat, lng: row.lng },
-    { icon: iconForEntry(entry), draggable: false }
-  ).addTo(map);
+      entry.marker = L.marker(
+        { lat: row.lat, lng: row.lng },
+        { icon: iconForEntry(entry), draggable: false }
+      ).addTo(map);
 
-  markers.set(entry.marker._leaflet_id, entry);
-  wireMarker(entry);
-  return entry;
-}
-      entry.marker.setIcon(iconForEntry(entry));
       markers.set(entry.marker._leaflet_id, entry);
       wireMarker(entry);
       return entry;
@@ -677,7 +692,7 @@
       showStatus('notitz erstellt');
     }
 
-    // realtime
+    // Realtime
     const realtimeChannel = sb
       .channel('markers-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'markers' }, (payload) => {
@@ -704,7 +719,7 @@
       })
       .subscribe();
 
-    // menus
+    // Menus
     const ctxMenuMap = document.getElementById('ctxMenuMap');
     const ctxMenuMarker = document.getElementById('ctxMenuMarker');
     let ctxMapLatLng = null;
@@ -767,7 +782,7 @@
       if(action === 'move') setMarkerDraggableOnce(entry);
     });
 
-    // modal
+    // Modal
     const overlay = document.getElementById('modalOverlay');
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
@@ -792,7 +807,7 @@
         ? `<img class="photoPreview" id="photoPreview" src="${escapeHtml(entry.photo_url)}" alt="Foto" />`
         : `<button class="photoBtn" id="photoBtn" type="button">Foto hinzufügen</button>`;
 
-      // required order: Nummer; Name; Farbe; Bemerkung; Schlosscode
+      // order: Nummer; Name; Farbe; Bemerkung; Schlosscode
       const ro = isAdmin ? '' : 'readonly';
 
       modalBody.innerHTML = `
@@ -826,14 +841,12 @@
         ${isAdmin ? `<button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>` : ``}
       `;
 
-      // BUGFIX: once:true + type="button" + await + show error
       if(isAdmin){
         const saveBtn = document.getElementById('bikeSaveBtn');
         if(saveBtn){
           saveBtn.addEventListener('click', async () => {
             try{
               saveBtn.disabled = true;
-
               const numberVal = document.getElementById('bikeNumber').value.trim();
               const nameVal = document.getElementById('bikeName').value.trim();
               const colorVal = document.getElementById('bikeColor').value.trim();
@@ -841,25 +854,21 @@
               const codeVal = document.getElementById('bikeCode').value.trim();
 
               const out = {};
-              // overwrite even if empty? your old logic was "don't overwrite if empty".
-              // Keep that behavior:
               if(numberVal !== '') out.bike_number = numberVal;
               if(nameVal !== '') out.name = nameVal;
               if(colorVal !== '') out.color = colorVal;
               if(remarkVal !== '') out.remark = remarkVal;
               if(codeVal !== '') out.code = codeVal;
 
-              if(Object.keys(out).length){
-                await dbUpdate(entry.dbId, out);
-                showStatus('gespeichert');
-              }
+              if(Object.keys(out).length) await dbUpdate(entry.dbId, out);
+              showStatus('gespeichert');
               closeModal();
             }catch(err){
               console.error(err);
               showStatus('fehler beim speichern');
               saveBtn.disabled = false;
             }
-          }, { once: true });
+          }, { once:true });
         }
 
         const delBtn = document.getElementById('bikeDeleteBtn');
@@ -876,7 +885,7 @@
               showStatus('fehler beim löschen');
               delBtn.disabled = false;
             }
-          }, { once: true });
+          }, { once:true });
         }
       }
 
@@ -932,11 +941,11 @@
         showStatus('foto wird hochgeladen…');
         const dataUrl = await readFileAsDataURL(file);
         const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
+
         const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
-        const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(
-          fileName, jpgBlob, { contentType:'image/jpeg', upsert:false }
-        );
+        const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(fileName, jpgBlob, { contentType:'image/jpeg', upsert:false });
         if(upErr) throw upErr;
+
         const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
         await dbUpdate(entry.dbId, { photo_url: data.publicUrl });
         entry.photo_url = data.publicUrl;
@@ -954,6 +963,7 @@
         } else if(prev){
           prev.src = data.publicUrl;
         }
+
         showStatus('foto gespeichert');
       }catch(err){
         console.error(err);
@@ -967,7 +977,7 @@
     // unlock
     async function unlock(){
       const val = (pwInput.value || "").trim();
-      if(val !== "drahtesel"){
+      if(val !== APP_PASSWORD){
         pwMsg.textContent = "falsches Passwort";
         pwMsg.style.display = 'block';
         return;
