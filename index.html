@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="de">
 <head>
@@ -25,7 +24,6 @@
       --blue:#004a95;
       --lightblue:#004a95;
       --bg:#ffffff;
-      --note:#ffd84d;
       --text:#0b1a2a;
       --danger:#7a0b0b;
       --adminGrey:#c9c9c9;
@@ -164,7 +162,7 @@
       box-sizing: border-box;
     }
     .modal{
-      width: min(580px, 95vw);
+      width: min(620px, 95vw);
       background: #fff;
       border: 3px solid var(--blue);
       border-radius: 10px;
@@ -226,15 +224,6 @@
       text-transform: lowercase;
     }
     .btn.danger{ background: var(--danger); }
-    .btn.secondary{
-      background: #e8f0ff;
-      border: 1px solid #b9c6f2;
-      color: var(--blue);
-    }
-    .btn.rent{ background: var(--blue); }
-    .btn.rent.isRented{ background: var(--rentRed); }
-
-    .hint{ color: var(--danger); font-size: 13px; margin-right: auto; display: none; }
 
     .statusBar{
       position:absolute;
@@ -250,56 +239,54 @@
       max-width: 70%;
     }
 
-    .noteIconWrap{
-      width: 34px; height: 28px;
-      background: var(--note);
-      border: 2px solid #b08a00;
-      border-radius: 4px;
-      position: relative;
-      box-sizing: border-box;
-    }
-    .noteIconWrap:after{
-      content:"";
-      position:absolute;
-      right:-2px; top:-2px;
-      width: 12px; height: 12px;
-      background: #fff3b2;
-      border-left: 2px solid #b08a00;
-      border-bottom: 2px solid #b08a00;
-      transform: rotate(45deg) translate(4px,-4px);
-      transform-origin: top right;
-    }
-
-    #toast{
-      position: fixed;
-      left: 50%; bottom: 18px;
-      transform: translateX(-50%);
-      background: #fff;
-      border: 3px solid var(--blue);
-      border-radius: 12px;
-      padding: 12px 14px;
-      z-index: 20000;
-      display: none;
-      max-width: min(700px, 92vw);
-      font-weight: 700;
-      color: #0b1a2a;
-      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
-    }
-
     @keyframes blinkRing {
       0%, 100% { opacity: 0.15; transform: translate(-50%,-50%) scale(0.98); }
       50%      { opacity: 1.00; transform: translate(-50%,-50%) scale(1.08); }
     }
-    .moveRing{
-      position:absolute;
-      left:50%; top:50%;
-      width: 52px; height: 52px;
+
+    /* Bike: small position symbol */
+    .posPin{
+      width: 14px; height: 14px;
       border-radius: 50%;
-      border: 4px solid var(--blinkRed);
+      background: var(--blue);
+      border: 2px solid #ffffff;
       box-sizing: border-box;
-      pointer-events: none;
-      animation: blinkRing 0.9s infinite ease-in-out;
+      box-shadow: 0 0 0 2px rgba(0,74,149,0.35);
     }
+    .posPin.rented{
+      background: var(--rentRed);
+      box-shadow: 0 0 0 2px rgba(215,25,28,0.35);
+    }
+    .posPin.move{
+      animation: blinkRing 0.9s infinite ease-in-out;
+      border-color: var(--blinkRed);
+      box-shadow: 0 0 0 2px rgba(255,0,0,0.25);
+    }
+
+    /* Locate button */
+    .locateBtn{
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid var(--blue);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    }
+    .locateBtn:hover{ background: rgba(0,74,149,0.06); }
+    .crosshair{
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--blue);
+      border-radius: 50%;
+      position: relative;
+      box-sizing: border-box;
+    }
+    .crosshair:before, .crosshair:after{ content:""; position:absolute; background: var(--blue); }
+    .crosshair:before{ width: 2px; height: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+    .crosshair:after{ height: 2px; width: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
   </style>
 </head>
 
@@ -367,63 +354,10 @@
     </div>
   </div>
 
-  <div id="toast"></div>
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
-    // Voraussetzung in Supabase (einmalig):
-    // alter table public.markers add column if not exists is_rented boolean not null default false;
-    // Realtime aktivieren: Database -> Replication/Realtime -> public.markers
-
-    const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
-    const SUPABASE_BUCKET = "marker-photos";
-
-    const APP_PASSWORD = "drahtesel";
-    const ADMIN_PASSWORD = "eseldraht";
-
-    const KASSEL_CENTER = [51.3127, 9.4797];
-    const DEFAULT_ZOOM = 13;
-    const LOCATION_REFRESH_MS = 5000;
-
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    function randId(n=10){
-      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-      let s = "";
-      for(let i=0;i<n;i++) s += chars[Math.floor(Math.random()*chars.length)];
-      return s;
-    }
-    function escapeHtml(str){
-      return String(str ?? "")
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'","&#039;");
-    }
-    async function readFileAsDataURL(file){
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-    async function scaleToJpegBlob(dataUrl, maxSidePx, quality=0.9){
-      const img = new Image();
-      img.src = dataUrl;
-      await img.decode();
-      const w = img.naturalWidth, h = img.naturalHeight;
-      const scale = Math.min(1, maxSidePx / Math.max(w, h));
-      const nw = Math.max(1, Math.round(w * scale));
-      const nh = Math.max(1, Math.round(h * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = nw; canvas.height = nh;
-      canvas.getContext('2d').drawImage(img, 0, 0, nw, nh);
-      return await new Promise((resolve) => canvas.toBlob(b => resolve(b), 'image/jpeg', quality));
-    }
-
+    // status
     const statusBar = document.getElementById('statusBar');
     let statusTimer = null;
     function showStatus(msg){
@@ -433,16 +367,14 @@
       statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
     }
 
-    const toast = document.getElementById('toast');
-    let toastTimer = null;
-    function showToast(msg, ms=3000){
-      toast.textContent = msg;
-      toast.style.display = 'block';
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toast.style.display = 'none', ms);
-    }
+    // lock
+    const lockFrame = document.getElementById('lockFrame');
+    const mapFrame = document.getElementById('mapFrame');
+    const pwInput = document.getElementById('pwInput');
+    const pwBtn = document.getElementById('pwBtn');
+    const pwMsg = document.getElementById('pwMsg');
 
-    // Admin
+    // admin
     let isAdmin = false;
     const adminBtn = document.getElementById('adminBtn');
     const adminOverlay = document.getElementById('adminOverlay');
@@ -479,7 +411,7 @@
     adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
     function confirmAdmin(){
       const val = (adminPwInput.value || "").trim();
-      if(val !== ADMIN_PASSWORD){
+      if(val !== "eseldraht"){
         adminMsg.textContent = "falsches Passwort";
         adminMsg.style.display = 'block';
         return;
@@ -492,25 +424,38 @@
     adminOkBtn.addEventListener('click', confirmAdmin);
     adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
 
-    // Gate
-    const lockFrame = document.getElementById('lockFrame');
-    const mapFrame = document.getElementById('mapFrame');
-    const pwInput = document.getElementById('pwInput');
-    const pwBtn = document.getElementById('pwBtn');
-    const pwMsg = document.getElementById('pwMsg');
+    // supabase
+    const sb = supabase.createClient("https://lczpdudidvzbcalzprzl.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4"
+    );
+    const SUPABASE_BUCKET = "marker-photos";
 
-    // Map
-    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
+    // map
+    const map = L.map('map', { center: [51.3127, 9.4797], zoom: 13, dragging: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
-    // Device location marker (red ring)
+    // locate control
+    const LocateControl = L.Control.extend({
+      options: { position: 'bottomright' },
+      onAdd: function() {
+        const btn = L.DomUtil.create('div', 'locateBtn');
+        btn.title = 'Standort zentrieren';
+        btn.innerHTML = '<div class="crosshair"></div>';
+        L.DomEvent.disableClickPropagation(btn);
+        L.DomEvent.on(btn, 'click', async () => {
+          const ok = await centerOnDeviceOrKassel(true);
+          if(!ok) showStatus('standort nicht verfügbar');
+        });
+        return btn;
+      }
+    });
+    map.addControl(new LocateControl());
+
+    // location marker
     let locationMarker = null;
     function setOrUpdateLocationMarker(latlng){
       if(!locationMarker){
-        locationMarker = L.circleMarker(latlng, {
-          radius: 10, color: '#ff0000', weight: 3,
-          fillColor: 'transparent', fillOpacity: 0
-        }).addTo(map);
+        locationMarker = L.circleMarker(latlng, { radius: 10, color:'#ff0000', weight:3, fillOpacity:0 }).addTo(map);
       }else{
         locationMarker.setLatLng(latlng);
       }
@@ -544,56 +489,33 @@
     function startLocationUpdates(){
       if(locationTimer) clearInterval(locationTimer);
       refreshDeviceLocationOnce();
-      locationTimer = setInterval(refreshDeviceLocationOnce, LOCATION_REFRESH_MS);
+      locationTimer = setInterval(refreshDeviceLocationOnce, 5000);
     }
 
-    async function centerOnDeviceOrKassel(){
+    async function centerOnDeviceOrKassel(forceCenter=false){
       const ok = await refreshDeviceLocationOnce();
-      if(ok){
+      if(ok && forceCenter){
         map.setView(lastDeviceLatLng, 16);
         return true;
       }
-      map.setView(KASSEL_CENTER, DEFAULT_ZOOM);
+      if(ok) return true;
+      if(forceCenter) map.setView([51.3127, 9.4797], 13);
       return false;
     }
 
-    // Icons
-    const bikeLogoIcon = L.icon({ iconUrl:'logo.png', iconSize:[40,40], iconAnchor:[20,20] });
+    // icons
+    const logoIcon = L.icon({ iconUrl:'logo.png', iconSize:[40,40], iconAnchor:[20,20] });
 
-    function makeBikeRentedIcon(){
-      const size=44;
-      return L.divIcon({
-        className:'',
-        html:`<div style="width:${size}px;height:${size}px;position:relative;">
-                <div style="position:absolute;inset:0;border:4px solid var(--rentRed);border-radius:50%;box-sizing:border-box;"></div>
-                <img src="logo.png" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;object-fit:contain;"/>
-              </div>`,
-        iconSize:[size,size],
-        iconAnchor:[size/2,size/2]
-      });
+    function makePosIcon(rented=false, moving=false){
+      const cls = `posPin ${rented ? 'rented' : ''} ${moving ? 'move' : ''}`;
+      return L.divIcon({ className:'', html:`<div class="${cls}"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
     }
 
-    function makeBikeMoveIcon(){
-      const size=56;
-      return L.divIcon({
-        className:'',
-        html:`<div style="width:${size}px;height:${size}px;position:relative;">
-                <div class="moveRing"></div>
-                <img src="logo.png" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;object-fit:contain;"/>
-              </div>`,
-        iconSize:[size,size],
-        iconAnchor:[size/2,size/2]
-      });
-    }
-
-    const noteIcon = L.divIcon({ className:'', html:`<div class="noteIconWrap"></div>`, iconSize:[34,28], iconAnchor:[17,14] });
-
-    // State
-    const markers = new Map(); // leafletId -> entry
+    // state
+    const markers = new Map();
     let moveModeEntry = null;
     let pendingPhotoTarget = null;
 
-    // --- Realtime helpers (NEW) ---
     function findEntryByDbId(dbId){
       for (const entry of markers.values()){
         if(entry.dbId === dbId) return entry;
@@ -602,44 +524,39 @@
     }
 
     function iconForEntry(entry){
-      if(entry.type !== 'bike') return noteIcon;
-      if (moveModeEntry && moveModeEntry === entry) return makeBikeMoveIcon();
-      return entry.isRented ? makeBikeRentedIcon() : bikeLogoIcon;
+      const moving = (moveModeEntry && moveModeEntry === entry);
+      if(entry.type === 'bike') return makePosIcon(entry.isRented, moving);
+      // notes use logo
+      return logoIcon;
     }
 
     function applyRowToEntry(entry, row){
-      // update position if not in move mode
       if (!(moveModeEntry && moveModeEntry === entry) && typeof row.lat === 'number' && typeof row.lng === 'number'){
         entry.marker.setLatLng([row.lat, row.lng]);
       }
+      entry.isRented = !!row.is_rented;
 
       if(entry.type === 'bike'){
-        entry.isRented = !!row.is_rented;
         entry.data.Name = row.name ?? entry.data.Name;
         entry.data.Farbe = row.color ?? entry.data.Farbe;
         entry.data.Bemerkung = row.remark ?? entry.data.Bemerkung;
+        entry.data.Nummer = row.bike_number ?? entry.data.Nummer;
+        entry.data.Schlosscode = row.code ?? entry.data.Schlosscode;
         entry.photo_url = row.photo_url ?? entry.photo_url ?? null;
-
-        entry.marker.setIcon(iconForEntry(entry));
-
-        // ensure not draggable when rented
-        if(entry.isRented){
-          if(entry.marker.dragging) entry.marker.dragging.disable();
-          entry.marker.options.draggable = false;
-        }
-      } else if(entry.type === 'note'){
+      } else {
         entry.data.Inhalt = row.content ?? entry.data.Inhalt;
       }
+
+      entry.marker.setIcon(iconForEntry(entry));
     }
 
-    // DB
     async function dbLoadAll(){
       const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending:true });
       if(error) throw error;
       return data || [];
     }
     async function dbInsert(type, lat, lng){
-      const payload = { type, lat, lng, name:'natebike', color:'undefiniert', remark:'keine', photo_url:null, content:' ', is_rented:false };
+      const payload = { type, lat, lng, name:'natebike', color:'undefiniert', remark:'keine', photo_url:null, content:' ', is_rented:false, bike_number:'', code:'' };
       const { data, error } = await sb.from('markers').insert(payload).select().single();
       if(error) throw error;
       return data;
@@ -654,14 +571,13 @@
     }
 
     async function uploadPhotoAndGetPublicUrl(fileBlob){
-      const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
+      const fileName = `bike_${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
       const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(fileName, fileBlob, { contentType:'image/jpeg', upsert:false });
       if(upErr) throw upErr;
       const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
       return { fileName, publicUrl: data.publicUrl };
     }
 
-    // marker logic
     async function finalizeMarkerMove(entry){
       try{
         const ll = entry.marker.getLatLng();
@@ -679,11 +595,11 @@
     }
 
     function setMarkerDraggableOnce(entry){
-      if(entry.type === 'bike' && entry.isRented){
-        showStatus('rad ist ausgeliehen (nicht verschiebbar)');
+      if(entry.isRented){
+        showStatus('marker ist nicht verschiebbar (ausgeliehen)');
         return;
       }
-      if(entry.type === 'bike') entry.marker.setIcon(makeBikeMoveIcon());
+      entry.marker.setIcon(iconForEntry(entry));
       if(entry.marker.dragging) entry.marker.dragging.enable();
       entry.marker.options.draggable = true;
       moveModeEntry = entry;
@@ -714,37 +630,27 @@
     }
 
     function addMarkerFromRow(row){
-      if(row.type === 'bike'){
-        const entry = {
-          type: 'bike',
-          marker: L.marker(
-            {lat:row.lat, lng:row.lng},
-            { icon: row.is_rented ? makeBikeRentedIcon() : bikeLogoIcon, draggable:false }
-          ).addTo(map),
-          dbId: row.id,
-          photo_url: row.photo_url || null,
-          data: {
-            Name: row.name ?? 'natebike',
-            Farbe: row.color ?? 'undefiniert',
-            Bemerkung: row.remark ?? 'keine',
-            Foto: row.photo_url ? (row.photo_url.split('/').pop() || 'vorhanden') : 'nicht vorhanden'
-          },
-          isRented: !!row.is_rented
-        };
-        markers.set(entry.marker._leaflet_id, entry);
-        wireMarker(entry);
-        return entry;
-      } else {
-        const entry = {
-          type: 'note',
-          marker: L.marker({lat:row.lat, lng:row.lng}, { icon: noteIcon, draggable:false }).addTo(map),
-          dbId: row.id,
-          data: { Inhalt: row.content ?? ' ' }
-        };
-        markers.set(entry.marker._leaflet_id, entry);
-        wireMarker(entry);
-        return entry;
-      }
+      const entry = {
+        type: row.type,
+        marker: L.marker({lat:row.lat, lng:row.lng}, { icon: null, draggable:false }).addTo(map),
+        dbId: row.id,
+        photo_url: row.photo_url || null,
+        isRented: !!row.is_rented,
+        data: row.type === 'bike'
+          ? {
+              Nummer: row.bike_number ?? '',
+              Name: row.name ?? 'natebike',
+              Farbe: row.color ?? 'undefiniert',
+              Bemerkung: row.remark ?? 'keine',
+              Schlosscode: row.code ?? ''
+            }
+          : { Inhalt: row.content ?? ' ' }
+      };
+
+      entry.marker.setIcon(iconForEntry(entry));
+      markers.set(entry.marker._leaflet_id, entry);
+      wireMarker(entry);
+      return entry;
     }
 
     async function createBikeAt(latlng){
@@ -762,45 +668,34 @@
       showStatus('notitz erstellt');
     }
 
-    // --------- Realtime subscription (NEW) ----------
+    // realtime
     const realtimeChannel = sb
       .channel('markers-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'markers' },
-        (payload) => {
-          if(payload.eventType === 'INSERT'){
-            const row = payload.new;
-            if(findEntryByDbId(row.id)) return;
-            addMarkerFromRow(row);
-            return;
-          }
-          if(payload.eventType === 'UPDATE'){
-            const row = payload.new;
-            let entry = findEntryByDbId(row.id);
-            if(!entry){
-              addMarkerFromRow(row);
-              return;
-            }
-            applyRowToEntry(entry, row);
-            return;
-          }
-          if(payload.eventType === 'DELETE'){
-            const row = payload.old;
-            const entry = findEntryByDbId(row.id);
-            if(!entry) return;
-            map.removeLayer(entry.marker);
-            markers.delete(entry.marker._leaflet_id);
-          }
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'markers' }, (payload) => {
+        if(payload.eventType === 'INSERT'){
+          const row = payload.new;
+          if(findEntryByDbId(row.id)) return;
+          addMarkerFromRow(row);
+          return;
         }
-      )
+        if(payload.eventType === 'UPDATE'){
+          const row = payload.new;
+          const entry = findEntryByDbId(row.id);
+          if(!entry){ addMarkerFromRow(row); return; }
+          applyRowToEntry(entry, row);
+          return;
+        }
+        if(payload.eventType === 'DELETE'){
+          const row = payload.old;
+          const entry = findEntryByDbId(row.id);
+          if(!entry) return;
+          map.removeLayer(entry.marker);
+          markers.delete(entry.marker._leaflet_id);
+        }
+      })
       .subscribe();
 
-    window.addEventListener('beforeunload', () => {
-      try { sb.removeChannel(realtimeChannel); } catch {}
-    });
-
-    // Menus
+    // menus
     const ctxMenuMap = document.getElementById('ctxMenuMap');
     const ctxMenuMarker = document.getElementById('ctxMenuMarker');
     let ctxMapLatLng = null;
@@ -838,13 +733,8 @@
       if(!item || !ctxMapLatLng) return;
       const action = item.dataset.action;
       hideMenusOnly();
-      try{
-        if(action === 'bike') await createBikeAt(ctxMapLatLng);
-        if(action === 'note') await createNoteAt(ctxMapLatLng);
-      }catch(err){
-        console.error(err);
-        showStatus('fehler beim erstellen');
-      }
+      if(action === 'bike') await createBikeAt(ctxMapLatLng);
+      if(action === 'note') await createNoteAt(ctxMapLatLng);
     });
 
     function openMarkerMenu(mouseEvent, entry){
@@ -865,12 +755,10 @@
         if(entry.type === 'bike') openBikeWindow(entry);
         else openNoteEditor(entry);
       }
-      if(action === 'move'){
-        setMarkerDraggableOnce(entry);
-      }
+      if(action === 'move') setMarkerDraggableOnce(entry);
     });
 
-    // Modal
+    // modal
     const overlay = document.getElementById('modalOverlay');
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
@@ -895,15 +783,24 @@
         ? `<img class="photoPreview" id="photoPreview" src="${escapeHtml(entry.photo_url)}" alt="Foto" />`
         : `<button class="photoBtn" id="photoBtn" type="button">Foto hinzufügen</button>`;
 
+      // required order: Nummer; Name; Farbe; Bemerkung; Schlosscode
+      const ro = isAdmin ? '' : 'readonly';
+
       modalBody.innerHTML = `
+        <div class="label">Nummer</div>
+        <input type="text" value="${escapeHtml(entry.data.Nummer)}" ${ro} id="bikeNumber"/>
+
         <div class="label">Name</div>
-        <input type="text" value="${escapeHtml(entry.data.Name)}" ${isAdmin?'':'readonly'} id="bikeName"/>
+        <input type="text" value="${escapeHtml(entry.data.Name)}" ${ro} id="bikeName"/>
 
         <div class="label">Farbe</div>
-        <input type="text" value="${escapeHtml(entry.data.Farbe)}" ${isAdmin?'':'readonly'} id="bikeColor"/>
+        <input type="text" value="${escapeHtml(entry.data.Farbe)}" ${ro} id="bikeColor"/>
 
         <div class="label">Bemerkung</div>
-        <input type="text" value="${escapeHtml(entry.data.Bemerkung)}" ${isAdmin?'':'readonly'} id="bikeRemark"/>
+        <input type="text" value="${escapeHtml(entry.data.Bemerkung)}" ${ro} id="bikeRemark"/>
+
+        <div class="label">Schlosscode</div>
+        <input type="text" value="${escapeHtml(entry.data.Schlosscode)}" ${ro} id="bikeCode"/>
 
         <div class="label">Foto</div>
         <div>${photoCell}</div>
@@ -920,28 +817,58 @@
         ${isAdmin ? `<button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>` : ``}
       `;
 
-      if(isAdmin && document.getElementById('bikeSaveBtn')){
-        document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
-          const nameVal = document.getElementById('bikeName').value.trim();
-          const colorVal = document.getElementById('bikeColor').value.trim();
-          const remarkVal = document.getElementById('bikeRemark').value.trim();
-          const out = {};
-          if(nameVal) out.name = nameVal;
-          if(colorVal) out.color = colorVal;
-          if(remarkVal) out.remark = remarkVal;
-          if(Object.keys(out).length) await dbUpdate(entry.dbId, out);
-          closeModal();
-        });
-      }
+      // BUGFIX: once:true + type="button" + await + show error
+      if(isAdmin){
+        const saveBtn = document.getElementById('bikeSaveBtn');
+        if(saveBtn){
+          saveBtn.addEventListener('click', async () => {
+            try{
+              saveBtn.disabled = true;
 
-      if(isAdmin && document.getElementById('bikeDeleteBtn')){
-        document.getElementById('bikeDeleteBtn').addEventListener('click', async () => {
-          await dbDelete(entry.dbId);
-          // realtime will remove for everyone; remove locally too
-          map.removeLayer(entry.marker);
-          markers.delete(entry.marker._leaflet_id);
-          closeModal();
-        });
+              const numberVal = document.getElementById('bikeNumber').value.trim();
+              const nameVal = document.getElementById('bikeName').value.trim();
+              const colorVal = document.getElementById('bikeColor').value.trim();
+              const remarkVal = document.getElementById('bikeRemark').value.trim();
+              const codeVal = document.getElementById('bikeCode').value.trim();
+
+              const out = {};
+              // overwrite even if empty? your old logic was "don't overwrite if empty".
+              // Keep that behavior:
+              if(numberVal !== '') out.bike_number = numberVal;
+              if(nameVal !== '') out.name = nameVal;
+              if(colorVal !== '') out.color = colorVal;
+              if(remarkVal !== '') out.remark = remarkVal;
+              if(codeVal !== '') out.code = codeVal;
+
+              if(Object.keys(out).length){
+                await dbUpdate(entry.dbId, out);
+                showStatus('gespeichert');
+              }
+              closeModal();
+            }catch(err){
+              console.error(err);
+              showStatus('fehler beim speichern');
+              saveBtn.disabled = false;
+            }
+          }, { once: true });
+        }
+
+        const delBtn = document.getElementById('bikeDeleteBtn');
+        if(delBtn){
+          delBtn.addEventListener('click', async () => {
+            try{
+              delBtn.disabled = true;
+              await dbDelete(entry.dbId);
+              map.removeLayer(entry.marker);
+              markers.delete(entry.marker._leaflet_id);
+              closeModal();
+            }catch(err){
+              console.error(err);
+              showStatus('fehler beim löschen');
+              delBtn.disabled = false;
+            }
+          }, { once: true });
+        }
       }
 
       openModal();
@@ -957,21 +884,25 @@
         <button class="btn" id="noteSaveBtn" type="button">speichern</button>
         <button class="btn danger" id="noteDeleteBtn" type="button">löschen</button>
       `;
+
       document.getElementById('noteSaveBtn').addEventListener('click', async () => {
         const v = document.getElementById('noteContent').value.trim();
         if(!v){ closeModal(); return; }
         await dbUpdate(entry.dbId, { content: v });
         closeModal();
-      });
+      }, { once:true });
+
       document.getElementById('noteDeleteBtn').addEventListener('click', async () => {
         await dbDelete(entry.dbId);
         map.removeLayer(entry.marker);
         markers.delete(entry.marker._leaflet_id);
         closeModal();
-      });
+      }, { once:true });
+
       openModal();
     }
 
+    // photo upload auto-save
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files && fileInput.files[0];
       if(!file || !pendingPhotoTarget) return;
@@ -992,10 +923,14 @@
         showStatus('foto wird hochgeladen…');
         const dataUrl = await readFileAsDataURL(file);
         const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
-        const { fileName, publicUrl } = await uploadPhotoAndGetPublicUrl(jpgBlob);
-        await dbUpdate(entry.dbId, { photo_url: publicUrl });
-        entry.photo_url = publicUrl;
-        entry.data.Foto = fileName;
+        const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
+        const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(
+          fileName, jpgBlob, { contentType:'image/jpeg', upsert:false }
+        );
+        if(upErr) throw upErr;
+        const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
+        await dbUpdate(entry.dbId, { photo_url: data.publicUrl });
+        entry.photo_url = data.publicUrl;
 
         const photoBtn = document.getElementById('photoBtn');
         const prev = document.getElementById('photoPreview');
@@ -1003,12 +938,12 @@
           const img = document.createElement('img');
           img.className='photoPreview';
           img.id='photoPreview';
-          img.src = publicUrl;
+          img.src = data.publicUrl;
           img.alt='Foto';
           img.addEventListener('click', ()=>{ pendingPhotoTarget = entry; fileInput.click(); });
           photoBtn.replaceWith(img);
         } else if(prev){
-          prev.src = publicUrl;
+          prev.src = data.publicUrl;
         }
         showStatus('foto gespeichert');
       }catch(err){
@@ -1020,9 +955,10 @@
       }
     });
 
+    // unlock
     async function unlock(){
       const val = (pwInput.value || "").trim();
-      if(val !== APP_PASSWORD){
+      if(val !== "drahtesel"){
         pwMsg.textContent = "falsches Passwort";
         pwMsg.style.display = 'block';
         return;
@@ -1032,12 +968,12 @@
       mapFrame.style.display = 'block';
       setTimeout(()=>map.invalidateSize(), 100);
 
-      await centerOnDeviceOrKassel();
-      startLocationUpdates();
+      const ok = await centerOnDeviceOrKassel(true);
+      if(!ok) showStatus('standort nicht verfügbar – kassel');
 
+      startLocationUpdates();
       updateAdminUI();
 
-      // initial load
       const rows = await dbLoadAll();
       rows.forEach((row) => { if(!findEntryByDbId(row.id)) addMarkerFromRow(row); });
     }
