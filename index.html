@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="de">
 <head>
@@ -23,6 +24,8 @@
     :root{
       --blue:#004a95;
       --lightblue:#004a95;
+      --bikePurple:#6a00ff;
+
       --bg:#ffffff;
       --text:#0b1a2a;
       --danger:#7a0b0b;
@@ -31,8 +34,6 @@
       --adminBorder:#7d7d7d;
       --rentRed:#d7191c;
       --blinkRed:#ff0000;
-      --bikePurple:#4B0095;
-}
     }
     html, body { height: 100%; }
     body{
@@ -250,7 +251,7 @@
     .crosshair:before{ width: 2px; height: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
     .crosshair:after{ height: 2px; width: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
 
-    /* Pin shapes (inverted droplet) */
+    /* Bike pins (droplet, tip down) */
     .pinWrap{
       position: relative;
       width: 18px;
@@ -261,7 +262,7 @@
       position:absolute;
       left:50%; top:2px;
       width: 14px; height: 14px;
-      transform: translateX(-50%) rotate(45deg);
+      transform: translateX(-50%) rotate(90deg);
       border-radius: 50% 50% 50% 0;
       background: var(--bikePurple);
       box-shadow: 0 2px 8px rgba(0,0,0,0.20);
@@ -273,7 +274,7 @@
       background: #fff;
       border-radius: 50%;
       top: 4px; left: 4px;
-      transform: rotate(-45deg);
+      transform: rotate(-90deg);
       opacity: 0.9;
     }
     .pin.red{ background: var(--rentRed); }
@@ -282,42 +283,42 @@
       outline-offset: 2px;
       animation: pulsePin 0.9s infinite ease-in-out;
     }
-   @keyframes pulsePin{
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: translateX(-50%) rotate(90deg) scale(1.0); }
-  50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: translateX(-50%) rotate(90deg) scale(1.08); }
-}
+    @keyframes pulsePin{
+      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: translateX(-50%) rotate(90deg) scale(1.0); }
+      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: translateX(-50%) rotate(90deg) scale(1.08); }
+    }
 
     /* Station marker (round, no pin) */
-.stationWrap{
-  position: relative;
-  width: 33px;
-  height: 33px;
-  pointer-events: none;
-}
-.stationCircle{
-  position:absolute;
-  inset: 0;
-  background: #fff;
-  border: 3px solid var(--blue);
-  border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
-  overflow: hidden;
-}
-.stationCircle img{
-  position:absolute;
-  width: 30px; height: 30px;
-  left: 50%; top: 50%;
-  transform: translateX(-50%) rotate(90deg);
-  object-fit: contain;
-}
-.stationCircle.move{
-  border-color: var(--blinkRed);
-  animation: pulseCircle 0.9s infinite ease-in-out;
-}
-@keyframes pulseCircle{
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: scale(1.0); }
-  50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: scale(1.06); }
-}
+    .stationWrap{
+      position: relative;
+      width: 44px;
+      height: 44px;
+      pointer-events: none;
+    }
+    .stationCircle{
+      position:absolute;
+      inset: 0;
+      background: #fff;
+      border: 3px solid var(--blue);
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      overflow: hidden;
+    }
+    .stationCircle img{
+      position:absolute;
+      width: 30px; height: 30px;
+      left: 50%; top: 50%;
+      transform: translate(-50%,-50%);
+      object-fit: contain;
+    }
+    .stationCircle.move{
+      border-color: var(--blinkRed);
+      animation: pulseCircle 0.9s infinite ease-in-out;
+    }
+    @keyframes pulseCircle{
+      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: scale(1.0); }
+      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: scale(1.06); }
+    }
   </style>
 </head>
 
@@ -410,7 +411,10 @@
     map.createPane('bikePane');
     map.getPane('bikePane').style.zIndex = 420;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
 
     // Locate control
     const LocateControl = L.Control.extend({
@@ -542,7 +546,7 @@
     adminOkBtn.addEventListener('click', confirmAdmin);
     adminPwInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmAdmin(); });
 
-    // --- panes icons ---
+    // --- icons ---
     function bikePinIcon({ rented=false, moving=false } = {}){
       const cls = `pin ${rented ? 'red' : ''} ${moving ? 'move' : ''}`;
       return L.divIcon({
@@ -553,14 +557,14 @@
       });
     }
     function stationPinIcon({ moving=false } = {}){
-  const cls = `stationCircle ${moving ? 'move' : ''}`;
-  return L.divIcon({
-    className: '',
-    html: `<div class="stationWrap"><div class="${cls}"><img src="logo.png" alt=""/></div></div>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22] // Zentrum des Kreises
-  });
-}
+      const cls = `stationCircle ${moving ? 'move' : ''}`;
+      return L.divIcon({
+        className: '',
+        html: `<div class="stationWrap"><div class="${cls}"><img src="logo.png" alt=""/></div></div>`,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22]
+      });
+    }
 
     // --- marker state ---
     const markers = new Map(); // leafletId -> entry
@@ -712,7 +716,6 @@
     map.getContainer().addEventListener('contextmenu', (e)=>e.preventDefault());
 
     map.on('contextmenu', (e)=>{
-      // admin-only menu
       if(!isAdmin) return;
       ctxMapLatLng = e.latlng;
       const oe = e.originalEvent;
