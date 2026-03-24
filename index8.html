@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>natebike</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --blue:#004a95;
+      --lightblue:#004a95;
+      --bg:#ffffff;
+      --text:#0b1a2a;
+      --danger:#7a0b0b;
+      --adminGrey:#c9c9c9;
+      --adminGreen:#9be39b;
+      --adminBorder:#7d7d7d;
+      --rentRed:#d7191c;
+      --blinkRed:#ff0000;
+    }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header{
+      padding: 14px 16px 8px 16px;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .headerLeft{ display:flex; align-items:center; gap: 12px; min-width: 0; }
+    #logo{ width: 40px; height: 40px; border-radius: 8px; object-fit: contain; }
+    h1{
+      margin: 0;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      text-transform: lowercase;
+      color: var(--blue);
+      white-space: nowrap;
+      font-family: "Century Gothic", "URW Gothic L", "Futura", Arial, sans-serif;
+    }
+
+    .adminBtn{
+      background: var(--adminGrey);
+      border: 1px solid var(--adminBorder);
+      color: #1b1b1b;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .adminBtn.isAdmin{
+      background: var(--adminGreen);
+      border-color: #3b8f3b;
+      color: #0b2a0b;
+    }
+
+    .wrap{
+      padding: 8px 16px 16px 16px;
+      height: calc(100% - 70px);
+      box-sizing: border-box;
+    }
+
+    #mapFrame, #lockFrame{
+      height: 100%;
+      border: 4px solid var(--lightblue);
+      border-radius: 8px;
+      box-sizing: border-box;
+      overflow: hidden;
+      background: #fff;
+      position: relative;
+    }
+    #map{ height: 100%; width: 100%; }
+
+    /* Lock screen */
+    #lockFrame{
+      display: grid;
+      place-items: center;
+      background: #fff;
+    }
+    .lockPanel{
+      width: min(520px, 92%);
+      border: 3px solid var(--blue);
+      border-radius: 12px;
+      padding: 16px;
+      box-sizing: border-box;
+      background: #fff;
+    }
+    .lockRow{
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+    .lockLabel{ font-size: 16px; }
+    input[type="password"], input[type="text"], textarea{
+      width: 100%;
+      border: 1px solid #cfd7e6;
+      border-radius: 8px;
+      padding: 10px 10px;
+      font-size: 14px;
+      box-sizing: border-box;
+      outline: none;
+    }
+    textarea{ min-height: 72px; resize: vertical; padding: 9px 10px; }
+    .lockFooter{ display:flex; justify-content: flex-end; margin-top: 14px; }
+    #pwMsg{ margin-top:10px; color: var(--danger); font-size: 13px; display:none; }
+
+    /* Context menus */
+    .ctx-menu{
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      border: 2px solid var(--blue);
+      border-radius: 8px;
+      min-width: 240px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.14);
+      padding: 6px;
+      display: none;
+      user-select: none;
+    }
+    .ctx-item{
+      padding: 10px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .ctx-item:hover{ background: rgba(0,74,149,0.08); }
+    .ctx-item.disabled{ opacity: 0.45; cursor: not-allowed; }
+
+    /* Modal */
+    .modal-overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.25);
+      display: none;
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .modal{
+      width: min(640px, 95vw);
+      background: #fff;
+      border: 3px solid var(--blue);
+      border-radius: 10px;
+      padding: 14px 14px 12px 14px;
+      box-sizing: border-box;
+    }
+    .modal h2{
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--blue);
+      text-transform: lowercase;
+    }
+    .grid{
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 10px 12px;
+      align-items: center;
+    }
+    .label{ font-size: 14px; }
+
+    .modal-footer{
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 14px;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn{
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      text-transform: lowercase;
+    }
+    .btn.danger{ background: var(--danger); }
+    .btn.secondary{
+      background: #e8f0ff;
+      border: 1px solid #b9c6f2;
+      color: var(--blue);
+    }
+
+    .statusBar{
+      position:absolute;
+      left: 10px; bottom: 10px;
+      z-index: 5000;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid #cfd7e6;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #25324a;
+      display:none;
+      max-width: 70%;
+    }
+
+    /* Locate button */
+    .locateBtn{
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid var(--blue);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    }
+    .locateBtn:hover{ background: rgba(0,74,149,0.06); }
+    .crosshair{
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--blue);
+      border-radius: 50%;
+      position: relative;
+      box-sizing: border-box;
+    }
+    .crosshair:before, .crosshair:after{ content:""; position:absolute; background: var(--blue); }
+    .crosshair:before{ width: 2px; height: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+    .crosshair:after{ height: 2px; width: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+
+    /* Pin shapes (inverted droplet) */
+    .pinWrap{
+      position: relative;
+      width: 18px;
+      height: 26px;
+      pointer-events: none;
+    }
+    .pin{
+      position:absolute;
+      left:50%; top:2px;
+      width: 14px; height: 14px;
+      transform: translateX(-50%) rotate(45deg);
+      border-radius: 50% 50% 50% 0;
+      background: var(--blue);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+    }
+    .pin::after{
+      content:"";
+      position:absolute;
+      width: 6px; height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      top: 4px; left: 4px;
+      transform: rotate(-45deg);
+      opacity: 0.9;
+    }
+    .pin.red{ background: var(--rentRed); }
+    .pin.move{
+      outline: 2px solid var(--blinkRed);
+      outline-offset: 2px;
+      animation: pulsePin 0.9s infinite ease-in-out;
+    }
+    @keyframes pulsePin{
+      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: translateX(-50%) rotate(45deg) scale(1.0); }
+      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: translateX(-50%) rotate(45deg) scale(1.08); }
+    }
+
+    /* Station pins (bigger with logo inside) */
+    .stationWrap{
+      position: relative;
+      width: 40px;
+      height: 54px;
+      pointer-events: none;
+    }
+    .stationPin{
+      position:absolute;
+      left:50%; top:6px;
+      width: 34px; height: 34px;
+      transform: translateX(-50%) rotate(45deg);
+      border-radius: 50% 50% 50% 0;
+      background: #fff;
+      border: 3px solid var(--blue);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      overflow: hidden;
+    }
+    .stationPin img{
+      position:absolute;
+      width: 28px; height: 28px;
+      left: 50%; top: 50%;
+      transform: translate(-50%,-50%) rotate(-45deg);
+      object-fit: contain;
+    }
+    .stationPin.move{
+      border-color: var(--blinkRed);
+      animation: pulsePin 0.9s infinite ease-in-out;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="headerLeft">
+      <img id="logo" alt="logo" src="logo.png" />
+      <h1>natebike</h1>
+    </div>
+    <button id="adminBtn" class="adminBtn" type="button">Admin</button>
+  </header>
+
+  <div class="wrap">
+    <div id="lockFrame">
+      <div class="lockPanel">
+        <div class="lockRow">
+          <div class="lockLabel">Passwort:</div>
+          <input id="pwInput" type="password" autocomplete="current-password" />
+        </div>
+        <div class="lockFooter">
+          <button class="btn" id="pwBtn" type="button">bestätigen</button>
+        </div>
+        <div id="pwMsg">falsches Passwort</div>
+      </div>
+    </div>
+
+    <div id="mapFrame" style="display:none;">
+      <div id="map"></div>
+      <div id="statusBar" class="statusBar"></div>
+    </div>
+  </div>
+
+  <!-- Map menu (admin only) -->
+  <div id="ctxMenuMap" class="ctx-menu">
+    <div class="ctx-item" data-action="bike" id="ctxBike">neues Rad hinzufügen</div>
+    <div class="ctx-item" data-action="note">natebikestation hinzufügen</div>
+  </div>
+
+  <!-- Marker menu -->
+  <div id="ctxMenuMarker" class="ctx-menu">
+    <div class="ctx-item" data-action="open">öffnen</div>
+    <div class="ctx-item" data-action="move">verschieben</div>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2 id="modalTitle">details</h2>
+      <div class="grid" id="modalBody"></div>
+      <div class="modal-footer" id="modalFooter"></div>
+    </div>
+  </div>
+
+  <div id="adminOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2>admin</h2>
+      <div class="grid">
+        <div class="label">Passwort</div>
+        <input id="adminPwInput" type="password" autocomplete="current-password" />
+      </div>
+      <div style="margin-top:10px;color:var(--danger);display:none;font-size:13px;" id="adminMsg">
+        falsches Passwort
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" id="adminCancelBtn" type="button">schließen</button>
+        <button class="btn" id="adminOkBtn" type="button">bestätigen</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- config ---
+    const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
+    const APP_PASSWORD = "drahtesel";
+    const ADMIN_PASSWORD = "eseldraht";
+
+    const KASSEL_CENTER = [51.3127, 9.4797];
+    const DEFAULT_ZOOM = 13;
+    const LOCATION_REFRESH_MS = 5000;
+
+    // --- supabase ---
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // --- map ---
+    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
+
+    // Panes (station behind bike)
+    map.createPane('stationPane');
+    map.getPane('stationPane').style.zIndex = 380;
+    map.createPane('bikePane');
+    map.getPane('bikePane').style.zIndex = 420;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+
+    // Locate control
+    const LocateControl = L.Control.extend({
+      options: { position: 'bottomright' },
+      onAdd: function() {
+        const btn = L.DomUtil.create('div', 'locateBtn');
+        btn.title = 'Standort zentrieren';
+        btn.innerHTML = '<div class="crosshair"></div>';
+        L.DomEvent.disableClickPropagation(btn);
+        L.DomEvent.on(btn, 'click', async () => {
+          const ok = await centerOnDeviceOrKassel(true);
+          if(!ok) showStatus('standort nicht verfügbar');
+        });
+        return btn;
+      }
+    });
+    map.addControl(new LocateControl());
+
+    // device location marker (red ring)
+    let locationMarker = null;
+    function setOrUpdateLocationMarker(latlng){
+      if(!locationMarker){
+        locationMarker = L.circleMarker(latlng, { radius: 10, color:'#ff0000', weight:3, fillOpacity:0 }).addTo(map);
+      }else{
+        locationMarker.setLatLng(latlng);
+      }
+    }
+    let lastDeviceLatLng = null;
+    let locationTimer = null;
+
+    async function getDeviceLatLng(timeoutMs=4000){
+      return new Promise((resolve) => {
+        let done=false;
+        const ok = (e)=>{ if(done) return; done=true; resolve(e.latlng); };
+        const fail = ()=>{ if(done) return; done=true; resolve(null); };
+        map.once('locationfound', ok);
+        map.once('locationerror', fail);
+        map.locate({ setView:false, watch:false, enableHighAccuracy:true, maximumAge:15000, timeout: timeoutMs });
+        setTimeout(fail, timeoutMs+800);
+      });
+    }
+    async function refreshDeviceLocationOnce(){
+      const ll = await getDeviceLatLng(4000);
+      if(ll){
+        lastDeviceLatLng = ll;
+        setOrUpdateLocationMarker(ll);
+        return true;
+      }
+      return false;
+    }
+    function startLocationUpdates(){
+      if(locationTimer) clearInterval(locationTimer);
+      refreshDeviceLocationOnce();
+      locationTimer = setInterval(refreshDeviceLocationOnce, LOCATION_REFRESH_MS);
+    }
+    async function centerOnDeviceOrKassel(forceCenter=false){
+      const ok = await refreshDeviceLocationOnce();
+      if(ok && forceCenter){
+        map.setView(lastDeviceLatLng, 16);
+        return true;
+      }
+      if(ok) return true;
+      if(forceCenter) map.setView(KASSEL_CENTER, DEFAULT_ZOOM);
+      return false;
+    }
+
+    // --- ui helpers ---
+    const statusBar = document.getElementById('statusBar');
+    let statusTimer = null;
+    function showStatus(msg){
+      statusBar.textContent = msg;
+      statusBar.style.display = 'block';
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
+    }
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
+    }
+
+    // --- admin ---
+    let isAdmin = false;
+    const adminBtn = document.getElementById('adminBtn');
+    const adminOverlay = document.getElementById('adminOverlay');
+    const adminPwInput = document.getElementById('adminPwInput');
+    const adminMsg = document.getElementById('adminMsg');
+    const adminOkBtn = document.getElementById('adminOkBtn');
+    const adminCancelBtn = document.getElementById('adminCancelBtn');
+
+    function updateAdminUI(){
+      adminBtn.classList.toggle('isAdmin', isAdmin);
+      const ctxBike = document.getElementById('ctxBike');
+      if(ctxBike){
+        if(isAdmin) ctxBike.classList.remove('disabled');
+        else ctxBike.classList.add('disabled');
+      }
+    }
+    function openAdminModal(){
+      adminMsg.style.display = 'none';
+      adminPwInput.value = '';
+      adminOverlay.style.display = 'flex';
+      adminPwInput.focus();
+    }
+    function closeAdminModal(){ adminOverlay.style.display = 'none'; }
+    function logoutAdmin(){
+      isAdmin = false;
+      updateAdminUI();
+      showStatus('admin abgemeldet');
+    }
+    adminBtn.addEventListener('click', ()=>{ isAdmin ? logoutAdmin() : openAdminModal(); });
+    adminCancelBtn.addEventListener('click', closeAdminModal);
+    adminOverlay.addEventListener('click', (e)=>{ if(e.target===adminOverlay) closeAdminModal(); });
+    function confirmAdmin(){
+      const val = (adminPwInput.value || "").trim();
+      if(val !== ADMIN_PASSWORD){
+        adminMsg.textContent = "falsches Passwort";
+        adminMsg.style.display = 'block';
+        return;
+      }
+      isAdmin = true;
+      updateAdminUI();
+      closeAdminModal();
+      showStatus('admin aktiv');
+    }
+    adminOkBtn.addEventListener('click', confirmAdmin);
+    adminPwInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmAdmin(); });
+
+    // --- panes icons ---
+    function bikePinIcon({ rented=false, moving=false } = {}){
+      const cls = `pin ${rented ? 'red' : ''} ${moving ? 'move' : ''}`;
+      return L.divIcon({
+        className: '',
+        html: `<div class="pinWrap"><div class="${cls}"></div></div>`,
+        iconSize: [18, 26],
+        iconAnchor: [9, 24] // tip of the pin
+      });
+    }
+    function stationPinIcon({ moving=false } = {}){
+      const cls = `stationPin ${moving ? 'move' : ''}`;
+      return L.divIcon({
+        className: '',
+        html: `<div class="stationWrap"><div class="${cls}"><img src="logo.png" alt=""/></div></div>`,
+        iconSize: [40, 54],
+        iconAnchor: [20, 50]
+      });
+    }
+
+    // --- marker state ---
+    const markers = new Map(); // leafletId -> entry
+    let moveModeEntry = null;
+
+    function findEntryByDbId(dbId){
+      for (const entry of markers.values()){
+        if(entry.dbId === dbId) return entry;
+      }
+      return null;
+    }
+
+    function iconForEntry(entry){
+      const moving = (moveModeEntry && moveModeEntry === entry);
+      if(entry.type === 'bike'){
+        return bikePinIcon({ rented: !!entry.isRented, moving });
+      }
+      return stationPinIcon({ moving });
+    }
+
+    function applyRowToEntry(entry, row){
+      if (!(moveModeEntry && moveModeEntry === entry) && typeof row.lat === 'number' && typeof row.lng === 'number'){
+        entry.marker.setLatLng([row.lat, row.lng]);
+      }
+      entry.isRented = !!row.is_rented;
+
+      if(entry.type === 'bike'){
+        entry.data.Nummer = row.bike_number ?? entry.data.Nummer;
+        entry.data.Name = row.name ?? entry.data.Name;
+        entry.data.Farbe = row.color ?? entry.data.Farbe;
+        entry.data.Bemerkung = row.remark ?? entry.data.Bemerkung;
+        entry.data.Schlosscode = row.code ?? entry.data.Schlosscode;
+      } else {
+        entry.data.Name = row.content ?? entry.data.Name; // station "Name"
+      }
+      entry.marker.setIcon(iconForEntry(entry));
+    }
+
+    async function dbLoadAll(){
+      const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending:true });
+      if(error) throw error;
+      return data || [];
+    }
+    async function dbInsert(type, lat, lng){
+      const payload = { type, lat, lng, name:'natebike', color:'undefiniert', remark:'keine', photo_url:null, content:' ', is_rented:false, bike_number:'', code:'' };
+      const { data, error } = await sb.from('markers').insert(payload).select().single();
+      if(error) throw error;
+      return data;
+    }
+    async function dbUpdate(id, patch){
+      const { error } = await sb.from('markers').update(patch).eq('id', id);
+      if(error) throw error;
+    }
+    async function dbDelete(id){
+      const { error } = await sb.from('markers').delete().eq('id', id);
+      if(error) throw error;
+    }
+
+    function wireMarker(entry){
+      const m = entry.marker;
+      m.options.draggable = false;
+      if(m.dragging) m.dragging.disable();
+
+      m.on('dragstart', ()=>map.dragging.disable());
+      m.on('dragend', async ()=>{
+        map.dragging.enable();
+        if(moveModeEntry === entry){
+          const ll = m.getLatLng();
+          await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
+          if(m.dragging) m.dragging.disable();
+          m.options.draggable = false;
+          moveModeEntry = null;
+          m.setIcon(iconForEntry(entry));
+          showStatus('position gespeichert');
+        }
+      });
+
+      m.on('contextmenu', (e)=>{ L.DomEvent.stop(e); openMarkerMenu(e.originalEvent, entry); });
+      m.on('click', (e)=>{ L.DomEvent.stop(e); entry.type === 'bike' ? openBikeWindow(entry) : openStationWindow(entry); });
+    }
+
+    function addMarkerFromRow(row){
+      const entry = {
+        type: row.type, // 'bike' or 'note'
+        dbId: row.id,
+        isRented: !!row.is_rented,
+        data: row.type === 'bike'
+          ? { Nummer: row.bike_number ?? '', Name: row.name ?? 'natebike', Farbe: row.color ?? 'undefiniert', Bemerkung: row.remark ?? 'keine', Schlosscode: row.code ?? '' }
+          : { Name: row.content ?? ' ' }
+      };
+
+      const pane = (row.type === 'bike') ? 'bikePane' : 'stationPane';
+
+      entry.marker = L.marker(
+        { lat: row.lat, lng: row.lng },
+        { icon: iconForEntry(entry), draggable:false, pane }
+      ).addTo(map);
+
+      markers.set(entry.marker._leaflet_id, entry);
+      wireMarker(entry);
+      return entry;
+    }
+
+    async function createBikeAt(latlng){
+      if(!isAdmin){ showStatus('nur admin'); return; }
+      const row = await dbInsert('bike', latlng.lat, latlng.lng);
+      addMarkerFromRow(row);
+    }
+    async function createStationAt(latlng){
+      if(!isAdmin){ showStatus('nur admin'); return; }
+      const row = await dbInsert('note', latlng.lat, latlng.lng);
+      addMarkerFromRow(row);
+    }
+
+    // --- realtime ---
+    sb.channel('markers-realtime')
+      .on('postgres_changes', { event:'*', schema:'public', table:'markers' }, (payload)=>{
+        if(payload.eventType === 'INSERT'){
+          const row = payload.new;
+          if(findEntryByDbId(row.id)) return;
+          addMarkerFromRow(row);
+        } else if(payload.eventType === 'UPDATE'){
+          const row = payload.new;
+          const entry = findEntryByDbId(row.id);
+          if(!entry){ addMarkerFromRow(row); return; }
+          applyRowToEntry(entry, row);
+        } else if(payload.eventType === 'DELETE'){
+          const row = payload.old;
+          const entry = findEntryByDbId(row.id);
+          if(!entry) return;
+          map.removeLayer(entry.marker);
+          markers.delete(entry.marker._leaflet_id);
+        }
+      })
+      .subscribe();
+
+    // --- menus ---
+    const ctxMenuMap = document.getElementById('ctxMenuMap');
+    const ctxMenuMarker = document.getElementById('ctxMenuMarker');
+    let ctxMapLatLng = null;
+    let ctxMarkerEntry = null;
+
+    function hideMenus(){
+      ctxMenuMap.style.display = 'none';
+      ctxMenuMarker.style.display = 'none';
+      ctxMarkerEntry = null;
+    }
+
+    map.getContainer().addEventListener('contextmenu', (e)=>e.preventDefault());
+
+    map.on('contextmenu', (e)=>{
+      // admin-only menu
+      if(!isAdmin) return;
+      ctxMapLatLng = e.latlng;
+      const oe = e.originalEvent;
+      hideMenus();
+      ctxMenuMap.style.left = `${oe.clientX}px`;
+      ctxMenuMap.style.top  = `${oe.clientY}px`;
+      ctxMenuMap.style.display = 'block';
+    });
+
+    ctxMenuMap.addEventListener('pointerdown', (e)=>e.stopPropagation());
+    ctxMenuMarker.addEventListener('pointerdown', (e)=>e.stopPropagation());
+
+    map.on('click', hideMenus);
+    map.on('movestart', hideMenus);
+    document.addEventListener('pointerdown', (e)=>{
+      if(!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target)) hideMenus();
+    });
+
+    ctxMenuMap.addEventListener('pointerdown', async (e)=>{
+      const item = e.target.closest('.ctx-item');
+      if(!item || !ctxMapLatLng) return;
+      const action = item.dataset.action;
+      hideMenus();
+      if(action === 'bike') await createBikeAt(ctxMapLatLng);
+      if(action === 'note') await createStationAt(ctxMapLatLng);
+    });
+
+    function openMarkerMenu(mouseEvent, entry){
+      hideMenus();
+      ctxMarkerEntry = entry;
+      ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
+      ctxMenuMarker.style.top  = `${mouseEvent.clientY}px`;
+      ctxMenuMarker.style.display = 'block';
+    }
+
+    ctxMenuMarker.addEventListener('pointerdown', (e)=>{
+      const item = e.target.closest('.ctx-item');
+      if(!item || !ctxMarkerEntry) return;
+      const action = item.dataset.action;
+      const entry = ctxMarkerEntry;
+      hideMenus();
+
+      if(action === 'open'){
+        entry.type === 'bike' ? openBikeWindow(entry) : openStationWindow(entry);
+      }
+      if(action === 'move'){
+        if(entry.isRented){ showStatus('nicht verschiebbar'); return; }
+        if(entry.marker.dragging) entry.marker.dragging.enable();
+        entry.marker.options.draggable = true;
+        moveModeEntry = entry;
+        entry.marker.setIcon(iconForEntry(entry));
+        showStatus('ziehen und loslassen');
+      }
+    });
+
+    // --- modal windows ---
+    const overlay = document.getElementById('modalOverlay');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    const modalFooter = document.getElementById('modalFooter');
+
+    function openModal(){ overlay.style.display = 'flex'; }
+    function closeModal(){
+      overlay.style.display = 'none';
+      modalBody.innerHTML = '';
+      modalFooter.innerHTML = '';
+      modalTitle.textContent = 'details';
+    }
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
+
+    function openBikeWindow(entry){
+      modalTitle.textContent = 'geparktes fahrrad';
+      const ro = isAdmin ? '' : 'readonly';
+
+      modalBody.innerHTML = `
+        <div class="label">Nummer</div>
+        <input type="text" id="bikeNumber" ${ro} value="${escapeHtml(entry.data.Nummer)}"/>
+        <div class="label">Name</div>
+        <input type="text" id="bikeName" ${ro} value="${escapeHtml(entry.data.Name)}"/>
+        <div class="label">Farbe</div>
+        <input type="text" id="bikeColor" ${ro} value="${escapeHtml(entry.data.Farbe)}"/>
+        <div class="label">Bemerkung</div>
+        <input type="text" id="bikeRemark" ${ro} value="${escapeHtml(entry.data.Bemerkung)}"/>
+        <div class="label">Schlosscode</div>
+        <input type="text" id="bikeCode" ${ro} value="${escapeHtml(entry.data.Schlosscode)}"/>
+      `;
+
+      if(isAdmin){
+        modalFooter.innerHTML = `
+          <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
+          <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
+        `;
+
+        document.getElementById('bikeSaveBtn').addEventListener('click', async ()=>{
+          const out = {};
+          const v1 = document.getElementById('bikeNumber').value.trim();
+          const v2 = document.getElementById('bikeName').value.trim();
+          const v3 = document.getElementById('bikeColor').value.trim();
+          const v4 = document.getElementById('bikeRemark').value.trim();
+          const v5 = document.getElementById('bikeCode').value.trim();
+          if(v1 !== '') out.bike_number = v1;
+          if(v2 !== '') out.name = v2;
+          if(v3 !== '') out.color = v3;
+          if(v4 !== '') out.remark = v4;
+          if(v5 !== '') out.code = v5;
+          if(Object.keys(out).length) await dbUpdate(entry.dbId, out);
+          closeModal();
+        }, { once:true });
+
+        document.getElementById('bikeDeleteBtn').addEventListener('click', async ()=>{
+          await dbDelete(entry.dbId);
+          closeModal();
+        }, { once:true });
+      }
+      openModal();
+    }
+
+    function openStationWindow(entry){
+      modalTitle.textContent = 'natebikestation';
+      const ro = isAdmin ? '' : 'readonly';
+      modalBody.innerHTML = `
+        <div class="label">Name</div>
+        <textarea id="stationName" ${ro}>${escapeHtml(entry.data.Name)}</textarea>
+      `;
+
+      if(isAdmin){
+        modalFooter.innerHTML = `
+          <button class="btn" id="stationSaveBtn" type="button">speichern</button>
+          <button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>
+        `;
+        document.getElementById('stationSaveBtn').addEventListener('click', async ()=>{
+          const v = document.getElementById('stationName').value.trim();
+          if(v !== '') await dbUpdate(entry.dbId, { content: v });
+          closeModal();
+        }, { once:true });
+
+        document.getElementById('stationDeleteBtn').addEventListener('click', async ()=>{
+          await dbDelete(entry.dbId);
+          closeModal();
+        }, { once:true });
+      }
+      openModal();
+    }
+
+    // --- unlock ---
+    const pwBtn = document.getElementById('pwBtn');
+    const pwInputEl = document.getElementById('pwInput');
+    const pwMsgEl = document.getElementById('pwMsg');
+
+    async function unlock(){
+      const val = (pwInputEl.value || "").trim();
+      if(val !== APP_PASSWORD){
+        pwMsgEl.textContent = "falsches Passwort";
+        pwMsgEl.style.display = 'block';
+        return;
+      }
+      pwMsgEl.style.display = 'none';
+      lockFrame.style.display = 'none';
+      mapFrame.style.display = 'block';
+      setTimeout(()=>map.invalidateSize(), 100);
+
+      const ok = await centerOnDeviceOrKassel(true);
+      if(!ok) showStatus('standort nicht verfügbar – kassel');
+
+      startLocationUpdates();
+      updateAdminUI();
+
+      const rows = await dbLoadAll();
+      rows.forEach((row)=>{ if(!findEntryByDbId(row.id)) addMarkerFromRow(row); });
+    }
+
+    pwBtn.addEventListener('click', unlock);
+    pwInputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') unlock(); });
+
+    updateAdminUI();
+  </script>
+</body>
+</html>
