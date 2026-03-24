@@ -134,7 +134,7 @@
       background: #fff;
       border: 2px solid var(--blue);
       border-radius: 8px;
-      min-width: 210px;
+      min-width: 240px;
       box-shadow: 0 8px 22px rgba(0,0,0,0.14);
       padding: 6px;
       display: none;
@@ -162,7 +162,7 @@
       box-sizing: border-box;
     }
     .modal{
-      width: min(620px, 95vw);
+      width: min(640px, 95vw);
       background: #fff;
       border: 3px solid var(--blue);
       border-radius: 10px;
@@ -184,27 +184,6 @@
     }
     .label{ font-size: 14px; }
 
-    .photoBtn{
-      width: 100px; height: 100px;
-      background: var(--blue);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 800;
-      font-size: 12px;
-      padding: 8px;
-      line-height: 1.15;
-    }
-    .photoPreview{
-      width: 100px; height: 100px;
-      border-radius: 10px;
-      border: 1px solid #cfd7e6;
-      object-fit: contain;
-      background: #fff;
-      display: block;
-    }
-
     .modal-footer{
       display: flex;
       justify-content: flex-end;
@@ -224,6 +203,11 @@
       text-transform: lowercase;
     }
     .btn.danger{ background: var(--danger); }
+    .btn.secondary{
+      background: #e8f0ff;
+      border: 1px solid #b9c6f2;
+      color: var(--blue);
+    }
 
     .statusBar{
       position:absolute;
@@ -237,30 +221,6 @@
       color: #25324a;
       display:none;
       max-width: 70%;
-    }
-
-    @keyframes blinkRing {
-      0%, 100% { opacity: 0.15; transform: translate(-50%,-50%) scale(0.98); }
-      50%      { opacity: 1.00; transform: translate(-50%,-50%) scale(1.08); }
-    }
-
-    /* Bike marker: small position symbol */
-    .posPin{
-      width: 14px; height: 14px;
-      border-radius: 50%;
-      background: var(--blue);
-      border: 2px solid #ffffff;
-      box-sizing: border-box;
-      box-shadow: 0 0 0 2px rgba(0,74,149,0.35);
-    }
-    .posPin.rented{
-      background: var(--rentRed);
-      box-shadow: 0 0 0 2px rgba(215,25,28,0.35);
-    }
-    .posPin.move{
-      animation: blinkRing 0.9s infinite ease-in-out;
-      border-color: var(--blinkRed);
-      box-shadow: 0 0 0 2px rgba(255,0,0,0.25);
     }
 
     /* Locate button */
@@ -287,6 +247,73 @@
     .crosshair:before, .crosshair:after{ content:""; position:absolute; background: var(--blue); }
     .crosshair:before{ width: 2px; height: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
     .crosshair:after{ height: 2px; width: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+
+    /* Pin shapes (inverted droplet) */
+    .pinWrap{
+      position: relative;
+      width: 18px;
+      height: 26px;
+      pointer-events: none;
+    }
+    .pin{
+      position:absolute;
+      left:50%; top:2px;
+      width: 14px; height: 14px;
+      transform: translateX(-50%) rotate(45deg);
+      border-radius: 50% 50% 50% 0;
+      background: var(--blue);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+    }
+    .pin::after{
+      content:"";
+      position:absolute;
+      width: 6px; height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      top: 4px; left: 4px;
+      transform: rotate(-45deg);
+      opacity: 0.9;
+    }
+    .pin.red{ background: var(--rentRed); }
+    .pin.move{
+      outline: 2px solid var(--blinkRed);
+      outline-offset: 2px;
+      animation: pulsePin 0.9s infinite ease-in-out;
+    }
+    @keyframes pulsePin{
+      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: translateX(-50%) rotate(45deg) scale(1.0); }
+      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: translateX(-50%) rotate(45deg) scale(1.08); }
+    }
+
+    /* Station pins (bigger with logo inside) */
+    .stationWrap{
+      position: relative;
+      width: 40px;
+      height: 54px;
+      pointer-events: none;
+    }
+    .stationPin{
+      position:absolute;
+      left:50%; top:6px;
+      width: 34px; height: 34px;
+      transform: translateX(-50%) rotate(45deg);
+      border-radius: 50% 50% 50% 0;
+      background: #fff;
+      border: 3px solid var(--blue);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      overflow: hidden;
+    }
+    .stationPin img{
+      position:absolute;
+      width: 28px; height: 28px;
+      left: 50%; top: 50%;
+      transform: translate(-50%,-50%) rotate(-45deg);
+      object-fit: contain;
+    }
+    .stationPin.move{
+      border-color: var(--blinkRed);
+      animation: pulsePin 0.9s infinite ease-in-out;
+    }
   </style>
 </head>
 
@@ -319,11 +346,13 @@
     </div>
   </div>
 
+  <!-- Map menu (admin only) -->
   <div id="ctxMenuMap" class="ctx-menu">
     <div class="ctx-item" data-action="bike" id="ctxBike">neues Rad hinzufügen</div>
     <div class="ctx-item" data-action="note">natebikestation hinzufügen</div>
   </div>
 
+  <!-- Marker menu -->
   <div id="ctxMenuMarker" class="ctx-menu">
     <div class="ctx-item" data-action="open">öffnen</div>
     <div class="ctx-item" data-action="move">verschieben</div>
@@ -354,13 +383,10 @@
     </div>
   </div>
 
-  <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
-
   <script>
+    // --- config ---
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
-    const SUPABASE_BUCKET = "marker-photos";
-
     const APP_PASSWORD = "drahtesel";
     const ADMIN_PASSWORD = "eseldraht";
 
@@ -368,23 +394,86 @@
     const DEFAULT_ZOOM = 13;
     const LOCATION_REFRESH_MS = 5000;
 
+    // --- supabase ---
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    function escapeHtml(str){
-      return String(str ?? "")
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'","&#039;");
+    // --- map ---
+    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
+
+    // Panes (station behind bike)
+    map.createPane('stationPane');
+    map.getPane('stationPane').style.zIndex = 380;
+    map.createPane('bikePane');
+    map.getPane('bikePane').style.zIndex = 420;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+
+    // Locate control
+    const LocateControl = L.Control.extend({
+      options: { position: 'bottomright' },
+      onAdd: function() {
+        const btn = L.DomUtil.create('div', 'locateBtn');
+        btn.title = 'Standort zentrieren';
+        btn.innerHTML = '<div class="crosshair"></div>';
+        L.DomEvent.disableClickPropagation(btn);
+        L.DomEvent.on(btn, 'click', async () => {
+          const ok = await centerOnDeviceOrKassel(true);
+          if(!ok) showStatus('standort nicht verfügbar');
+        });
+        return btn;
+      }
+    });
+    map.addControl(new LocateControl());
+
+    // device location marker (red ring)
+    let locationMarker = null;
+    function setOrUpdateLocationMarker(latlng){
+      if(!locationMarker){
+        locationMarker = L.circleMarker(latlng, { radius: 10, color:'#ff0000', weight:3, fillOpacity:0 }).addTo(map);
+      }else{
+        locationMarker.setLatLng(latlng);
+      }
     }
-    function randId(n=10){
-      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-      let s = "";
-      for(let i=0;i<n;i++) s += chars[Math.floor(Math.random()*chars.length)];
-      return s;
+    let lastDeviceLatLng = null;
+    let locationTimer = null;
+
+    async function getDeviceLatLng(timeoutMs=4000){
+      return new Promise((resolve) => {
+        let done=false;
+        const ok = (e)=>{ if(done) return; done=true; resolve(e.latlng); };
+        const fail = ()=>{ if(done) return; done=true; resolve(null); };
+        map.once('locationfound', ok);
+        map.once('locationerror', fail);
+        map.locate({ setView:false, watch:false, enableHighAccuracy:true, maximumAge:15000, timeout: timeoutMs });
+        setTimeout(fail, timeoutMs+800);
+      });
+    }
+    async function refreshDeviceLocationOnce(){
+      const ll = await getDeviceLatLng(4000);
+      if(ll){
+        lastDeviceLatLng = ll;
+        setOrUpdateLocationMarker(ll);
+        return true;
+      }
+      return false;
+    }
+    function startLocationUpdates(){
+      if(locationTimer) clearInterval(locationTimer);
+      refreshDeviceLocationOnce();
+      locationTimer = setInterval(refreshDeviceLocationOnce, LOCATION_REFRESH_MS);
+    }
+    async function centerOnDeviceOrKassel(forceCenter=false){
+      const ok = await refreshDeviceLocationOnce();
+      if(ok && forceCenter){
+        map.setView(lastDeviceLatLng, 16);
+        return true;
+      }
+      if(ok) return true;
+      if(forceCenter) map.setView(KASSEL_CENTER, DEFAULT_ZOOM);
+      return false;
     }
 
+    // --- ui helpers ---
     const statusBar = document.getElementById('statusBar');
     let statusTimer = null;
     function showStatus(msg){
@@ -393,8 +482,16 @@
       clearTimeout(statusTimer);
       statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
     }
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
+    }
 
-    // Admin UI
+    // --- admin ---
     let isAdmin = false;
     const adminBtn = document.getElementById('adminBtn');
     const adminOverlay = document.getElementById('adminOverlay');
@@ -423,12 +520,9 @@
       updateAdminUI();
       showStatus('admin abgemeldet');
     }
-    adminBtn.addEventListener('click', () => {
-      if(isAdmin) logoutAdmin();
-      else openAdminModal();
-    });
+    adminBtn.addEventListener('click', ()=>{ isAdmin ? logoutAdmin() : openAdminModal(); });
     adminCancelBtn.addEventListener('click', closeAdminModal);
-    adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
+    adminOverlay.addEventListener('click', (e)=>{ if(e.target===adminOverlay) closeAdminModal(); });
     function confirmAdmin(){
       const val = (adminPwInput.value || "").trim();
       if(val !== ADMIN_PASSWORD){
@@ -442,99 +536,31 @@
       showStatus('admin aktiv');
     }
     adminOkBtn.addEventListener('click', confirmAdmin);
-    adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
+    adminPwInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmAdmin(); });
 
-    // Lock gate
-    const lockFrame = document.getElementById('lockFrame');
-    const mapFrame = document.getElementById('mapFrame');
-    const pwInput = document.getElementById('pwInput');
-    const pwBtn = document.getElementById('pwBtn');
-    const pwMsg = document.getElementById('pwMsg');
-
-    // Map
-    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-
-    // Locate control
-    const LocateControl = L.Control.extend({
-      options: { position: 'bottomright' },
-      onAdd: function() {
-        const btn = L.DomUtil.create('div', 'locateBtn');
-        btn.title = 'Standort zentrieren';
-        btn.innerHTML = '<div class="crosshair"></div>';
-        L.DomEvent.disableClickPropagation(btn);
-        L.DomEvent.on(btn, 'click', async () => {
-          const ok = await centerOnDeviceOrKassel(true);
-          if(!ok) showStatus('standort nicht verfügbar');
-        });
-        return btn;
-      }
-    });
-    map.addControl(new LocateControl());
-
-    // device location marker
-    let locationMarker = null;
-    function setOrUpdateLocationMarker(latlng){
-      if(!locationMarker){
-        locationMarker = L.circleMarker(latlng, { radius: 10, color:'#ff0000', weight:3, fillOpacity:0 }).addTo(map);
-      }else{
-        locationMarker.setLatLng(latlng);
-      }
+    // --- panes icons ---
+    function bikePinIcon({ rented=false, moving=false } = {}){
+      const cls = `pin ${rented ? 'red' : ''} ${moving ? 'move' : ''}`;
+      return L.divIcon({
+        className: '',
+        html: `<div class="pinWrap"><div class="${cls}"></div></div>`,
+        iconSize: [18, 26],
+        iconAnchor: [9, 24] // tip of the pin
+      });
     }
-
-    let lastDeviceLatLng = null;
-    let locationTimer = null;
-
-    async function getDeviceLatLng(timeoutMs=4000){
-      return new Promise((resolve) => {
-        let done=false;
-        const ok = (e)=>{ if(done) return; done=true; resolve(e.latlng); };
-        const fail = ()=>{ if(done) return; done=true; resolve(null); };
-        map.once('locationfound', ok);
-        map.once('locationerror', fail);
-        map.locate({ setView:false, watch:false, enableHighAccuracy:true, maximumAge:15000, timeout: timeoutMs });
-        setTimeout(fail, timeoutMs+800);
+    function stationPinIcon({ moving=false } = {}){
+      const cls = `stationPin ${moving ? 'move' : ''}`;
+      return L.divIcon({
+        className: '',
+        html: `<div class="stationWrap"><div class="${cls}"><img src="logo.png" alt=""/></div></div>`,
+        iconSize: [40, 54],
+        iconAnchor: [20, 50]
       });
     }
 
-    async function refreshDeviceLocationOnce(){
-      const ll = await getDeviceLatLng(4000);
-      if(ll){
-        lastDeviceLatLng = ll;
-        setOrUpdateLocationMarker(ll);
-        return true;
-      }
-      return false;
-    }
-
-    function startLocationUpdates(){
-      if(locationTimer) clearInterval(locationTimer);
-      refreshDeviceLocationOnce();
-      locationTimer = setInterval(refreshDeviceLocationOnce, LOCATION_REFRESH_MS);
-    }
-
-    async function centerOnDeviceOrKassel(forceCenter=false){
-      const ok = await refreshDeviceLocationOnce();
-      if(ok && forceCenter){
-        map.setView(lastDeviceLatLng, 16);
-        return true;
-      }
-      if(ok) return true;
-      if(forceCenter) map.setView(KASSEL_CENTER, DEFAULT_ZOOM);
-      return false;
-    }
-
-    // Icons
-    const stationIcon = L.icon({ iconUrl:'logo.png', iconSize:[40,40], iconAnchor:[20,20] });
-    function makePosIcon(rented=false, moving=false){
-      const cls = `posPin ${rented ? 'rented' : ''} ${moving ? 'move' : ''}`;
-      return L.divIcon({ className:'', html:`<div class="${cls}"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
-    }
-
-    // Marker state
+    // --- marker state ---
     const markers = new Map(); // leafletId -> entry
     let moveModeEntry = null;
-    let pendingPhotoTarget = null;
 
     function findEntryByDbId(dbId){
       for (const entry of markers.values()){
@@ -546,10 +572,9 @@
     function iconForEntry(entry){
       const moving = (moveModeEntry && moveModeEntry === entry);
       if(entry.type === 'bike'){
-        return makePosIcon(entry.isRented, moving);
+        return bikePinIcon({ rented: !!entry.isRented, moving });
       }
-      // station
-      return stationIcon;
+      return stationPinIcon({ moving });
     }
 
     function applyRowToEntry(entry, row){
@@ -564,15 +589,12 @@
         entry.data.Farbe = row.color ?? entry.data.Farbe;
         entry.data.Bemerkung = row.remark ?? entry.data.Bemerkung;
         entry.data.Schlosscode = row.code ?? entry.data.Schlosscode;
-        entry.photo_url = row.photo_url ?? entry.photo_url ?? null;
       } else {
-        entry.data.Name = row.content ?? entry.data.Name; // NOTE: content shown as Name
+        entry.data.Name = row.content ?? entry.data.Name; // station "Name"
       }
-
       entry.marker.setIcon(iconForEntry(entry));
     }
 
-    // DB ops
     async function dbLoadAll(){
       const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending:true });
       if(error) throw error;
@@ -593,78 +615,44 @@
       if(error) throw error;
     }
 
-    async function finalizeMarkerMove(entry){
-      try{
-        const ll = entry.marker.getLatLng();
-        await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
-        showStatus('position gespeichert');
-      }catch(err){
-        console.error(err);
-        showStatus('fehler beim speichern der position');
-      }finally{
-        if(entry.marker.dragging) entry.marker.dragging.disable();
-        entry.marker.options.draggable = false;
-        entry.marker.setIcon(iconForEntry(entry));
-        moveModeEntry = null;
-      }
-    }
-
-    function setMarkerDraggableOnce(entry){
-      if(entry.isRented){
-        showStatus('marker ist nicht verschiebbar (ausgeliehen)');
-        return;
-      }
-      entry.marker.setIcon(iconForEntry(entry));
-      if(entry.marker.dragging) entry.marker.dragging.enable();
-      entry.marker.options.draggable = true;
-      moveModeEntry = entry;
-      showStatus('marker verschieben: ziehen und loslassen');
-    }
-
     function wireMarker(entry){
       const m = entry.marker;
       m.options.draggable = false;
       if(m.dragging) m.dragging.disable();
 
-      m.on('dragstart', () => map.dragging.disable());
-      m.on('dragend', async () => {
+      m.on('dragstart', ()=>map.dragging.disable());
+      m.on('dragend', async ()=>{
         map.dragging.enable();
-        if(moveModeEntry === entry) await finalizeMarkerMove(entry);
+        if(moveModeEntry === entry){
+          const ll = m.getLatLng();
+          await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
+          if(m.dragging) m.dragging.disable();
+          m.options.draggable = false;
+          moveModeEntry = null;
+          m.setIcon(iconForEntry(entry));
+          showStatus('position gespeichert');
+        }
       });
 
-      m.on('contextmenu', (e) => {
-        L.DomEvent.stop(e);
-        openMarkerMenu(e.originalEvent, entry);
-      });
-
-      m.on('click', (e) => {
-        L.DomEvent.stop(e);
-        if(entry.type === 'bike') openBikeWindow(entry);
-        else openStationWindow(entry);
-      });
+      m.on('contextmenu', (e)=>{ L.DomEvent.stop(e); openMarkerMenu(e.originalEvent, entry); });
+      m.on('click', (e)=>{ L.DomEvent.stop(e); entry.type === 'bike' ? openBikeWindow(entry) : openStationWindow(entry); });
     }
 
     function addMarkerFromRow(row){
       const entry = {
-        type: row.type, // 'bike' or 'note' (station)
-        marker: null,
+        type: row.type, // 'bike' or 'note'
         dbId: row.id,
-        photo_url: row.photo_url || null,
         isRented: !!row.is_rented,
         data: row.type === 'bike'
-          ? {
-              Nummer: row.bike_number ?? '',
-              Name: row.name ?? 'natebike',
-              Farbe: row.color ?? 'undefiniert',
-              Bemerkung: row.remark ?? 'keine',
-              Schlosscode: row.code ?? ''
-            }
-          : { Name: row.content ?? ' ' } // NOTE: content shown as Name
+          ? { Nummer: row.bike_number ?? '', Name: row.name ?? 'natebike', Farbe: row.color ?? 'undefiniert', Bemerkung: row.remark ?? 'keine', Schlosscode: row.code ?? '' }
+          : { Name: row.content ?? ' ' }
       };
+
+      const pane = (row.type === 'bike') ? 'bikePane' : 'stationPane';
 
       entry.marker = L.marker(
         { lat: row.lat, lng: row.lng },
-        { icon: iconForEntry(entry), draggable: false }
+        { icon: iconForEntry(entry), draggable:false, pane }
       ).addTo(map);
 
       markers.set(entry.marker._leaflet_id, entry);
@@ -673,38 +661,29 @@
     }
 
     async function createBikeAt(latlng){
-      if(!isAdmin){ showStatus('nur admin kann räder erstellen'); return; }
+      if(!isAdmin){ showStatus('nur admin'); return; }
       const row = await dbInsert('bike', latlng.lat, latlng.lng);
-      const entry = addMarkerFromRow(row);
-      openBikeWindow(entry);
-      showStatus('rad erstellt');
+      addMarkerFromRow(row);
     }
-
     async function createStationAt(latlng){
+      if(!isAdmin){ showStatus('nur admin'); return; }
       const row = await dbInsert('note', latlng.lat, latlng.lng);
-      const entry = addMarkerFromRow(row);
-      openStationWindow(entry);
-      showStatus('natebikestation erstellt');
+      addMarkerFromRow(row);
     }
 
-    // Realtime
-    const realtimeChannel = sb
-      .channel('markers-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'markers' }, (payload) => {
+    // --- realtime ---
+    sb.channel('markers-realtime')
+      .on('postgres_changes', { event:'*', schema:'public', table:'markers' }, (payload)=>{
         if(payload.eventType === 'INSERT'){
           const row = payload.new;
           if(findEntryByDbId(row.id)) return;
           addMarkerFromRow(row);
-          return;
-        }
-        if(payload.eventType === 'UPDATE'){
+        } else if(payload.eventType === 'UPDATE'){
           const row = payload.new;
           const entry = findEntryByDbId(row.id);
           if(!entry){ addMarkerFromRow(row); return; }
           applyRowToEntry(entry, row);
-          return;
-        }
-        if(payload.eventType === 'DELETE'){
+        } else if(payload.eventType === 'DELETE'){
           const row = payload.old;
           const entry = findEntryByDbId(row.id);
           if(!entry) return;
@@ -714,13 +693,13 @@
       })
       .subscribe();
 
-    // Menus
+    // --- menus ---
     const ctxMenuMap = document.getElementById('ctxMenuMap');
     const ctxMenuMarker = document.getElementById('ctxMenuMarker');
     let ctxMapLatLng = null;
     let ctxMarkerEntry = null;
 
-    function hideMenusOnly(){
+    function hideMenus(){
       ctxMenuMap.style.display = 'none';
       ctxMenuMarker.style.display = 'none';
       ctxMarkerEntry = null;
@@ -728,60 +707,68 @@
 
     map.getContainer().addEventListener('contextmenu', (e)=>e.preventDefault());
 
-    map.on('contextmenu', (e) => {
+    map.on('contextmenu', (e)=>{
+      // admin-only menu
+      if(!isAdmin) return;
       ctxMapLatLng = e.latlng;
       const oe = e.originalEvent;
-      hideMenusOnly();
+      hideMenus();
       ctxMenuMap.style.left = `${oe.clientX}px`;
       ctxMenuMap.style.top  = `${oe.clientY}px`;
       ctxMenuMap.style.display = 'block';
-      updateAdminUI();
     });
 
     ctxMenuMap.addEventListener('pointerdown', (e)=>e.stopPropagation());
     ctxMenuMarker.addEventListener('pointerdown', (e)=>e.stopPropagation());
 
-    map.on('click', hideMenusOnly);
-    map.on('movestart', hideMenusOnly);
-    document.addEventListener('pointerdown', (e) => {
-      if (!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target)) hideMenusOnly();
+    map.on('click', hideMenus);
+    map.on('movestart', hideMenus);
+    document.addEventListener('pointerdown', (e)=>{
+      if(!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target)) hideMenus();
     });
 
-    ctxMenuMap.addEventListener('pointerdown', async (e) => {
+    ctxMenuMap.addEventListener('pointerdown', async (e)=>{
       const item = e.target.closest('.ctx-item');
       if(!item || !ctxMapLatLng) return;
       const action = item.dataset.action;
-      hideMenusOnly();
+      hideMenus();
       if(action === 'bike') await createBikeAt(ctxMapLatLng);
       if(action === 'note') await createStationAt(ctxMapLatLng);
     });
 
     function openMarkerMenu(mouseEvent, entry){
-      hideMenusOnly();
+      hideMenus();
       ctxMarkerEntry = entry;
       ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
       ctxMenuMarker.style.top  = `${mouseEvent.clientY}px`;
       ctxMenuMarker.style.display = 'block';
     }
 
-    ctxMenuMarker.addEventListener('pointerdown', (e) => {
+    ctxMenuMarker.addEventListener('pointerdown', (e)=>{
       const item = e.target.closest('.ctx-item');
       if(!item || !ctxMarkerEntry) return;
       const action = item.dataset.action;
       const entry = ctxMarkerEntry;
-      hideMenusOnly();
+      hideMenus();
+
       if(action === 'open'){
-        if(entry.type === 'bike') openBikeWindow(entry);
-        else openStationWindow(entry);
+        entry.type === 'bike' ? openBikeWindow(entry) : openStationWindow(entry);
       }
-      if(action === 'move') setMarkerDraggableOnce(entry);
+      if(action === 'move'){
+        if(entry.isRented){ showStatus('nicht verschiebbar'); return; }
+        if(entry.marker.dragging) entry.marker.dragging.enable();
+        entry.marker.options.draggable = true;
+        moveModeEntry = entry;
+        entry.marker.setIcon(iconForEntry(entry));
+        showStatus('ziehen und loslassen');
+      }
     });
 
-    // Modal
+    // --- modal windows ---
     const overlay = document.getElementById('modalOverlay');
+    const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
-    const modalTitle = document.getElementById('modalTitle');
 
     function openModal(){ overlay.style.display = 'flex'; }
     function closeModal(){
@@ -793,24 +780,20 @@
     overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
 
     function openBikeWindow(entry){
-      modalTitle.textContent = 'geparktes rad';
+      modalTitle.textContent = 'geparktes fahrrad';
       const ro = isAdmin ? '' : 'readonly';
 
       modalBody.innerHTML = `
         <div class="label">Nummer</div>
-        <input type="text" value="${escapeHtml(entry.data.Nummer)}" ${ro} id="bikeNumber"/>
-
+        <input type="text" id="bikeNumber" ${ro} value="${escapeHtml(entry.data.Nummer)}"/>
         <div class="label">Name</div>
-        <input type="text" value="${escapeHtml(entry.data.Name)}" ${ro} id="bikeName"/>
-
+        <input type="text" id="bikeName" ${ro} value="${escapeHtml(entry.data.Name)}"/>
         <div class="label">Farbe</div>
-        <input type="text" value="${escapeHtml(entry.data.Farbe)}" ${ro} id="bikeColor"/>
-
+        <input type="text" id="bikeColor" ${ro} value="${escapeHtml(entry.data.Farbe)}"/>
         <div class="label">Bemerkung</div>
-        <input type="text" value="${escapeHtml(entry.data.Bemerkung)}" ${ro} id="bikeRemark"/>
-
+        <input type="text" id="bikeRemark" ${ro} value="${escapeHtml(entry.data.Bemerkung)}"/>
         <div class="label">Schlosscode</div>
-        <input type="text" value="${escapeHtml(entry.data.Schlosscode)}" ${ro} id="bikeCode"/>
+        <input type="text" id="bikeCode" ${ro} value="${escapeHtml(entry.data.Schlosscode)}"/>
       `;
 
       if(isAdmin){
@@ -819,44 +802,33 @@
           <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
         `;
 
-        document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
-          const numberVal = document.getElementById('bikeNumber').value.trim();
-          const nameVal = document.getElementById('bikeName').value.trim();
-          const colorVal = document.getElementById('bikeColor').value.trim();
-          const remarkVal = document.getElementById('bikeRemark').value.trim();
-          const codeVal = document.getElementById('bikeCode').value.trim();
-
+        document.getElementById('bikeSaveBtn').addEventListener('click', async ()=>{
           const out = {};
-          if(numberVal !== '') out.bike_number = numberVal;
-          if(nameVal !== '') out.name = nameVal;
-          if(colorVal !== '') out.color = colorVal;
-          if(remarkVal !== '') out.remark = remarkVal;
-          if(codeVal !== '') out.code = codeVal;
-
+          const v1 = document.getElementById('bikeNumber').value.trim();
+          const v2 = document.getElementById('bikeName').value.trim();
+          const v3 = document.getElementById('bikeColor').value.trim();
+          const v4 = document.getElementById('bikeRemark').value.trim();
+          const v5 = document.getElementById('bikeCode').value.trim();
+          if(v1 !== '') out.bike_number = v1;
+          if(v2 !== '') out.name = v2;
+          if(v3 !== '') out.color = v3;
+          if(v4 !== '') out.remark = v4;
+          if(v5 !== '') out.code = v5;
           if(Object.keys(out).length) await dbUpdate(entry.dbId, out);
-          showStatus('gespeichert');
           closeModal();
         }, { once:true });
 
-        document.getElementById('bikeDeleteBtn').addEventListener('click', async () => {
+        document.getElementById('bikeDeleteBtn').addEventListener('click', async ()=>{
           await dbDelete(entry.dbId);
-          map.removeLayer(entry.marker);
-          markers.delete(entry.marker._leaflet_id);
           closeModal();
         }, { once:true });
-      } else {
-        modalFooter.innerHTML = ``;
       }
-
       openModal();
     }
 
-    // natebikestation window: only admin can edit/delete
     function openStationWindow(entry){
       modalTitle.textContent = 'natebikestation';
-
       const ro = isAdmin ? '' : 'readonly';
-
       modalBody.innerHTML = `
         <div class="label">Name</div>
         <textarea id="stationName" ${ro}>${escapeHtml(entry.data.Name)}</textarea>
@@ -867,35 +839,33 @@
           <button class="btn" id="stationSaveBtn" type="button">speichern</button>
           <button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>
         `;
-
-        document.getElementById('stationSaveBtn').addEventListener('click', async () => {
+        document.getElementById('stationSaveBtn').addEventListener('click', async ()=>{
           const v = document.getElementById('stationName').value.trim();
           if(v !== '') await dbUpdate(entry.dbId, { content: v });
           closeModal();
         }, { once:true });
 
-        document.getElementById('stationDeleteBtn').addEventListener('click', async () => {
+        document.getElementById('stationDeleteBtn').addEventListener('click', async ()=>{
           await dbDelete(entry.dbId);
-          map.removeLayer(entry.marker);
-          markers.delete(entry.marker._leaflet_id);
           closeModal();
         }, { once:true });
-      } else {
-        modalFooter.innerHTML = ``;
       }
-
       openModal();
     }
 
-    // unlock
+    // --- unlock ---
+    const pwBtn = document.getElementById('pwBtn');
+    const pwInputEl = document.getElementById('pwInput');
+    const pwMsgEl = document.getElementById('pwMsg');
+
     async function unlock(){
-      const val = (pwInput.value || "").trim();
+      const val = (pwInputEl.value || "").trim();
       if(val !== APP_PASSWORD){
-        pwMsg.textContent = "falsches Passwort";
-        pwMsg.style.display = 'block';
+        pwMsgEl.textContent = "falsches Passwort";
+        pwMsgEl.style.display = 'block';
         return;
       }
-      pwMsg.style.display = 'none';
+      pwMsgEl.style.display = 'none';
       lockFrame.style.display = 'none';
       mapFrame.style.display = 'block';
       setTimeout(()=>map.invalidateSize(), 100);
@@ -907,11 +877,11 @@
       updateAdminUI();
 
       const rows = await dbLoadAll();
-      rows.forEach((row) => { if(!findEntryByDbId(row.id)) addMarkerFromRow(row); });
+      rows.forEach((row)=>{ if(!findEntryByDbId(row.id)) addMarkerFromRow(row); });
     }
 
     pwBtn.addEventListener('click', unlock);
-    pwInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') unlock(); });
+    pwInputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') unlock(); });
 
     updateAdminUI();
   </script>
