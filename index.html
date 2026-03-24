@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="de">
 <head>
@@ -6,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>natebike</title>
 
-  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +17,6 @@
     crossorigin=""
   ></script>
 
-  <!-- Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
@@ -324,7 +321,7 @@
 
   <div id="ctxMenuMap" class="ctx-menu">
     <div class="ctx-item" data-action="bike" id="ctxBike">neues Rad hinzufügen</div>
-    <div class="ctx-item" data-action="note">Notitz hinzufügen</div>
+    <div class="ctx-item" data-action="note">natebikestation hinzufügen</div>
   </div>
 
   <div id="ctxMenuMarker" class="ctx-menu">
@@ -360,7 +357,6 @@
   <input id="fileInput" type="file" accept="image/jpeg" style="display:none" />
 
   <script>
-    // ---------------- CONFIG ----------------
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
     const SUPABASE_BUCKET = "marker-photos";
@@ -372,14 +368,94 @@
     const DEFAULT_ZOOM = 13;
     const LOCATION_REFRESH_MS = 5000;
 
-    // ---------------- SUPABASE ----------------
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ---------------- MAP ----------------
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
+    }
+    function randId(n=10){
+      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+      let s = "";
+      for(let i=0;i<n;i++) s += chars[Math.floor(Math.random()*chars.length)];
+      return s;
+    }
+
+    const statusBar = document.getElementById('statusBar');
+    let statusTimer = null;
+    function showStatus(msg){
+      statusBar.textContent = msg;
+      statusBar.style.display = 'block';
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
+    }
+
+    // Admin UI
+    let isAdmin = false;
+    const adminBtn = document.getElementById('adminBtn');
+    const adminOverlay = document.getElementById('adminOverlay');
+    const adminPwInput = document.getElementById('adminPwInput');
+    const adminMsg = document.getElementById('adminMsg');
+    const adminOkBtn = document.getElementById('adminOkBtn');
+    const adminCancelBtn = document.getElementById('adminCancelBtn');
+
+    function updateAdminUI(){
+      adminBtn.classList.toggle('isAdmin', isAdmin);
+      const ctxBike = document.getElementById('ctxBike');
+      if(ctxBike){
+        if(isAdmin) ctxBike.classList.remove('disabled');
+        else ctxBike.classList.add('disabled');
+      }
+    }
+    function openAdminModal(){
+      adminMsg.style.display = 'none';
+      adminPwInput.value = '';
+      adminOverlay.style.display = 'flex';
+      adminPwInput.focus();
+    }
+    function closeAdminModal(){ adminOverlay.style.display = 'none'; }
+    function logoutAdmin(){
+      isAdmin = false;
+      updateAdminUI();
+      showStatus('admin abgemeldet');
+    }
+    adminBtn.addEventListener('click', () => {
+      if(isAdmin) logoutAdmin();
+      else openAdminModal();
+    });
+    adminCancelBtn.addEventListener('click', closeAdminModal);
+    adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
+    function confirmAdmin(){
+      const val = (adminPwInput.value || "").trim();
+      if(val !== ADMIN_PASSWORD){
+        adminMsg.textContent = "falsches Passwort";
+        adminMsg.style.display = 'block';
+        return;
+      }
+      isAdmin = true;
+      updateAdminUI();
+      closeAdminModal();
+      showStatus('admin aktiv');
+    }
+    adminOkBtn.addEventListener('click', confirmAdmin);
+    adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
+
+    // Lock gate
+    const lockFrame = document.getElementById('lockFrame');
+    const mapFrame = document.getElementById('mapFrame');
+    const pwInput = document.getElementById('pwInput');
+    const pwBtn = document.getElementById('pwBtn');
+    const pwMsg = document.getElementById('pwMsg');
+
+    // Map
     const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
-    // Locate control (crosshair)
+    // Locate control
     const LocateControl = L.Control.extend({
       options: { position: 'bottomright' },
       onAdd: function() {
@@ -396,7 +472,7 @@
     });
     map.addControl(new LocateControl());
 
-    // Device location marker (red ring)
+    // device location marker
     let locationMarker = null;
     function setOrUpdateLocationMarker(latlng){
       if(!locationMarker){
@@ -448,93 +524,14 @@
       return false;
     }
 
-    // ---------------- UI helpers ----------------
-    function randId(n=10){
-      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-      let s = "";
-      for(let i=0;i<n;i++) s += chars[Math.floor(Math.random()*chars.length)];
-      return s;
-    }
-    function escapeHtml(str){
-      return String(str ?? "")
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'","&#039;");
-    }
-
-    const statusBar = document.getElementById('statusBar');
-    let statusTimer = null;
-    function showStatus(msg){
-      statusBar.textContent = msg;
-      statusBar.style.display = 'block';
-      clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
-    }
-
-    // ---------------- ADMIN ----------------
-    let isAdmin = false;
-    const adminBtn = document.getElementById('adminBtn');
-    const adminOverlay = document.getElementById('adminOverlay');
-    const adminPwInput = document.getElementById('adminPwInput');
-    const adminMsg = document.getElementById('adminMsg');
-    const adminOkBtn = document.getElementById('adminOkBtn');
-    const adminCancelBtn = document.getElementById('adminCancelBtn');
-
-    function updateAdminUI(){
-      adminBtn.classList.toggle('isAdmin', isAdmin);
-      const ctxBike = document.getElementById('ctxBike');
-      if(ctxBike){
-        if(isAdmin) ctxBike.classList.remove('disabled');
-        else ctxBike.classList.add('disabled');
-      }
-    }
-    function openAdminModal(){
-      adminMsg.style.display = 'none';
-      adminPwInput.value = '';
-      adminOverlay.style.display = 'flex';
-      adminPwInput.focus();
-    }
-    function closeAdminModal(){ adminOverlay.style.display = 'none'; }
-    function logoutAdmin(){
-      isAdmin = false;
-      updateAdminUI();
-      showStatus('admin abgemeldet');
-    }
-    adminBtn.addEventListener('click', () => {
-      if(isAdmin) logoutAdmin();
-      else openAdminModal();
-    });
-    adminCancelBtn.addEventListener('click', closeAdminModal);
-    adminOverlay.addEventListener('click', (e) => { if(e.target === adminOverlay) closeAdminModal(); });
-
-    function confirmAdmin(){
-      const val = (adminPwInput.value || "").trim();
-      if(val !== ADMIN_PASSWORD){
-        adminMsg.textContent = "falsches Passwort";
-        adminMsg.style.display = 'block';
-        return;
-      }
-      isAdmin = true;
-      updateAdminUI();
-      closeAdminModal();
-      showStatus('admin aktiv');
-    }
-    adminOkBtn.addEventListener('click', confirmAdmin);
-    adminPwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAdmin(); });
-
-    // ---------------- ICONS ----------------
-    // Notes use the old "bike" icon (=logo)
-    const logoIcon = L.icon({ iconUrl:'logo.png', iconSize:[40,40], iconAnchor:[20,20] });
-
-    // Bikes use small position marker
+    // Icons
+    const stationIcon = L.icon({ iconUrl:'logo.png', iconSize:[40,40], iconAnchor:[20,20] });
     function makePosIcon(rented=false, moving=false){
       const cls = `posPin ${rented ? 'rented' : ''} ${moving ? 'move' : ''}`;
       return L.divIcon({ className:'', html:`<div class="${cls}"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
     }
 
-    // ---------------- DATA / MARKERS ----------------
+    // Marker state
     const markers = new Map(); // leafletId -> entry
     let moveModeEntry = null;
     let pendingPhotoTarget = null;
@@ -551,8 +548,8 @@
       if(entry.type === 'bike'){
         return makePosIcon(entry.isRented, moving);
       }
-      // note
-      return logoIcon;
+      // station
+      return stationIcon;
     }
 
     function applyRowToEntry(entry, row){
@@ -569,7 +566,7 @@
         entry.data.Schlosscode = row.code ?? entry.data.Schlosscode;
         entry.photo_url = row.photo_url ?? entry.photo_url ?? null;
       } else {
-        entry.data.Inhalt = row.content ?? entry.data.Inhalt;
+        entry.data.Name = row.content ?? entry.data.Name; // NOTE: content shown as Name
       }
 
       entry.marker.setIcon(iconForEntry(entry));
@@ -596,7 +593,6 @@
       if(error) throw error;
     }
 
-    // Move mode
     async function finalizeMarkerMove(entry){
       try{
         const ll = entry.marker.getLatLng();
@@ -644,14 +640,13 @@
       m.on('click', (e) => {
         L.DomEvent.stop(e);
         if(entry.type === 'bike') openBikeWindow(entry);
-        else openNoteEditor(entry);
+        else openStationWindow(entry);
       });
     }
 
-    // FIXED: create marker with icon immediately (no icon:null)
     function addMarkerFromRow(row){
       const entry = {
-        type: row.type,
+        type: row.type, // 'bike' or 'note' (station)
         marker: null,
         dbId: row.id,
         photo_url: row.photo_url || null,
@@ -664,7 +659,7 @@
               Bemerkung: row.remark ?? 'keine',
               Schlosscode: row.code ?? ''
             }
-          : { Inhalt: row.content ?? ' ' }
+          : { Name: row.content ?? ' ' } // NOTE: content shown as Name
       };
 
       entry.marker = L.marker(
@@ -685,11 +680,11 @@
       showStatus('rad erstellt');
     }
 
-    async function createNoteAt(latlng){
+    async function createStationAt(latlng){
       const row = await dbInsert('note', latlng.lat, latlng.lng);
       const entry = addMarkerFromRow(row);
-      openNoteEditor(entry);
-      showStatus('notitz erstellt');
+      openStationWindow(entry);
+      showStatus('natebikestation erstellt');
     }
 
     // Realtime
@@ -758,7 +753,7 @@
       const action = item.dataset.action;
       hideMenusOnly();
       if(action === 'bike') await createBikeAt(ctxMapLatLng);
-      if(action === 'note') await createNoteAt(ctxMapLatLng);
+      if(action === 'note') await createStationAt(ctxMapLatLng);
     });
 
     function openMarkerMenu(mouseEvent, entry){
@@ -777,7 +772,7 @@
       hideMenusOnly();
       if(action === 'open'){
         if(entry.type === 'bike') openBikeWindow(entry);
-        else openNoteEditor(entry);
+        else openStationWindow(entry);
       }
       if(action === 'move') setMarkerDraggableOnce(entry);
     });
@@ -787,7 +782,6 @@
     const modalBody = document.getElementById('modalBody');
     const modalFooter = document.getElementById('modalFooter');
     const modalTitle = document.getElementById('modalTitle');
-    const fileInput = document.getElementById('fileInput');
 
     function openModal(){ overlay.style.display = 'flex'; }
     function closeModal(){
@@ -795,19 +789,11 @@
       modalBody.innerHTML = '';
       modalFooter.innerHTML = '';
       modalTitle.textContent = 'details';
-      pendingPhotoTarget = null;
-      fileInput.value = '';
     }
     overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
 
     function openBikeWindow(entry){
       modalTitle.textContent = 'geparktes rad';
-
-      const photoCell = entry.photo_url
-        ? `<img class="photoPreview" id="photoPreview" src="${escapeHtml(entry.photo_url)}" alt="Foto" />`
-        : `<button class="photoBtn" id="photoBtn" type="button">Foto hinzufügen</button>`;
-
-      // order: Nummer; Name; Farbe; Bemerkung; Schlosscode
       const ro = isAdmin ? '' : 'readonly';
 
       modalBody.innerHTML = `
@@ -825,154 +811,81 @@
 
         <div class="label">Schlosscode</div>
         <input type="text" value="${escapeHtml(entry.data.Schlosscode)}" ${ro} id="bikeCode"/>
-
-        <div class="label">Foto</div>
-        <div>${photoCell}</div>
-      `;
-
-      const photoClick = () => { pendingPhotoTarget = entry; fileInput.click(); };
-      const btn = document.getElementById('photoBtn');
-      const prev = document.getElementById('photoPreview');
-      if(btn) btn.addEventListener('click', photoClick);
-      if(prev) prev.addEventListener('click', photoClick);
-
-      modalFooter.innerHTML = `
-        ${isAdmin ? `<button class="btn" id="bikeSaveBtn" type="button">speichern</button>` : ``}
-        ${isAdmin ? `<button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>` : ``}
       `;
 
       if(isAdmin){
-        const saveBtn = document.getElementById('bikeSaveBtn');
-        if(saveBtn){
-          saveBtn.addEventListener('click', async () => {
-            try{
-              saveBtn.disabled = true;
-              const numberVal = document.getElementById('bikeNumber').value.trim();
-              const nameVal = document.getElementById('bikeName').value.trim();
-              const colorVal = document.getElementById('bikeColor').value.trim();
-              const remarkVal = document.getElementById('bikeRemark').value.trim();
-              const codeVal = document.getElementById('bikeCode').value.trim();
+        modalFooter.innerHTML = `
+          <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
+          <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
+        `;
 
-              const out = {};
-              if(numberVal !== '') out.bike_number = numberVal;
-              if(nameVal !== '') out.name = nameVal;
-              if(colorVal !== '') out.color = colorVal;
-              if(remarkVal !== '') out.remark = remarkVal;
-              if(codeVal !== '') out.code = codeVal;
+        document.getElementById('bikeSaveBtn').addEventListener('click', async () => {
+          const numberVal = document.getElementById('bikeNumber').value.trim();
+          const nameVal = document.getElementById('bikeName').value.trim();
+          const colorVal = document.getElementById('bikeColor').value.trim();
+          const remarkVal = document.getElementById('bikeRemark').value.trim();
+          const codeVal = document.getElementById('bikeCode').value.trim();
 
-              if(Object.keys(out).length) await dbUpdate(entry.dbId, out);
-              showStatus('gespeichert');
-              closeModal();
-            }catch(err){
-              console.error(err);
-              showStatus('fehler beim speichern');
-              saveBtn.disabled = false;
-            }
-          }, { once:true });
-        }
+          const out = {};
+          if(numberVal !== '') out.bike_number = numberVal;
+          if(nameVal !== '') out.name = nameVal;
+          if(colorVal !== '') out.color = colorVal;
+          if(remarkVal !== '') out.remark = remarkVal;
+          if(codeVal !== '') out.code = codeVal;
 
-        const delBtn = document.getElementById('bikeDeleteBtn');
-        if(delBtn){
-          delBtn.addEventListener('click', async () => {
-            try{
-              delBtn.disabled = true;
-              await dbDelete(entry.dbId);
-              map.removeLayer(entry.marker);
-              markers.delete(entry.marker._leaflet_id);
-              closeModal();
-            }catch(err){
-              console.error(err);
-              showStatus('fehler beim löschen');
-              delBtn.disabled = false;
-            }
-          }, { once:true });
-        }
+          if(Object.keys(out).length) await dbUpdate(entry.dbId, out);
+          showStatus('gespeichert');
+          closeModal();
+        }, { once:true });
+
+        document.getElementById('bikeDeleteBtn').addEventListener('click', async () => {
+          await dbDelete(entry.dbId);
+          map.removeLayer(entry.marker);
+          markers.delete(entry.marker._leaflet_id);
+          closeModal();
+        }, { once:true });
+      } else {
+        modalFooter.innerHTML = ``;
       }
 
       openModal();
     }
 
-    function openNoteEditor(entry){
-      modalTitle.textContent = 'notitz';
+    // natebikestation window: only admin can edit/delete
+    function openStationWindow(entry){
+      modalTitle.textContent = 'natebikestation';
+
+      const ro = isAdmin ? '' : 'readonly';
+
       modalBody.innerHTML = `
-        <div class="label">Inhalt</div>
-        <textarea id="noteContent">${escapeHtml(entry.data.Inhalt)}</textarea>
-      `;
-      modalFooter.innerHTML = `
-        <button class="btn" id="noteSaveBtn" type="button">speichern</button>
-        <button class="btn danger" id="noteDeleteBtn" type="button">löschen</button>
+        <div class="label">Name</div>
+        <textarea id="stationName" ${ro}>${escapeHtml(entry.data.Name)}</textarea>
       `;
 
-      document.getElementById('noteSaveBtn').addEventListener('click', async () => {
-        const v = document.getElementById('noteContent').value.trim();
-        if(!v){ closeModal(); return; }
-        await dbUpdate(entry.dbId, { content: v });
-        closeModal();
-      }, { once:true });
+      if(isAdmin){
+        modalFooter.innerHTML = `
+          <button class="btn" id="stationSaveBtn" type="button">speichern</button>
+          <button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>
+        `;
 
-      document.getElementById('noteDeleteBtn').addEventListener('click', async () => {
-        await dbDelete(entry.dbId);
-        map.removeLayer(entry.marker);
-        markers.delete(entry.marker._leaflet_id);
-        closeModal();
-      }, { once:true });
+        document.getElementById('stationSaveBtn').addEventListener('click', async () => {
+          const v = document.getElementById('stationName').value.trim();
+          if(v !== '') await dbUpdate(entry.dbId, { content: v });
+          closeModal();
+        }, { once:true });
+
+        document.getElementById('stationDeleteBtn').addEventListener('click', async () => {
+          await dbDelete(entry.dbId);
+          map.removeLayer(entry.marker);
+          markers.delete(entry.marker._leaflet_id);
+          closeModal();
+        }, { once:true });
+      } else {
+        modalFooter.innerHTML = ``;
+      }
 
       openModal();
     }
-
-    // photo upload auto-save
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files && fileInput.files[0];
-      if(!file || !pendingPhotoTarget) return;
-
-      if(file.type !== 'image/jpeg'){
-        alert('Bitte eine JPG-Datei auswählen.');
-        fileInput.value = '';
-        return;
-      }
-      if(file.size > 5*1024*1024){
-        alert('Bitte Maximalgröße von 5 MB beachten!');
-        fileInput.value = '';
-        return;
-      }
-
-      const entry = pendingPhotoTarget;
-      try{
-        showStatus('foto wird hochgeladen…');
-        const dataUrl = await readFileAsDataURL(file);
-        const jpgBlob = await scaleToJpegBlob(dataUrl, 100, 0.9);
-
-        const fileName = `bike_${Date.now()}_${randId(6)}.jpg`;
-        const { error: upErr } = await sb.storage.from(SUPABASE_BUCKET).upload(fileName, jpgBlob, { contentType:'image/jpeg', upsert:false });
-        if(upErr) throw upErr;
-
-        const { data } = sb.storage.from(SUPABASE_BUCKET).getPublicUrl(fileName);
-        await dbUpdate(entry.dbId, { photo_url: data.publicUrl });
-        entry.photo_url = data.publicUrl;
-
-        const photoBtn = document.getElementById('photoBtn');
-        const prev = document.getElementById('photoPreview');
-        if(photoBtn){
-          const img = document.createElement('img');
-          img.className='photoPreview';
-          img.id='photoPreview';
-          img.src = data.publicUrl;
-          img.alt='Foto';
-          img.addEventListener('click', ()=>{ pendingPhotoTarget = entry; fileInput.click(); });
-          photoBtn.replaceWith(img);
-        } else if(prev){
-          prev.src = data.publicUrl;
-        }
-
-        showStatus('foto gespeichert');
-      }catch(err){
-        console.error(err);
-        showStatus('fehler beim foto-upload');
-      }finally{
-        pendingPhotoTarget = null;
-        fileInput.value = '';
-      }
-    });
 
     // unlock
     async function unlock(){
