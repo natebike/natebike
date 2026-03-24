@@ -276,40 +276,6 @@
       0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: scale(1.0); }
       50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: scale(1.12); }
     }
-
-    /* Station marker: 0.75x size, no white border (blue filled circle with logo) */
-    .stationWrap{
-      position: relative;
-      width: 33px;   /* 44 * 0.75 */
-      height: 33px;  /* 44 * 0.75 */
-      pointer-events: none;
-    }
-    .stationCircle{
-      position:absolute;
-      inset: 0;
-      background: var(--blue);
-      border: none;            /* no white rim */
-      border-radius: 50%;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
-      overflow: hidden;
-    }
-    .stationCircle img{
-      position:absolute;
-      width: 22px; height: 22px; /* 30 * 0.75 ~ 22.5 */
-      left: 50%; top: 50%;
-      transform: translate(-50%,-50%);
-      object-fit: contain;
-      filter: brightness(0) invert(1); /* make dark logos white-ish; remove if not wanted */
-    }
-    .stationCircle.move{
-      outline: 2px solid var(--blinkRed);
-      outline-offset: 2px;
-      animation: pulseCircle 0.9s infinite ease-in-out;
-    }
-    @keyframes pulseCircle{
-      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: scale(1.0); }
-      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: scale(1.06); }
-    }
   </style>
 </head>
 
@@ -547,15 +513,13 @@
         iconAnchor: [8, 8]
       });
     }
-    function stationIcon({ moving=false } = {}){
-      const cls = `stationCircle ${moving ? 'move' : ''}`;
-      return L.divIcon({
-        className: '',
-        html: `<div class="stationWrap"><div class="${cls}"><img src="logo.png" alt=""/></div></div>`,
-        iconSize: [33, 33],
-        iconAnchor: [16.5, 16.5]
-      });
-    }
+
+    // natebikestation: ONLY logo.icon (file must exist)
+    const stationLogoIcon = L.icon({
+      iconUrl: 'logo.icon',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
 
     // --- marker state ---
     const markers = new Map(); // leafletId -> entry
@@ -573,7 +537,8 @@
       if(entry.type === 'bike'){
         return bikeIcon({ rented: !!entry.isRented, moving });
       }
-      return stationIcon({ moving });
+      // note/station: just logo.icon (no move animation here)
+      return stationLogoIcon;
     }
 
     function applyRowToEntry(entry, row){
