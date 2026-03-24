@@ -630,23 +630,32 @@
     }
 
     function addMarkerFromRow(row){
-      const entry = {
-        type: row.type,
-        marker: L.marker({lat:row.lat, lng:row.lng}, { icon: null, draggable:false }).addTo(map),
-        dbId: row.id,
-        photo_url: row.photo_url || null,
-        isRented: !!row.is_rented,
-        data: row.type === 'bike'
-          ? {
-              Nummer: row.bike_number ?? '',
-              Name: row.name ?? 'natebike',
-              Farbe: row.color ?? 'undefiniert',
-              Bemerkung: row.remark ?? 'keine',
-              Schlosscode: row.code ?? ''
-            }
-          : { Inhalt: row.content ?? ' ' }
-      };
+  const entry = {
+    type: row.type,
+    marker: null,
+    dbId: row.id,
+    photo_url: row.photo_url || null,
+    isRented: !!row.is_rented,
+    data: row.type === 'bike'
+      ? {
+          Nummer: row.bike_number ?? '',
+          Name: row.name ?? 'natebike',
+          Farbe: row.color ?? 'undefiniert',
+          Bemerkung: row.remark ?? 'keine',
+          Schlosscode: row.code ?? ''
+        }
+      : { Inhalt: row.content ?? ' ' }
+  };
 
+  entry.marker = L.marker(
+    { lat: row.lat, lng: row.lng },
+    { icon: iconForEntry(entry), draggable: false }
+  ).addTo(map);
+
+  markers.set(entry.marker._leaflet_id, entry);
+  wireMarker(entry);
+  return entry;
+}
       entry.marker.setIcon(iconForEntry(entry));
       markers.set(entry.marker._leaflet_id, entry);
       wireMarker(entry);
