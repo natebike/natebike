@@ -31,6 +31,8 @@
       --adminBorder:#7d7d7d;
       --rentRed:#d7191c;
       --blinkRed:#ff0000;
+      --bikePurple:#4B0095;
+}
     }
     html, body { height: 100%; }
     body{
@@ -261,7 +263,7 @@
       width: 14px; height: 14px;
       transform: translateX(-50%) rotate(45deg);
       border-radius: 50% 50% 50% 0;
-      background: var(--blue);
+      background: var(--bikePurple);
       box-shadow: 0 2px 8px rgba(0,0,0,0.20);
     }
     .pin::after{
@@ -280,40 +282,42 @@
       outline-offset: 2px;
       animation: pulsePin 0.9s infinite ease-in-out;
     }
-    @keyframes pulsePin{
-      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: translateX(-50%) rotate(45deg) scale(1.0); }
-      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: translateX(-50%) rotate(45deg) scale(1.08); }
-    }
+   @keyframes pulsePin{
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: translateX(-50%) rotate(90deg) scale(1.0); }
+  50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: translateX(-50%) rotate(90deg) scale(1.08); }
+}
 
-    /* Station pins (bigger with logo inside) */
-    .stationWrap{
-      position: relative;
-      width: 40px;
-      height: 54px;
-      pointer-events: none;
-    }
-    .stationPin{
-      position:absolute;
-      left:50%; top:6px;
-      width: 34px; height: 34px;
-      transform: translateX(-50%) rotate(45deg);
-      border-radius: 50% 50% 50% 0;
-      background: #fff;
-      border: 3px solid var(--blue);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
-      overflow: hidden;
-    }
-    .stationPin img{
-      position:absolute;
-      width: 28px; height: 28px;
-      left: 50%; top: 50%;
-      transform: translate(-50%,-50%) rotate(-45deg);
-      object-fit: contain;
-    }
-    .stationPin.move{
-      border-color: var(--blinkRed);
-      animation: pulsePin 0.9s infinite ease-in-out;
-    }
+    /* Station marker (round, no pin) */
+.stationWrap{
+  position: relative;
+  width: 33px;
+  height: 33px;
+  pointer-events: none;
+}
+.stationCircle{
+  position:absolute;
+  inset: 0;
+  background: #fff;
+  border: 3px solid var(--blue);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  overflow: hidden;
+}
+.stationCircle img{
+  position:absolute;
+  width: 30px; height: 30px;
+  left: 50%; top: 50%;
+  transform: translateX(-50%) rotate(90deg);
+  object-fit: contain;
+}
+.stationCircle.move{
+  border-color: var(--blinkRed);
+  animation: pulseCircle 0.9s infinite ease-in-out;
+}
+@keyframes pulseCircle{
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: scale(1.0); }
+  50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: scale(1.06); }
+}
   </style>
 </head>
 
@@ -549,14 +553,14 @@
       });
     }
     function stationPinIcon({ moving=false } = {}){
-      const cls = `stationPin ${moving ? 'move' : ''}`;
-      return L.divIcon({
-        className: '',
-        html: `<div class="stationWrap"><div class="${cls}"><img src="logo.png" alt=""/></div></div>`,
-        iconSize: [40, 54],
-        iconAnchor: [20, 50]
-      });
-    }
+  const cls = `stationCircle ${moving ? 'move' : ''}`;
+  return L.divIcon({
+    className: '',
+    html: `<div class="stationWrap"><div class="${cls}"><img src="logo.png" alt=""/></div></div>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22] // Zentrum des Kreises
+  });
+}
 
     // --- marker state ---
     const markers = new Map(); // leafletId -> entry
