@@ -252,11 +252,11 @@
     .crosshair:before{ width: 2px; height: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
     .crosshair:after{ height: 2px; width: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
 
-    /* Bike marker: simple violet circle */
+    /* Bike marker: violet circle + number text (1.5x size) */
     .bikeWrap{
       position: relative;
-      width: 16px;
-      height: 16px;
+      width: 24px;   /* 16 * 1.5 */
+      height: 24px;  /* 16 * 1.5 */
       pointer-events: none;
     }
     .bikeDot{
@@ -265,6 +265,21 @@
       border-radius: 50%;
       background: var(--bikePurple);
       box-shadow: 0 2px 7px rgba(0,0,0,0.22);
+      display: grid;
+      place-items: center;
+    }
+    .bikeDot .bikeNum{
+      font-size: 12px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+      transform: translateY(-0.5px);
+      user-select: none;
+      white-space: nowrap;
+      max-width: 22px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .bikeDot.rented{ background: var(--rentRed); }
     .bikeDot.move{
@@ -274,14 +289,14 @@
     }
     @keyframes pulseDot{
       0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: scale(1.0); }
-      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: scale(1.12); }
+      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: scale(1.10); }
     }
 
     /* Station marker: symbol = logo.png, 0.75x size */
     .stationIconWrap{
       position: relative;
-      width: 33px;   /* 44 * 0.75 */
-      height: 33px;  /* 44 * 0.75 */
+      width: 33px;
+      height: 33px;
       pointer-events: none;
     }
     .stationIconImg{
@@ -530,17 +545,17 @@
     adminPwInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmAdmin(); });
 
     // --- icons ---
-    function bikeIcon({ rented=false, moving=false } = {}){
+    function bikeIcon({ number='', rented=false, moving=false } = {}){
       const cls = `bikeDot ${rented ? 'rented' : ''} ${moving ? 'move' : ''}`;
+      const safeNum = escapeHtml(number);
       return L.divIcon({
         className: '',
-        html: `<div class="bikeWrap"><div class="${cls}"></div></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8]
+        html: `<div class="bikeWrap"><div class="${cls}"><div class="bikeNum">${safeNum}</div></div></div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
       });
     }
 
-    // Station = logo.png (no border), 0.75x size
     function stationIcon({ moving=false } = {}){
       const cls = `stationIconImg ${moving ? 'move' : ''}`;
       return L.divIcon({
@@ -565,7 +580,7 @@
     function iconForEntry(entry){
       const moving = (moveModeEntry && moveModeEntry === entry);
       if(entry.type === 'bike'){
-        return bikeIcon({ rented: !!entry.isRented, moving });
+        return bikeIcon({ number: entry.data.Nummer ?? '', rented: !!entry.isRented, moving });
       }
       return stationIcon({ moving });
     }
