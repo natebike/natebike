@@ -24,6 +24,7 @@
     :root{
       --blue:#004a95;
       --lightblue:#004a95;
+
       --bikePurple:#6a00ff;
 
       --bg:#ffffff;
@@ -251,68 +252,58 @@
     .crosshair:before{ width: 2px; height: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
     .crosshair:after{ height: 2px; width: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
 
-    /* Bike pins (droplet, tip down) */
-    .pinWrap{
+    /* Bike marker: simple violet circle */
+    .bikeWrap{
       position: relative;
-      width: 18px;
-      height: 26px;
+      width: 16px;
+      height: 16px;
       pointer-events: none;
     }
-    .pin{
+    .bikeDot{
       position:absolute;
-      left:50%; top:2px;
-      width: 14px; height: 14px;
-      transform: translateX(-50%) rotate(90deg);
-      border-radius: 50% 50% 50% 0;
-      background: var(--bikePurple);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.20);
-    }
-    .pin::after{
-      content:"";
-      position:absolute;
-      width: 6px; height: 6px;
-      background: #fff;
+      inset: 0;
       border-radius: 50%;
-      top: 4px; left: 4px;
-      transform: rotate(-90deg);
-      opacity: 0.9;
+      background: var(--bikePurple);
+      box-shadow: 0 2px 7px rgba(0,0,0,0.22);
     }
-    .pin.red{ background: var(--rentRed); }
-    .pin.move{
+    .bikeDot.rented{ background: var(--rentRed); }
+    .bikeDot.move{
       outline: 2px solid var(--blinkRed);
       outline-offset: 2px;
-      animation: pulsePin 0.9s infinite ease-in-out;
+      animation: pulseDot 0.9s infinite ease-in-out;
     }
-    @keyframes pulsePin{
-      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: translateX(-50%) rotate(90deg) scale(1.0); }
-      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: translateX(-50%) rotate(90deg) scale(1.08); }
+    @keyframes pulseDot{
+      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: scale(1.0); }
+      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: scale(1.12); }
     }
 
-    /* Station marker (round, no pin) */
+    /* Station marker: 0.75x size, no white border (blue filled circle with logo) */
     .stationWrap{
       position: relative;
-      width: 44px;
-      height: 44px;
+      width: 33px;   /* 44 * 0.75 */
+      height: 33px;  /* 44 * 0.75 */
       pointer-events: none;
     }
     .stationCircle{
       position:absolute;
       inset: 0;
-      background: #fff;
-      border: 3px solid var(--blue);
+      background: var(--blue);
+      border: none;            /* no white rim */
       border-radius: 50%;
       box-shadow: 0 4px 12px rgba(0,0,0,0.18);
       overflow: hidden;
     }
     .stationCircle img{
       position:absolute;
-      width: 30px; height: 30px;
+      width: 22px; height: 22px; /* 30 * 0.75 ~ 22.5 */
       left: 50%; top: 50%;
       transform: translate(-50%,-50%);
       object-fit: contain;
+      filter: brightness(0) invert(1); /* make dark logos white-ish; remove if not wanted */
     }
     .stationCircle.move{
-      border-color: var(--blinkRed);
+      outline: 2px solid var(--blinkRed);
+      outline-offset: 2px;
       animation: pulseCircle 0.9s infinite ease-in-out;
     }
     @keyframes pulseCircle{
@@ -547,22 +538,22 @@
     adminPwInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmAdmin(); });
 
     // --- icons ---
-    function bikePinIcon({ rented=false, moving=false } = {}){
-      const cls = `pin ${rented ? 'red' : ''} ${moving ? 'move' : ''}`;
+    function bikeIcon({ rented=false, moving=false } = {}){
+      const cls = `bikeDot ${rented ? 'rented' : ''} ${moving ? 'move' : ''}`;
       return L.divIcon({
         className: '',
-        html: `<div class="pinWrap"><div class="${cls}"></div></div>`,
-        iconSize: [18, 26],
-        iconAnchor: [9, 24] // tip of the pin
+        html: `<div class="bikeWrap"><div class="${cls}"></div></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
       });
     }
-    function stationPinIcon({ moving=false } = {}){
+    function stationIcon({ moving=false } = {}){
       const cls = `stationCircle ${moving ? 'move' : ''}`;
       return L.divIcon({
         className: '',
         html: `<div class="stationWrap"><div class="${cls}"><img src="logo.png" alt=""/></div></div>`,
-        iconSize: [44, 44],
-        iconAnchor: [22, 22]
+        iconSize: [33, 33],
+        iconAnchor: [16.5, 16.5]
       });
     }
 
@@ -580,9 +571,9 @@
     function iconForEntry(entry){
       const moving = (moveModeEntry && moveModeEntry === entry);
       if(entry.type === 'bike'){
-        return bikePinIcon({ rented: !!entry.isRented, moving });
+        return bikeIcon({ rented: !!entry.isRented, moving });
       }
-      return stationPinIcon({ moving });
+      return stationIcon({ moving });
     }
 
     function applyRowToEntry(entry, row){
@@ -598,7 +589,7 @@
         entry.data.Bemerkung = row.remark ?? entry.data.Bemerkung;
         entry.data.Schlosscode = row.code ?? entry.data.Schlosscode;
       } else {
-        entry.data.Name = row.content ?? entry.data.Name; // station "Name"
+        entry.data.Name = row.content ?? entry.data.Name;
       }
       entry.marker.setIcon(iconForEntry(entry));
     }
@@ -648,7 +639,7 @@
 
     function addMarkerFromRow(row){
       const entry = {
-        type: row.type, // 'bike' or 'note'
+        type: row.type,
         dbId: row.id,
         isRented: !!row.is_rented,
         data: row.type === 'bike'
