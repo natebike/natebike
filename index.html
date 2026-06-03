@@ -281,6 +281,25 @@
       background:#5700d1;
     }
 
+    .btn.returnBikeBtn.isReturning{
+      color:#fff;
+      background:linear-gradient(
+        90deg,
+        var(--bikePurple) 0%,
+        var(--danger) 25%,
+        var(--bikePurple) 50%,
+        var(--danger) 75%,
+        var(--bikePurple) 100%
+      );
+      background-size:200% 100%;
+      animation:returnWave 1.1s linear infinite;
+    }
+
+    @keyframes returnWave{
+      0%{ background-position:0% 50%; }
+      100%{ background-position:200% 50%; }
+    }
+
     .statusBar{
       position:absolute;
       left:10px;
@@ -1467,12 +1486,25 @@
     }
 
     async function returnBike(entry){
-      closeModal();
+      const returnBtn = document.getElementById("bikeReturnBtn");
+
+      if(returnBtn){
+        returnBtn.classList.add("isReturning");
+        returnBtn.dataset.returning = "true";
+      }
 
       const choice = await openReturnChoiceDialog();
 
       if(choice === "cancel"){
+        if(returnBtn){
+          returnBtn.classList.remove("isReturning");
+          delete returnBtn.dataset.returning;
+        }
         return;
+      }
+
+      if(choice === "manual"){
+        closeModal();
       }
 
       try{
@@ -1486,6 +1518,11 @@
 
           if(!ll){
             showStatus("standort nicht verfügbar");
+
+            if(returnBtn){
+              returnBtn.classList.remove("isReturning");
+              delete returnBtn.dataset.returning;
+            }
             return;
           }
 
@@ -1510,6 +1547,10 @@
         renderChatMessage(savedSystemMessage);
         scrollChatBottom();
 
+        if(choice === "auto"){
+          closeModal();
+        }
+
         if(choice === "manual"){
           startMoveMode(entry);
         }
@@ -1518,6 +1559,11 @@
       }catch(err){
         console.error(err);
         showStatus("zurückgeben fehlgeschlagen");
+
+        if(returnBtn){
+          returnBtn.classList.remove("isReturning");
+          delete returnBtn.dataset.returning;
+        }
       }
     }
 
@@ -1798,9 +1844,6 @@
     map.on("contextmenu", e => {
       if(!isAdmin) return;
 
-      /* WICHTIGER FIX:
-         Erst Menüs schließen, danach ctxMapLatLng setzen.
-         Vorher wurde ctxMapLatLng direkt wieder auf null gesetzt. */
       hideContextMenus();
 
       ctxMapLatLng = e.latlng;
