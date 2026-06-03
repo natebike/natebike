@@ -73,7 +73,7 @@
       font-family:"Century Gothic", "URW Gothic L", "Futura", Arial, sans-serif;
     }
 
-    /* Menü und Admin erscheinen erst nach App-Login */
+    /* Menü und Admin erscheinen erst nach Passwort + Name */
     .headerActions{
       margin-left:auto;
       display:none;
@@ -146,7 +146,7 @@
       background:rgba(0,74,149,0.08);
     }
 
-    /* Adminbutton ohne Rahmen */
+    /* Adminbutton */
     .adminBtn{
       background:var(--adminGrey);
       border:none;
@@ -281,7 +281,7 @@
     /* Kontextmenüs */
     .ctx-menu{
       position:fixed;
-      z-index:9999;
+      z-index:50000;
       background:#fff;
       border:2px solid var(--blue);
       border-radius:8px;
@@ -427,6 +427,55 @@
       height:min(720px, 88vh);
       display:flex;
       flex-direction:column;
+      position:relative;
+    }
+
+    .chatHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .chatHeader h2{
+      margin:0;
+    }
+
+    .chatHeaderActions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .chatCloseX{
+      width:30px;
+      height:30px;
+      border:none;
+      background:transparent;
+      color:var(--danger);
+      font-size:28px;
+      font-weight:900;
+      line-height:1;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+    }
+
+    .chatCloseX:hover{
+      transform:scale(1.08);
+    }
+
+    .chatClearBtn{
+      background:var(--danger);
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      padding:7px 10px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+      text-transform:lowercase;
     }
 
     .chatMessages{
@@ -447,6 +496,11 @@
       border-radius:8px;
       padding:8px 10px;
       max-width:95%;
+      cursor:default;
+    }
+
+    .chatMessage:hover{
+      border-color:#b9c6f2;
     }
 
     .chatMeta{
@@ -489,6 +543,42 @@
       font-size:11px;
       color:#667;
       margin-top:4px;
+    }
+
+    .iconBtn{
+      width:44px;
+      height:44px;
+      border:2px solid var(--blue);
+      background:#fff;
+      color:var(--blue);
+      border-radius:10px;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      padding:0;
+    }
+
+    .iconBtn:hover{
+      background:rgba(0,74,149,0.06);
+    }
+
+    .iconBtn svg{
+      width:24px;
+      height:24px;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:2;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+
+    .sendIconBtn{
+      background:var(--blue);
+      color:#fff;
+    }
+
+    .sendIconBtn:hover{
+      background:#003d7a;
     }
 
     .photoPreview{
@@ -743,7 +833,20 @@
   <!-- Chatmodal -->
   <div id="chatOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal chat-modal">
-      <h2>chat</h2>
+
+      <div class="chatHeader">
+        <h2>chat</h2>
+
+        <div class="chatHeaderActions">
+          <button id="clearChatBtn" class="chatClearBtn" type="button" style="display:none;">
+            chat leeren
+          </button>
+
+          <button id="chatCloseBtn" class="chatCloseX" type="button" title="schließen">
+            ×
+          </button>
+        </div>
+      </div>
 
       <div id="chatMessages" class="chatMessages"></div>
 
@@ -759,15 +862,24 @@
           <div class="charCount"><span id="charCount">0</span>/144</div>
         </div>
 
-        <button class="btn secondary" id="photoBtn" type="button">foto</button>
-        <button class="btn" id="sendChatBtn" type="button">senden</button>
+        <!-- Foto-Symbol -->
+        <button class="iconBtn" id="photoBtn" type="button" title="foto aufnehmen">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+            <circle cx="8" cy="9" r="2"></circle>
+            <path d="M4 18l5.5-6 4 4 2.5-3 4 5"></path>
+          </svg>
+        </button>
 
-        <!-- Unsichtbarer Dateiinput für Kamera/Foto -->
+        <!-- Papierflieger-Symbol -->
+        <button class="iconBtn sendIconBtn" id="sendChatBtn" type="button" title="senden">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 11.5L21 3l-4.5 18-4.2-7.2L3 11.5z"></path>
+            <path d="M12.3 13.8L21 3"></path>
+          </svg>
+        </button>
+
         <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none;" />
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn secondary" id="chatCloseBtn" type="button">schließen</button>
       </div>
     </div>
   </div>
@@ -780,9 +892,9 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
 
     // Nutzerpasswort zum Betreten der App
-    const APP_PASSWORD = "Eseldraht";
+    const APP_PASSWORD = "drahtesel";
 
-    // Adminpasswort für Adminmodus
+    // Adminpasswort
     const ADMIN_PASSWORD = "eseldraht";
 
     const KASSEL_CENTER = [51.3127, 9.4797];
@@ -798,13 +910,10 @@
      ***********************/
     let currentUserName = "";
     let isAdmin = false;
-    let markersLoaded = false;
     let moveModeEntry = null;
 
-    // dbId -> entry
-    const markers = new Map();
+    const markers = new Map(); // dbId -> entry
 
-    // chatId -> true
     const renderedChatMessages = new Set();
     let selectedPhotoData = null;
     let ctxChatMessageId = null;
@@ -1110,8 +1219,6 @@
           addOrUpdateMarker(row);
         }
       });
-
-      markersLoaded = true;
     }
 
     function findEntryById(id){
@@ -1362,6 +1469,11 @@
 
     function updateAdminUI(){
       adminBtn.classList.toggle("isAdmin", isAdmin);
+
+      const clearChatBtn = document.getElementById("clearChatBtn");
+      if(clearChatBtn){
+        clearChatBtn.style.display = isAdmin ? "inline-block" : "none";
+      }
     }
 
     function openAdminModal(){
@@ -1411,10 +1523,11 @@
     });
 
     /***********************
-     * Admin-Kontextmenüs Marker/Karte
+     * Admin-Kontextmenüs Marker/Karte/Chat
      ***********************/
     const ctxMenuMap = document.getElementById("ctxMenuMap");
     const ctxMenuMarker = document.getElementById("ctxMenuMarker");
+    const ctxMenuChat = document.getElementById("ctxMenuChat");
 
     let ctxMapLatLng = null;
     let ctxMarkerEntry = null;
@@ -1422,7 +1535,8 @@
     function hideContextMenus(){
       ctxMenuMap.style.display = "none";
       ctxMenuMarker.style.display = "none";
-      document.getElementById("ctxMenuChat").style.display = "none";
+      ctxMenuChat.style.display = "none";
+
       ctxMapLatLng = null;
       ctxMarkerEntry = null;
       ctxChatMessageId = null;
@@ -1446,12 +1560,10 @@
     map.on("movestart", hideContextMenus);
 
     document.addEventListener("pointerdown", (e) => {
-      const chatMenu = document.getElementById("ctxMenuChat");
-
       if(
         !ctxMenuMap.contains(e.target) &&
         !ctxMenuMarker.contains(e.target) &&
-        !chatMenu.contains(e.target)
+        !ctxMenuChat.contains(e.target)
       ){
         hideContextMenus();
       }
@@ -1662,16 +1774,6 @@
 
     /***********************
      * Chat: Supabase
-     *
-     * Erwartete Tabelle:
-     * chat_messages
-     *
-     * Spalten:
-     * id uuid primary key default gen_random_uuid()
-     * user_name text
-     * message text
-     * photo_data text
-     * created_at timestamptz default now()
      ***********************/
     async function dbLoadChatMessages(){
       const { data, error } = await sb
@@ -1691,11 +1793,14 @@
         photo_data:photoData || null
       };
 
-      const { error } = await sb
+      const { data, error } = await sb
         .from("chat_messages")
-        .insert(payload);
+        .insert(payload)
+        .select()
+        .single();
 
       if(error) throw error;
+      return data;
     }
 
     async function dbDeleteChatMessage(id){
@@ -1707,16 +1812,27 @@
       if(error) throw error;
     }
 
+    async function dbClearChat(){
+      const { error } = await sb
+        .from("chat_messages")
+        .delete()
+        .gte("created_at", "1970-01-01T00:00:00Z");
+
+      if(error) throw error;
+    }
+
     /***********************
      * Chat: Anzeige
      ***********************/
     function openChat(){
       document.getElementById("chatOverlay").style.display = "flex";
+      updateAdminUI();
       loadChatMessages();
     }
 
     function closeChat(){
       document.getElementById("chatOverlay").style.display = "none";
+      hideContextMenus();
     }
 
     async function loadChatMessages(){
@@ -1735,7 +1851,9 @@
     }
 
     function renderChatMessage(row){
+      if(!row || !row.id) return;
       if(renderedChatMessages.has(row.id)) return;
+
       renderedChatMessages.add(row.id);
 
       const box = document.createElement("div");
@@ -1745,7 +1863,6 @@
       const meta = document.createElement("div");
       meta.className = "chatMeta";
       meta.textContent = `${row.user_name || "unbekannt"} • ${formatDateTime(row.created_at)}`;
-
       box.appendChild(meta);
 
       if(row.message){
@@ -1763,7 +1880,7 @@
         box.appendChild(img);
       }
 
-      // Admins können per Rechtsklick Nachrichten löschen
+      // Wichtig: Rechtsklickmenü für Admins auf Chatnachrichten
       box.addEventListener("contextmenu", (e) => {
         if(!isAdmin) return;
 
@@ -1772,10 +1889,9 @@
 
         ctxChatMessageId = row.id;
 
-        const menu = document.getElementById("ctxMenuChat");
-        menu.style.left = `${e.clientX}px`;
-        menu.style.top = `${e.clientY}px`;
-        menu.style.display = "block";
+        ctxMenuChat.style.left = `${e.clientX}px`;
+        ctxMenuChat.style.top = `${e.clientY}px`;
+        ctxMenuChat.style.display = "block";
       });
 
       document.getElementById("chatMessages").appendChild(box);
@@ -1784,7 +1900,7 @@
     function removeChatMessageFromView(id){
       renderedChatMessages.delete(id);
 
-      const el = document.querySelector(`.chatMessage[data-id="${CSS.escape(id)}"]`);
+      const el = document.querySelector(`.chatMessage[data-id="${CSS.escape(String(id))}"]`);
       if(el) el.remove();
     }
 
@@ -1875,7 +1991,7 @@
     }
 
     /***********************
-     * Chat: Senden / Löschen
+     * Chat: Senden / Löschen / Leeren
      ***********************/
     document.getElementById("sendChatBtn").addEventListener("click", sendChatMessage);
 
@@ -1900,29 +2016,41 @@
       }
 
       try{
-        await dbInsertChatMessage(message, selectedPhotoData);
+        // Nachricht speichern und gespeicherten Datensatz zurückbekommen
+        const savedMessage = await dbInsertChatMessage(message, selectedPhotoData);
 
+        // Sofort lokal anzeigen
+        renderChatMessage(savedMessage);
+        scrollChatBottom();
+
+        // Eingabe leeren
         input.value = "";
         document.getElementById("charCount").textContent = "0";
 
+        // Foto zurücksetzen
         selectedPhotoData = null;
         document.getElementById("photoInput").value = "";
         document.getElementById("photoPreview").style.display = "none";
         document.getElementById("photoPreviewImg").src = "";
+
       }catch(err){
         console.error(err);
         showStatus("nachricht konnte nicht gesendet werden");
       }
     }
 
-    document.getElementById("ctxMenuChat").addEventListener("pointerdown", async (e) => {
+    ctxMenuChat.addEventListener("pointerdown", async (e) => {
+      e.stopPropagation();
+
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxChatMessageId) return;
 
       const id = ctxChatMessageId;
+      const action = item.dataset.action;
+
       hideContextMenus();
 
-      if(item.dataset.action === "delete"){
+      if(action === "delete"){
         if(!isAdmin){
           showStatus("nur admin");
           return;
@@ -1931,12 +2059,37 @@
         try{
           await dbDeleteChatMessage(id);
           removeChatMessageFromView(id);
+          showStatus("nachricht gelöscht");
         }catch(err){
           console.error(err);
           showStatus("löschen fehlgeschlagen");
         }
       }
     });
+
+    document.getElementById("clearChatBtn").addEventListener("click", clearChat);
+
+    async function clearChat(){
+      if(!isAdmin){
+        showStatus("nur admin");
+        return;
+      }
+
+      const ok = confirm("Chat wirklich leeren?");
+      if(!ok) return;
+
+      try{
+        await dbClearChat();
+
+        renderedChatMessages.clear();
+        document.getElementById("chatMessages").innerHTML = "";
+
+        showStatus("chat geleert");
+      }catch(err){
+        console.error(err);
+        showStatus("chat konnte nicht geleert werden");
+      }
+    }
 
     /***********************
      * Supabase Realtime: Marker
