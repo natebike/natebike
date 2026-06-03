@@ -1057,7 +1057,7 @@
       if(!ok) showStatus('standort nicht verfügbar – kassel');
 
       startLocationUpdates();
-      updateAdminUI();
+      updateAdminUI(); // Hier wird jetzt auch die Sichtbarkeit aktualisiert
 
       const rows = await dbLoadAll();
       rows.forEach((row)=>{ if(!findEntryByDbId(row.id)) addMarkerFromRow(row); });
