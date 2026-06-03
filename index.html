@@ -1467,6 +1467,8 @@
     }
 
     async function returnBike(entry){
+      closeModal();
+
       const choice = await openReturnChoiceDialog();
 
       if(choice === "cancel"){
@@ -1508,12 +1510,8 @@
         renderChatMessage(savedSystemMessage);
         scrollChatBottom();
 
-        closeModal();
-
         if(choice === "manual"){
           startMoveMode(entry);
-        }else{
-          openBikeWindow(entry);
         }
 
         showStatus("natebike zurückgegeben");
@@ -1800,8 +1798,12 @@
     map.on("contextmenu", e => {
       if(!isAdmin) return;
 
-      ctxMapLatLng = e.latlng;
+      /* WICHTIGER FIX:
+         Erst Menüs schließen, danach ctxMapLatLng setzen.
+         Vorher wurde ctxMapLatLng direkt wieder auf null gesetzt. */
       hideContextMenus();
+
+      ctxMapLatLng = e.latlng;
 
       ctxMenuMap.style.left = `${e.originalEvent.clientX}px`;
       ctxMenuMap.style.top = `${e.originalEvent.clientY}px`;
@@ -1829,7 +1831,6 @@
       }
     });
 
-    /* WICHTIG: pointerdown statt click, damit das Kontextmenü nicht vorher verschwindet */
     ctxMenuMap.addEventListener("pointerdown", async e => {
       e.stopPropagation();
 
@@ -1869,7 +1870,6 @@
       ctxMenuMarker.style.display = "block";
     }
 
-    /* WICHTIG: pointerdown statt click */
     ctxMenuMarker.addEventListener("pointerdown", e => {
       e.stopPropagation();
 
@@ -2334,7 +2334,6 @@
       }
     }
 
-    /* WICHTIG: pointerdown statt click */
     ctxMenuChat.addEventListener("pointerdown", async e => {
       e.stopPropagation();
 
