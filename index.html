@@ -9,10 +9,9 @@
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRRr9BMY="
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   />
-
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -32,6 +31,7 @@
       --adminGreen:#9be39b;
       --text:#0b1a2a;
       --bg:#ffffff;
+      --border:#cfd7e6;
     }
 
     html, body{
@@ -73,15 +73,15 @@
       font-family:"Century Gothic", "URW Gothic L", "Futura", Arial, sans-serif;
     }
 
-    /* Rechte Header-Seite: Menü links, Admin rechts */
+    /* Menü und Admin erscheinen erst nach App-Login */
     .headerActions{
       margin-left:auto;
-      display:flex;
+      display:none;
       align-items:center;
       gap:8px;
     }
 
-    /* Menübutton: transparent, keine Umrandung, blaue größere Striche */
+    /* Menübutton */
     .menu-container{
       position:relative;
       display:inline-block;
@@ -170,7 +170,8 @@
     }
 
     #mapFrame,
-    #lockFrame{
+    #lockFrame,
+    #nameFrame{
       height:100%;
       border:4px solid var(--blue);
       border-radius:8px;
@@ -185,13 +186,13 @@
       width:100%;
     }
 
-    /* Passwort-Sperre */
-    #lockFrame{
+    #lockFrame,
+    #nameFrame{
       display:grid;
       place-items:center;
     }
 
-    .lockPanel{
+    .panel{
       width:min(520px, 92%);
       border:3px solid var(--blue);
       border-radius:12px;
@@ -200,7 +201,7 @@
       background:#fff;
     }
 
-    .lockRow{
+    .formRow{
       display:grid;
       grid-template-columns:110px 1fr;
       gap:12px;
@@ -211,7 +212,7 @@
     input[type="text"],
     textarea{
       width:100%;
-      border:1px solid #cfd7e6;
+      border:1px solid var(--border);
       border-radius:8px;
       padding:10px;
       font-size:14px;
@@ -224,13 +225,15 @@
       resize:vertical;
     }
 
-    .lockFooter{
+    .footer{
       display:flex;
       justify-content:flex-end;
       margin-top:14px;
+      gap:10px;
     }
 
     #pwMsg,
+    #nameMsg,
     #adminMsg{
       margin-top:10px;
       color:var(--danger);
@@ -260,14 +263,13 @@
       background:var(--danger);
     }
 
-    /* Statusanzeige */
     .statusBar{
       position:absolute;
       left:10px;
       bottom:10px;
       z-index:5000;
       background:rgba(255,255,255,0.94);
-      border:1px solid #cfd7e6;
+      border:1px solid var(--border);
       border-radius:10px;
       padding:8px 10px;
       font-size:12px;
@@ -283,7 +285,7 @@
       background:#fff;
       border:2px solid var(--blue);
       border-radius:8px;
-      min-width:240px;
+      min-width:220px;
       box-shadow:0 8px 22px rgba(0,0,0,0.14);
       padding:6px;
       display:none;
@@ -301,7 +303,7 @@
       background:rgba(0,74,149,0.08);
     }
 
-    /* Modal */
+    /* Modal-Grundlayout */
     .modal-overlay{
       position:fixed;
       inset:0;
@@ -350,7 +352,7 @@
       align-items:center;
     }
 
-    /* Listen-Overlay */
+    /* Listenfenster */
     .list-overlay{
       position:fixed;
       inset:0;
@@ -401,7 +403,7 @@
 
     .list-item{
       padding:10px;
-      border:1px solid #cfd7e6;
+      border:1px solid var(--border);
       border-radius:8px;
       cursor:pointer;
       font-size:14px;
@@ -417,6 +419,93 @@
       padding:16px;
       color:#666;
       font-style:italic;
+    }
+
+    /* Chat */
+    .chat-modal{
+      width:min(720px, 96vw);
+      height:min(720px, 88vh);
+      display:flex;
+      flex-direction:column;
+    }
+
+    .chatMessages{
+      flex:1;
+      overflow-y:auto;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      background:#fafcff;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .chatMessage{
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:8px 10px;
+      max-width:95%;
+    }
+
+    .chatMeta{
+      font-size:11px;
+      color:#667;
+      margin-bottom:4px;
+      text-transform:lowercase;
+    }
+
+    .chatText{
+      font-size:14px;
+      white-space:pre-wrap;
+      overflow-wrap:anywhere;
+    }
+
+    .chatPhoto{
+      display:block;
+      margin-top:6px;
+      max-width:200px;
+      max-height:200px;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+
+    .chatInputArea{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:1fr auto auto;
+      gap:8px;
+      align-items:end;
+    }
+
+    .chatInputArea textarea{
+      min-height:48px;
+      max-height:90px;
+      resize:vertical;
+    }
+
+    .charCount{
+      font-size:11px;
+      color:#667;
+      margin-top:4px;
+    }
+
+    .photoPreview{
+      margin-top:8px;
+      display:none;
+      align-items:center;
+      gap:8px;
+      font-size:12px;
+      color:#445;
+    }
+
+    .photoPreview img{
+      width:54px;
+      height:54px;
+      object-fit:cover;
+      border-radius:8px;
+      border:1px solid var(--border);
     }
 
     /* Fahrradmarker */
@@ -471,7 +560,6 @@
       filter:drop-shadow(0 4px 10px rgba(0,0,0,0.22));
     }
 
-    /* Pulsieren beim Auswählen aus der Liste */
     .selectedPulse{
       animation:selectedPulse 0.45s ease-in-out 3;
       transform-origin:center center;
@@ -482,7 +570,6 @@
       50%{ transform:scale(1.5); }
     }
 
-    /* Verschiebemodus */
     .moving{
       outline:2px solid red;
       outline-offset:2px;
@@ -539,19 +626,16 @@
       <h1>natebike</h1>
     </div>
 
-    <div class="headerActions">
+    <div id="headerActions" class="headerActions">
       <div class="menu-container">
         <button id="menuBtn" class="menu-btn" type="button" title="Menü">
           <div class="menu-lines"><span></span></div>
         </button>
 
         <div id="dropdownMenu" class="dropdown-menu">
-          <!-- Wichtig: data-kind ist NICHT der Supabase-Typ.
-               Die Zuordnung passiert im JavaScript:
-               bikes -> type === "bike"
-               notes -> type === "note" -->
           <div class="dropdown-item" data-kind="notes">natebikestationen</div>
           <div class="dropdown-item" data-kind="bikes">natebikes</div>
+          <div class="dropdown-item" data-kind="chat">chat</div>
         </div>
       </div>
 
@@ -562,17 +646,33 @@
   <div class="wrap">
     <!-- Passwortansicht -->
     <div id="lockFrame">
-      <div class="lockPanel">
-        <div class="lockRow">
+      <div class="panel">
+        <div class="formRow">
           <div>Passwort:</div>
           <input id="pwInput" type="password" autocomplete="current-password" />
         </div>
 
-        <div class="lockFooter">
+        <div class="footer">
           <button class="btn" id="pwBtn" type="button">bestätigen</button>
         </div>
 
         <div id="pwMsg">falsches Passwort</div>
+      </div>
+    </div>
+
+    <!-- Namenseingabe nach erfolgreicher Passworteingabe -->
+    <div id="nameFrame" style="display:none;">
+      <div class="panel">
+        <div class="formRow">
+          <div>Name:</div>
+          <input id="nameInput" type="text" maxlength="40" autocomplete="name" />
+        </div>
+
+        <div class="footer">
+          <button class="btn" id="nameBtn" type="button">weiter</button>
+        </div>
+
+        <div id="nameMsg">bitte Namen eingeben</div>
       </div>
     </div>
 
@@ -593,6 +693,11 @@
   <div id="ctxMenuMarker" class="ctx-menu">
     <div class="ctx-item" data-action="open">öffnen</div>
     <div class="ctx-item" data-action="move">verschieben</div>
+  </div>
+
+  <!-- Rechtsklick-Menü auf Chatnachricht -->
+  <div id="ctxMenuChat" class="ctx-menu">
+    <div class="ctx-item" data-action="delete">nachricht löschen</div>
   </div>
 
   <!-- Detailmodal -->
@@ -635,6 +740,38 @@
     </div>
   </div>
 
+  <!-- Chatmodal -->
+  <div id="chatOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal chat-modal">
+      <h2>chat</h2>
+
+      <div id="chatMessages" class="chatMessages"></div>
+
+      <div class="photoPreview" id="photoPreview">
+        <img id="photoPreviewImg" alt="" />
+        <span>foto bereit</span>
+        <button class="btn secondary" id="removePhotoBtn" type="button">entfernen</button>
+      </div>
+
+      <div class="chatInputArea">
+        <div>
+          <textarea id="chatTextInput" maxlength="144" placeholder="nachricht schreiben"></textarea>
+          <div class="charCount"><span id="charCount">0</span>/144</div>
+        </div>
+
+        <button class="btn secondary" id="photoBtn" type="button">foto</button>
+        <button class="btn" id="sendChatBtn" type="button">senden</button>
+
+        <!-- Unsichtbarer Dateiinput für Kamera/Foto -->
+        <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none;" />
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn secondary" id="chatCloseBtn" type="button">schließen</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     /***********************
      * Konfiguration
@@ -642,7 +779,10 @@
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
 
-    const APP_PASSWORD = "drahtesel";
+    // Nutzerpasswort zum Betreten der App
+    const APP_PASSWORD = "Eseldraht";
+
+    // Adminpasswort für Adminmodus
     const ADMIN_PASSWORD = "eseldraht";
 
     const KASSEL_CENTER = [51.3127, 9.4797];
@@ -654,6 +794,22 @@
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     /***********************
+     * App-Zustand
+     ***********************/
+    let currentUserName = "";
+    let isAdmin = false;
+    let markersLoaded = false;
+    let moveModeEntry = null;
+
+    // dbId -> entry
+    const markers = new Map();
+
+    // chatId -> true
+    const renderedChatMessages = new Set();
+    let selectedPhotoData = null;
+    let ctxChatMessageId = null;
+
+    /***********************
      * Karte
      ***********************/
     const map = L.map("map", {
@@ -661,7 +817,6 @@
       zoom: DEFAULT_ZOOM
     });
 
-    // Eigene Panes: Stationen hinter Fahrrädern
     map.createPane("stationPane");
     map.getPane("stationPane").style.zIndex = 380;
 
@@ -673,7 +828,6 @@
       attribution: "&copy; OpenStreetMap"
     }).addTo(map);
 
-    // Standortbutton
     const LocateControl = L.Control.extend({
       options:{ position:"bottomright" },
       onAdd:function(){
@@ -717,14 +871,6 @@
     });
 
     /***********************
-     * Globale Marker-Daten
-     ***********************/
-    const markers = new Map(); // dbId -> entry
-    let markersLoaded = false;
-    let isAdmin = false;
-    let moveModeEntry = null;
-
-    /***********************
      * Hilfsfunktionen
      ***********************/
     function escapeHtml(value){
@@ -745,6 +891,17 @@
       showStatus.timer = setTimeout(() => {
         statusBar.style.display = "none";
       }, 2500);
+    }
+
+    function formatDateTime(value){
+      const d = new Date(value);
+      return d.toLocaleString("de-DE", {
+        day:"2-digit",
+        month:"2-digit",
+        year:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
+      }).toLowerCase();
     }
 
     function bikeSortValue(value){
@@ -821,9 +978,9 @@
     }
 
     /***********************
-     * Supabase-Funktionen
+     * Supabase: Marker
      ***********************/
-    async function dbLoadAll(){
+    async function dbLoadAllMarkers(){
       const { data, error } = await sb
         .from("markers")
         .select("*")
@@ -833,22 +990,17 @@
       return data || [];
     }
 
-    async function dbInsert(type, lat, lng){
+    async function dbInsertMarker(type, lat, lng){
       const payload = {
         type,
         lat,
         lng,
-
-        // Standardwerte für Fahrräder
         bike_number:"",
         name:"natebike",
         color:"undefiniert",
         remark:"keine",
         code:"",
-
-        // Standardwerte für Stationen
         content:" ",
-
         is_rented:false,
         photo_url:null
       };
@@ -863,7 +1015,7 @@
       return data;
     }
 
-    async function dbUpdate(id, patch){
+    async function dbUpdateMarker(id, patch){
       const { error } = await sb
         .from("markers")
         .update(patch)
@@ -872,7 +1024,7 @@
       if(error) throw error;
     }
 
-    async function dbDelete(id){
+    async function dbDeleteMarker(id){
       const { error } = await sb
         .from("markers")
         .delete()
@@ -887,19 +1039,17 @@
     function rowToEntry(row){
       return {
         id:row.id,
-        type:row.type, // WICHTIG: "bike" oder "note"
+        type:row.type,
 
         lat:row.lat,
         lng:row.lng,
 
-        // Fahrradfelder
         bikeNumber:row.bike_number ?? "",
         bikeName:row.name ?? "",
         bikeColor:row.color ?? "",
         bikeRemark:row.remark ?? "",
         bikeCode:row.code ?? "",
 
-        // Stationsfeld
         content:row.content ?? "",
 
         isRented:!!row.is_rented,
@@ -920,14 +1070,15 @@
 
         entry.marker = L.marker([entry.lat, entry.lng], {
           icon:iconForEntry(entry),
-          draggable:false,
+          draggable:true,
           pane
         }).addTo(map);
+
+        if(entry.marker.dragging) entry.marker.dragging.disable();
 
         markers.set(entry.id, entry);
         wireMarker(entry);
       }else{
-        // Vorhandenen Marker aktualisieren
         entry.type = row.type;
         entry.lat = row.lat;
         entry.lng = row.lng;
@@ -952,10 +1103,9 @@
     }
 
     async function loadMarkersOnce(){
-      const rows = await dbLoadAll();
+      const rows = await dbLoadAllMarkers();
 
       rows.forEach(row => {
-        // Nur bekannte Markerarten verwenden
         if(row.type === "bike" || row.type === "note"){
           addOrUpdateMarker(row);
         }
@@ -1009,7 +1159,7 @@
         entry.lat = ll.lat;
         entry.lng = ll.lng;
 
-        await dbUpdate(entry.id, {
+        await dbUpdateMarker(entry.id, {
           lat:ll.lat,
           lng:ll.lng
         });
@@ -1018,8 +1168,8 @@
         moveModeEntry = null;
 
         if(marker.dragging) marker.dragging.disable();
-        marker.setIcon(iconForEntry(entry));
 
+        marker.setIcon(iconForEntry(entry));
         showStatus("position gespeichert");
       });
     }
@@ -1035,7 +1185,7 @@
     }
 
     /***********************
-     * Dropdown-Menü und Listen
+     * Menü und Listen
      ***********************/
     const menuBtn = document.getElementById("menuBtn");
     const dropdownMenu = document.getElementById("dropdownMenu");
@@ -1055,16 +1205,11 @@
     document.querySelectorAll(".dropdown-item").forEach(item => {
       item.addEventListener("click", async () => {
         const kind = item.dataset.kind;
-
         dropdownMenu.style.display = "none";
 
-        if(kind === "bikes"){
-          showBikeList();
-        }
-
-        if(kind === "notes"){
-          showNoteList();
-        }
+        if(kind === "bikes") showBikeList();
+        if(kind === "notes") showNoteList();
+        if(kind === "chat") openChat();
       });
     });
 
@@ -1100,9 +1245,6 @@
     }
 
     function showBikeList(){
-      // WICHTIG:
-      // Hier werden die bereits vorhandenen Marker aus der Karte genommen.
-      // Gesucht wird nach Supabase type === "bike".
       const bikes = Array.from(markers.values())
         .filter(entry => entry.type === "bike")
         .sort(sortBikeEntries);
@@ -1115,19 +1257,15 @@
       }
 
       bikes.forEach(entry => {
-        // Gewünscht: bikeNumber und bikeName in einer Zeile, mit Leerzeichen getrennt
         const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
         addListRow(line || "(ohne Nummer/Name)", entry);
       });
     }
 
     function showNoteList(){
-      // WICHTIG:
-      // Hier werden die bereits vorhandenen Marker aus der Karte genommen.
-      // Gesucht wird nach Supabase type === "note".
       const notes = Array.from(markers.values())
         .filter(entry => entry.type === "note")
-        .sort((a, b) => Number(a.lng) - Number(b.lng)); // westlich nach östlich
+        .sort((a, b) => Number(a.lng) - Number(b.lng));
 
       openList("natebikestationen");
 
@@ -1137,7 +1275,6 @@
       }
 
       notes.forEach(entry => {
-        // Gewünscht: Inhalt des Markers anzeigen
         const line = String(entry.content || "").trim();
         addListRow(line || "(ohne Inhalt)", entry);
       });
@@ -1154,25 +1291,43 @@
     });
 
     /***********************
-     * Passwort / App öffnen
+     * App-Login und Namenseingabe
      ***********************/
     const lockFrame = document.getElementById("lockFrame");
+    const nameFrame = document.getElementById("nameFrame");
     const mapFrame = document.getElementById("mapFrame");
-    const pwInput = document.getElementById("pwInput");
-    const pwBtn = document.getElementById("pwBtn");
-    const pwMsg = document.getElementById("pwMsg");
+    const headerActions = document.getElementById("headerActions");
 
-    async function unlock(){
-      const value = (pwInput.value || "").trim();
+    async function checkPassword(){
+      const value = (document.getElementById("pwInput").value || "").trim();
 
       if(value !== APP_PASSWORD){
-        pwMsg.style.display = "block";
+        document.getElementById("pwMsg").style.display = "block";
         return;
       }
 
-      pwMsg.style.display = "none";
+      document.getElementById("pwMsg").style.display = "none";
       lockFrame.style.display = "none";
+      nameFrame.style.display = "grid";
+      document.getElementById("nameInput").focus();
+    }
+
+    async function finishNameLogin(){
+      const name = (document.getElementById("nameInput").value || "").trim();
+
+      if(!name){
+        document.getElementById("nameMsg").style.display = "block";
+        return;
+      }
+
+      currentUserName = name;
+      document.getElementById("nameMsg").style.display = "none";
+
+      nameFrame.style.display = "none";
       mapFrame.style.display = "block";
+
+      // Menü und Admin erst nach Passwort + Name anzeigen
+      headerActions.style.display = "flex";
 
       setTimeout(() => {
         map.invalidateSize();
@@ -1187,9 +1342,14 @@
       }
     }
 
-    pwBtn.addEventListener("click", unlock);
-    pwInput.addEventListener("keydown", (e) => {
-      if(e.key === "Enter") unlock();
+    document.getElementById("pwBtn").addEventListener("click", checkPassword);
+    document.getElementById("pwInput").addEventListener("keydown", (e) => {
+      if(e.key === "Enter") checkPassword();
+    });
+
+    document.getElementById("nameBtn").addEventListener("click", finishNameLogin);
+    document.getElementById("nameInput").addEventListener("keydown", (e) => {
+      if(e.key === "Enter") finishNameLogin();
     });
 
     /***********************
@@ -1198,8 +1358,6 @@
     const adminBtn = document.getElementById("adminBtn");
     const adminOverlay = document.getElementById("adminOverlay");
     const adminPwInput = document.getElementById("adminPwInput");
-    const adminOkBtn = document.getElementById("adminOkBtn");
-    const adminCancelBtn = document.getElementById("adminCancelBtn");
     const adminMsg = document.getElementById("adminMsg");
 
     function updateAdminUI(){
@@ -1241,19 +1399,19 @@
       }
     });
 
-    adminOkBtn.addEventListener("click", confirmAdmin);
+    document.getElementById("adminOkBtn").addEventListener("click", confirmAdmin);
     adminPwInput.addEventListener("keydown", (e) => {
       if(e.key === "Enter") confirmAdmin();
     });
 
-    adminCancelBtn.addEventListener("click", closeAdminModal);
+    document.getElementById("adminCancelBtn").addEventListener("click", closeAdminModal);
 
     adminOverlay.addEventListener("click", (e) => {
       if(e.target === adminOverlay) closeAdminModal();
     });
 
     /***********************
-     * Karte: Admin-Kontextmenü
+     * Admin-Kontextmenüs Marker/Karte
      ***********************/
     const ctxMenuMap = document.getElementById("ctxMenuMap");
     const ctxMenuMarker = document.getElementById("ctxMenuMarker");
@@ -1264,8 +1422,10 @@
     function hideContextMenus(){
       ctxMenuMap.style.display = "none";
       ctxMenuMarker.style.display = "none";
+      document.getElementById("ctxMenuChat").style.display = "none";
       ctxMapLatLng = null;
       ctxMarkerEntry = null;
+      ctxChatMessageId = null;
     }
 
     map.getContainer().addEventListener("contextmenu", e => e.preventDefault());
@@ -1286,7 +1446,13 @@
     map.on("movestart", hideContextMenus);
 
     document.addEventListener("pointerdown", (e) => {
-      if(!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target)){
+      const chatMenu = document.getElementById("ctxMenuChat");
+
+      if(
+        !ctxMenuMap.contains(e.target) &&
+        !ctxMenuMarker.contains(e.target) &&
+        !chatMenu.contains(e.target)
+      ){
         hideContextMenus();
       }
     });
@@ -1302,12 +1468,12 @@
 
       try{
         if(action === "bike"){
-          const row = await dbInsert("bike", latlng.lat, latlng.lng);
+          const row = await dbInsertMarker("bike", latlng.lat, latlng.lng);
           addOrUpdateMarker(row);
         }
 
         if(action === "note"){
-          const row = await dbInsert("note", latlng.lat, latlng.lng);
+          const row = await dbInsertMarker("note", latlng.lat, latlng.lng);
           addOrUpdateMarker(row);
         }
       }catch(err){
@@ -1417,14 +1583,14 @@
           };
 
           try{
-            await dbUpdate(entry.id, patch);
-            Object.assign(entry, {
-              bikeNumber:patch.bike_number,
-              bikeName:patch.name,
-              bikeColor:patch.color,
-              bikeRemark:patch.remark,
-              bikeCode:patch.code
-            });
+            await dbUpdateMarker(entry.id, patch);
+
+            entry.bikeNumber = patch.bike_number;
+            entry.bikeName = patch.name;
+            entry.bikeColor = patch.color;
+            entry.bikeRemark = patch.remark;
+            entry.bikeCode = patch.code;
+
             entry.marker.setIcon(iconForEntry(entry));
             closeModal();
           }catch(err){
@@ -1435,7 +1601,7 @@
 
         document.getElementById("bikeDeleteBtn").addEventListener("click", async () => {
           try{
-            await dbDelete(entry.id);
+            await dbDeleteMarker(entry.id);
             map.removeLayer(entry.marker);
             markers.delete(entry.id);
             closeModal();
@@ -1469,7 +1635,7 @@
           const content = document.getElementById("stationContentInput").value.trim();
 
           try{
-            await dbUpdate(entry.id, { content });
+            await dbUpdateMarker(entry.id, { content });
             entry.content = content;
             closeModal();
           }catch(err){
@@ -1480,7 +1646,7 @@
 
         document.getElementById("stationDeleteBtn").addEventListener("click", async () => {
           try{
-            await dbDelete(entry.id);
+            await dbDeleteMarker(entry.id);
             map.removeLayer(entry.marker);
             markers.delete(entry.id);
             closeModal();
@@ -1495,7 +1661,285 @@
     }
 
     /***********************
-     * Supabase Realtime
+     * Chat: Supabase
+     *
+     * Erwartete Tabelle:
+     * chat_messages
+     *
+     * Spalten:
+     * id uuid primary key default gen_random_uuid()
+     * user_name text
+     * message text
+     * photo_data text
+     * created_at timestamptz default now()
+     ***********************/
+    async function dbLoadChatMessages(){
+      const { data, error } = await sb
+        .from("chat_messages")
+        .select("*")
+        .order("created_at", { ascending:true })
+        .limit(300);
+
+      if(error) throw error;
+      return data || [];
+    }
+
+    async function dbInsertChatMessage(message, photoData){
+      const payload = {
+        user_name:currentUserName,
+        message:message || "",
+        photo_data:photoData || null
+      };
+
+      const { error } = await sb
+        .from("chat_messages")
+        .insert(payload);
+
+      if(error) throw error;
+    }
+
+    async function dbDeleteChatMessage(id){
+      const { error } = await sb
+        .from("chat_messages")
+        .delete()
+        .eq("id", id);
+
+      if(error) throw error;
+    }
+
+    /***********************
+     * Chat: Anzeige
+     ***********************/
+    function openChat(){
+      document.getElementById("chatOverlay").style.display = "flex";
+      loadChatMessages();
+    }
+
+    function closeChat(){
+      document.getElementById("chatOverlay").style.display = "none";
+    }
+
+    async function loadChatMessages(){
+      try{
+        const rows = await dbLoadChatMessages();
+
+        document.getElementById("chatMessages").innerHTML = "";
+        renderedChatMessages.clear();
+
+        rows.forEach(renderChatMessage);
+        scrollChatBottom();
+      }catch(err){
+        console.error(err);
+        showStatus("chat konnte nicht geladen werden");
+      }
+    }
+
+    function renderChatMessage(row){
+      if(renderedChatMessages.has(row.id)) return;
+      renderedChatMessages.add(row.id);
+
+      const box = document.createElement("div");
+      box.className = "chatMessage";
+      box.dataset.id = row.id;
+
+      const meta = document.createElement("div");
+      meta.className = "chatMeta";
+      meta.textContent = `${row.user_name || "unbekannt"} • ${formatDateTime(row.created_at)}`;
+
+      box.appendChild(meta);
+
+      if(row.message){
+        const text = document.createElement("div");
+        text.className = "chatText";
+        text.textContent = row.message;
+        box.appendChild(text);
+      }
+
+      if(row.photo_data){
+        const img = document.createElement("img");
+        img.className = "chatPhoto";
+        img.src = row.photo_data;
+        img.alt = "foto";
+        box.appendChild(img);
+      }
+
+      // Admins können per Rechtsklick Nachrichten löschen
+      box.addEventListener("contextmenu", (e) => {
+        if(!isAdmin) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        ctxChatMessageId = row.id;
+
+        const menu = document.getElementById("ctxMenuChat");
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+        menu.style.display = "block";
+      });
+
+      document.getElementById("chatMessages").appendChild(box);
+    }
+
+    function removeChatMessageFromView(id){
+      renderedChatMessages.delete(id);
+
+      const el = document.querySelector(`.chatMessage[data-id="${CSS.escape(id)}"]`);
+      if(el) el.remove();
+    }
+
+    function scrollChatBottom(){
+      const chatMessages = document.getElementById("chatMessages");
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    document.getElementById("chatCloseBtn").addEventListener("click", closeChat);
+
+    document.getElementById("chatOverlay").addEventListener("click", (e) => {
+      if(e.target.id === "chatOverlay") closeChat();
+    });
+
+    document.getElementById("chatTextInput").addEventListener("input", () => {
+      document.getElementById("charCount").textContent =
+        document.getElementById("chatTextInput").value.length;
+    });
+
+    /***********************
+     * Chat: Foto verkleinern auf max. 200x200
+     ***********************/
+    document.getElementById("photoBtn").addEventListener("click", () => {
+      document.getElementById("photoInput").click();
+    });
+
+    document.getElementById("photoInput").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+
+      try{
+        selectedPhotoData = await resizeImageToDataUrl(file, 200, 200);
+
+        document.getElementById("photoPreviewImg").src = selectedPhotoData;
+        document.getElementById("photoPreview").style.display = "flex";
+      }catch(err){
+        console.error(err);
+        showStatus("foto konnte nicht verarbeitet werden");
+      }
+    });
+
+    document.getElementById("removePhotoBtn").addEventListener("click", () => {
+      selectedPhotoData = null;
+      document.getElementById("photoInput").value = "";
+      document.getElementById("photoPreview").style.display = "none";
+      document.getElementById("photoPreviewImg").src = "";
+    });
+
+    function resizeImageToDataUrl(file, maxWidth, maxHeight){
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onerror = reject;
+
+        reader.onload = () => {
+          const img = new Image();
+
+          img.onerror = reject;
+
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+
+            const scale = Math.min(
+              maxWidth / width,
+              maxHeight / height,
+              1
+            );
+
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            resolve(canvas.toDataURL("image/jpeg", 0.75));
+          };
+
+          img.src = reader.result;
+        };
+
+        reader.readAsDataURL(file);
+      });
+    }
+
+    /***********************
+     * Chat: Senden / Löschen
+     ***********************/
+    document.getElementById("sendChatBtn").addEventListener("click", sendChatMessage);
+
+    document.getElementById("chatTextInput").addEventListener("keydown", (e) => {
+      if(e.key === "Enter" && !e.shiftKey){
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+
+    async function sendChatMessage(){
+      const input = document.getElementById("chatTextInput");
+      const message = input.value.trim();
+
+      if(message.length > 144){
+        showStatus("maximal 144 Zeichen");
+        return;
+      }
+
+      if(!message && !selectedPhotoData){
+        return;
+      }
+
+      try{
+        await dbInsertChatMessage(message, selectedPhotoData);
+
+        input.value = "";
+        document.getElementById("charCount").textContent = "0";
+
+        selectedPhotoData = null;
+        document.getElementById("photoInput").value = "";
+        document.getElementById("photoPreview").style.display = "none";
+        document.getElementById("photoPreviewImg").src = "";
+      }catch(err){
+        console.error(err);
+        showStatus("nachricht konnte nicht gesendet werden");
+      }
+    }
+
+    document.getElementById("ctxMenuChat").addEventListener("pointerdown", async (e) => {
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxChatMessageId) return;
+
+      const id = ctxChatMessageId;
+      hideContextMenus();
+
+      if(item.dataset.action === "delete"){
+        if(!isAdmin){
+          showStatus("nur admin");
+          return;
+        }
+
+        try{
+          await dbDeleteChatMessage(id);
+          removeChatMessageFromView(id);
+        }catch(err){
+          console.error(err);
+          showStatus("löschen fehlgeschlagen");
+        }
+      }
+    });
+
+    /***********************
+     * Supabase Realtime: Marker
      ***********************/
     sb.channel("markers-realtime")
       .on("postgres_changes", {
@@ -1519,6 +1963,26 @@
             map.removeLayer(entry.marker);
             markers.delete(entry.id);
           }
+        }
+      })
+      .subscribe();
+
+    /***********************
+     * Supabase Realtime: Chat
+     ***********************/
+    sb.channel("chat-realtime")
+      .on("postgres_changes", {
+        event:"*",
+        schema:"public",
+        table:"chat_messages"
+      }, payload => {
+        if(payload.eventType === "INSERT"){
+          renderChatMessage(payload.new);
+          scrollChatBottom();
+        }
+
+        if(payload.eventType === "DELETE"){
+          removeChatMessageFromView(payload.old.id);
         }
       })
       .subscribe();
