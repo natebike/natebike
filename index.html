@@ -5,460 +5,529 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>natebike</title>
 
+  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRRr9BMY="
     crossorigin=""
   />
+
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
   ></script>
 
+  <!-- Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
     :root{
       --blue:#004a95;
-      --lightblue:#004a95;
-
       --bikePurple:#6a00ff;
-
-      --bg:#ffffff;
-      --text:#0b1a2a;
+      --rentRed:#d7191c;
       --danger:#7a0b0b;
       --adminGrey:#c9c9c9;
       --adminGreen:#9be39b;
-      --adminBorder:#7d7d7d;
-      --rentRed:#d7191c;
-      --blinkRed:#ff0000;
+      --text:#0b1a2a;
+      --bg:#ffffff;
     }
-    html, body { height: 100%; }
-    body{
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+
+    html, body{
+      height:100%;
+      margin:0;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
     }
 
     header{
-      padding: 14px 16px 8px 16px;
+      padding:14px 16px 8px 16px;
       display:flex;
       align-items:center;
-      justify-content: space-between;
-      gap: 12px;
+      gap:12px;
     }
-    .headerLeft{ display:flex; align-items:center; gap: 12px; min-width: 0; }
-    #logo{ width: 40px; height: 40px; border-radius: 8px; object-fit: contain; }
+
+    .headerLeft{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+    }
+
+    #logo{
+      width:40px;
+      height:40px;
+      border-radius:8px;
+      object-fit:contain;
+    }
+
     h1{
-      margin: 0;
-      font-size: 30px;
-      font-weight: 800;
-      letter-spacing: 0.2px;
-      text-transform: lowercase;
-      color: var(--blue);
-      white-space: nowrap;
-      font-family: "Century Gothic", "URW Gothic L", "Futura", Arial, sans-serif;
+      margin:0;
+      font-size:30px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
+      white-space:nowrap;
+      font-family:"Century Gothic", "URW Gothic L", "Futura", Arial, sans-serif;
     }
 
+    /* Rechte Header-Seite: Menü links, Admin rechts */
+    .headerActions{
+      margin-left:auto;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    /* Menübutton: transparent, keine Umrandung, blaue größere Striche */
+    .menu-container{
+      position:relative;
+      display:inline-block;
+    }
+
+    .menu-btn{
+      width:44px;
+      height:44px;
+      border:none;
+      background:transparent;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      padding:0;
+    }
+
+    .menu-lines{
+      width:28px;
+      height:20px;
+      position:relative;
+    }
+
+    .menu-lines::before,
+    .menu-lines::after,
+    .menu-lines span{
+      content:"";
+      position:absolute;
+      left:0;
+      width:28px;
+      height:3px;
+      background:var(--blue);
+      border-radius:4px;
+    }
+
+    .menu-lines::before{ top:0; }
+    .menu-lines span{ top:8px; }
+    .menu-lines::after{ top:16px; }
+
+    .dropdown-menu{
+      position:absolute;
+      top:100%;
+      right:0;
+      display:none;
+      background:#fff;
+      border:2px solid var(--blue);
+      border-radius:8px;
+      min-width:220px;
+      padding:6px;
+      box-shadow:0 8px 22px rgba(0,0,0,0.14);
+      z-index:20000;
+      margin-top:5px;
+    }
+
+    .dropdown-item{
+      padding:10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .dropdown-item:hover{
+      background:rgba(0,74,149,0.08);
+    }
+
+    /* Adminbutton ohne Rahmen */
     .adminBtn{
-      background: var(--adminGrey);
-      border: none;
-      color: #1b1b1b;
-      border-radius: 10px;
-      padding: 8px 12px;
-      font-size: 14px;
-      font-weight: 800;
-      cursor: pointer;
-      margin-left: 10px;
-    }
-    .adminBtn.isAdmin{
-      background: var(--adminGreen);
-      color: #0b2a0b;
+      background:var(--adminGrey);
+      border:none;
+      color:#1b1b1b;
+      border-radius:10px;
+      padding:9px 13px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
     }
 
-    /* Dropdown-Menü */
-    .menu-container {
-      position: relative;
-      display: inline-block;
-    }
-    
-    .menu-btn {
-      background: transparent;
-      border: none;
-      color: var(--blue);
-      border-radius: 10px;
-      padding: 8px 12px;
-      font-size: 18px;
-      font-weight: 800;
-      cursor: pointer;
-      margin-left: 10px;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .menu-btn::before {
-      content: "";
-      display: block;
-      width: 20px;
-      height: 2px;
-      background-color: var(--blue);
-      box-shadow: 0 6px 0 0 var(--blue), 0 12px 0 0 var(--blue);
-    }
-    
-    .dropdown-menu {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      background: #fff;
-      border: 2px solid var(--blue);
-      border-radius: 8px;
-      min-width: 200px;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.14);
-      padding: 6px;
-      display: none;
-      z-index: 1000;
-      margin-top: 5px;
-    }
-    
-    .dropdown-item {
-      padding: 10px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      color: var(--text);
-    }
-    
-    .dropdown-item:hover {
-      background: rgba(0,74,149,0.08);
+    .adminBtn.isAdmin{
+      background:var(--adminGreen);
+      color:#0b2a0b;
     }
 
     .wrap{
-      padding: 8px 16px 16px 16px;
-      height: calc(100% - 70px);
-      box-sizing: border-box;
+      padding:8px 16px 16px 16px;
+      height:calc(100% - 70px);
+      box-sizing:border-box;
     }
 
-    #mapFrame, #lockFrame{
-      height: 100%;
-      border: 4px solid var(--lightblue);
-      border-radius: 8px;
-      box-sizing: border-box;
-      overflow: hidden;
-      background: #fff;
-      position: relative;
-    }
-    #map{ height: 100%; width: 100%; }
-
-    /* Lock screen */
+    #mapFrame,
     #lockFrame{
-      display: grid;
-      place-items: center;
-      background: #fff;
+      height:100%;
+      border:4px solid var(--blue);
+      border-radius:8px;
+      box-sizing:border-box;
+      overflow:hidden;
+      background:#fff;
+      position:relative;
     }
-    .lockPanel{
-      width: min(520px, 92%);
-      border: 3px solid var(--blue);
-      border-radius: 12px;
-      padding: 16px;
-      box-sizing: border-box;
-      background: #fff;
-    }
-    .lockRow{
-      display: grid;
-      grid-template-columns: 110px 1fr;
-      gap: 12px;
-      align-items: center;
-    }
-    .lockLabel{ font-size: 16px; }
-    input[type="password"], input[type="text"], textarea{
-      width: 100%;
-      border: 1px solid #cfd7e6;
-      border-radius: 8px;
-      padding: 10px 10px;
-      font-size: 14px;
-      box-sizing: border-box;
-      outline: none;
-    }
-    textarea{ min-height: 72px; resize: vertical; padding: 9px 10px; }
-    .lockFooter{ display:flex; justify-content: flex-end; margin-top: 14px; }
-    #pwMsg{ margin-top:10px; color: var(--danger); font-size: 13px; display:none; }
 
-    /* Context menus */
+    #map{
+      height:100%;
+      width:100%;
+    }
+
+    /* Passwort-Sperre */
+    #lockFrame{
+      display:grid;
+      place-items:center;
+    }
+
+    .lockPanel{
+      width:min(520px, 92%);
+      border:3px solid var(--blue);
+      border-radius:12px;
+      padding:16px;
+      box-sizing:border-box;
+      background:#fff;
+    }
+
+    .lockRow{
+      display:grid;
+      grid-template-columns:110px 1fr;
+      gap:12px;
+      align-items:center;
+    }
+
+    input[type="password"],
+    input[type="text"],
+    textarea{
+      width:100%;
+      border:1px solid #cfd7e6;
+      border-radius:8px;
+      padding:10px;
+      font-size:14px;
+      box-sizing:border-box;
+      outline:none;
+    }
+
+    textarea{
+      min-height:72px;
+      resize:vertical;
+    }
+
+    .lockFooter{
+      display:flex;
+      justify-content:flex-end;
+      margin-top:14px;
+    }
+
+    #pwMsg,
+    #adminMsg{
+      margin-top:10px;
+      color:var(--danger);
+      font-size:13px;
+      display:none;
+    }
+
+    .btn{
+      background:var(--blue);
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      padding:10px 14px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      text-transform:lowercase;
+    }
+
+    .btn.secondary{
+      background:#e8f0ff;
+      border:1px solid #b9c6f2;
+      color:var(--blue);
+    }
+
+    .btn.danger{
+      background:var(--danger);
+    }
+
+    /* Statusanzeige */
+    .statusBar{
+      position:absolute;
+      left:10px;
+      bottom:10px;
+      z-index:5000;
+      background:rgba(255,255,255,0.94);
+      border:1px solid #cfd7e6;
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:12px;
+      color:#25324a;
+      display:none;
+      max-width:70%;
+    }
+
+    /* Kontextmenüs */
     .ctx-menu{
-      position: fixed;
-      z-index: 9999;
-      background: #fff;
-      border: 2px solid var(--blue);
-      border-radius: 8px;
-      min-width: 240px;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.14);
-      padding: 6px;
-      display: none;
-      user-select: none;
+      position:fixed;
+      z-index:9999;
+      background:#fff;
+      border:2px solid var(--blue);
+      border-radius:8px;
+      min-width:240px;
+      box-shadow:0 8px 22px rgba(0,0,0,0.14);
+      padding:6px;
+      display:none;
+      user-select:none;
     }
+
     .ctx-item{
-      padding: 10px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
+      padding:10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:14px;
     }
-    .ctx-item:hover{ background: rgba(0,74,149,0.08); }
-    .ctx-item.disabled{ opacity: 0.45; cursor: not-allowed; }
+
+    .ctx-item:hover{
+      background:rgba(0,74,149,0.08);
+    }
 
     /* Modal */
     .modal-overlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.25);
-      display: none;
-      z-index: 10000;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      box-sizing: border-box;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.25);
+      display:none;
+      z-index:10000;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      box-sizing:border-box;
     }
+
     .modal{
-      width: min(640px, 95vw);
-      background: #fff;
-      border: 3px solid var(--blue);
-      border-radius: 10px;
-      padding: 14px 14px 12px 14px;
-      box-sizing: border-box;
+      width:min(640px, 95vw);
+      background:#fff;
+      border:3px solid var(--blue);
+      border-radius:10px;
+      padding:14px;
+      box-sizing:border-box;
     }
+
     .modal h2{
-      margin: 0 0 12px 0;
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--blue);
-      text-transform: lowercase;
+      margin:0 0 12px 0;
+      font-size:16px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
     }
+
     .grid{
-      display: grid;
-      grid-template-columns: 140px 1fr;
-      gap: 10px 12px;
-      align-items: center;
+      display:grid;
+      grid-template-columns:140px 1fr;
+      gap:10px 12px;
+      align-items:center;
     }
-    .label{ font-size: 14px; }
+
+    .label{
+      font-size:14px;
+    }
 
     .modal-footer{
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 14px;
-      gap: 10px;
-      align-items: center;
-    }
-    .btn{
-      background: var(--blue);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 14px;
-      font-weight: 800;
-      cursor: pointer;
-      text-transform: lowercase;
-    }
-    .btn.danger{ background: var(--danger); }
-    .btn.secondary{
-      background: #e8f0ff;
-      border: 1px solid #b9c6f2;
-      color: var(--blue);
+      display:flex;
+      justify-content:flex-end;
+      margin-top:14px;
+      gap:10px;
+      align-items:center;
     }
 
-    .statusBar{
-      position:absolute;
-      left: 10px; bottom: 10px;
-      z-index: 5000;
-      background: rgba(255,255,255,0.92);
-      border: 1px solid #cfd7e6;
-      border-radius: 10px;
-      padding: 8px 10px;
-      font-size: 12px;
-      color: #25324a;
+    /* Listen-Overlay */
+    .list-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.45);
       display:none;
-      max-width: 70%;
+      z-index:30000;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      box-sizing:border-box;
     }
 
-    /* Locate button */
-    .locateBtn{
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      border: 2px solid var(--blue);
-      background: #fff;
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    .list-container{
+      width:min(620px, 95vw);
+      background:#fff;
+      border:3px solid var(--blue);
+      border-radius:10px;
+      padding:14px;
+      box-sizing:border-box;
+      max-height:80vh;
+      overflow-y:auto;
     }
-    .locateBtn:hover{ background: rgba(0,74,149,0.06); }
-    .crosshair{
-      width: 18px;
-      height: 18px;
-      border: 2px solid var(--blue);
-      border-radius: 50%;
-      position: relative;
-      box-sizing: border-box;
-    }
-    .crosshair:before, .crosshair:after{ content:""; position:absolute; background: var(--blue); }
-    .crosshair:before{ width: 2px; height: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
-    .crosshair:after{ height: 2px; width: 22px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
 
-    /* Bike marker: violet circle + number text (1.5x size) */
+    .list-header{
+      margin:0 0 12px 0;
+      font-size:16px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .close-btn{
+      background:none;
+      border:none;
+      font-size:26px;
+      cursor:pointer;
+      color:var(--text);
+    }
+
+    .list-items{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .list-item{
+      padding:10px;
+      border:1px solid #cfd7e6;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+      line-height:1.35;
+    }
+
+    .list-item:hover{
+      background:rgba(0,74,149,0.06);
+      border-color:var(--blue);
+    }
+
+    .empty-list{
+      padding:16px;
+      color:#666;
+      font-style:italic;
+    }
+
+    /* Fahrradmarker */
     .bikeWrap{
-      position: relative;
-      width: 24px;
-      height: 24px;
-      pointer-events: none;
+      position:relative;
+      width:24px;
+      height:24px;
+      pointer-events:none;
     }
+
     .bikeDot{
       position:absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: var(--bikePurple);
-      box-shadow: 0 2px 7px rgba(0,0,0,0.22);
-      display: grid;
-      place-items: center;
-    }
-    .bikeDot .bikeNum{
-      font-size: 12px;
-      font-weight: 900;
-      color: #fff;
-      line-height: 1;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.35);
-      transform: translateY(-0.5px);
-      user-select: none;
-      white-space: nowrap;
-      max-width: 22px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .bikeDot.rented{ background: var(--rentRed); }
-    .bikeDot.move{
-      outline: 2px solid var(--blinkRed);
-      outline-offset: 2px;
-      animation: pulseDot 0.9s infinite ease-in-out;
-    }
-    @keyframes pulseDot{
-      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)); transform: scale(1.0); }
-      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)); transform: scale(1.10); }
+      inset:0;
+      border-radius:50%;
+      background:var(--bikePurple);
+      box-shadow:0 2px 7px rgba(0,0,0,0.22);
+      display:grid;
+      place-items:center;
     }
 
-    /* Station marker: symbol = logo.png, 0.75x size */
-    .stationIconWrap{
-      position: relative;
-      width: 33px;
-      height: 33px;
-      pointer-events: none;
+    .bikeDot.rented{
+      background:var(--rentRed);
     }
+
+    .bikeNum{
+      font-size:12px;
+      font-weight:900;
+      color:#fff;
+      line-height:1;
+      text-shadow:0 1px 2px rgba(0,0,0,0.35);
+      user-select:none;
+      white-space:nowrap;
+      max-width:22px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    /* Stationsmarker */
+    .stationIconWrap{
+      position:relative;
+      width:33px;
+      height:33px;
+      pointer-events:none;
+    }
+
     .stationIconImg{
       position:absolute;
-      inset: 0;
-      width: 33px;
-      height: 33px;
-      object-fit: contain;
-      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.22));
-    }
-    .stationIconImg.move{
-      outline: 2px solid var(--blinkRed);
-      outline-offset: 2px;
-      border-radius: 6px;
-      animation: pulseImg 0.9s infinite ease-in-out;
-    }
-    @keyframes pulseImg{
-      0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)) drop-shadow(0 4px 10px rgba(0,0,0,0.22)); transform: scale(1.0); }
-      50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)) drop-shadow(0 4px 10px rgba(0,0,0,0.22)); transform: scale(1.06); }
+      inset:0;
+      width:33px;
+      height:33px;
+      object-fit:contain;
+      filter:drop-shadow(0 4px 10px rgba(0,0,0,0.22));
     }
 
-    /* Liste Stil */
-    .list-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      box-sizing: border-box;
+    /* Pulsieren beim Auswählen aus der Liste */
+    .selectedPulse{
+      animation:selectedPulse 0.45s ease-in-out 3;
+      transform-origin:center center;
     }
-    
-    .list-container {
-      width: min(600px, 95vw);
-      background: #fff;
-      border: 3px solid var(--blue);
-      border-radius: 10px;
-      padding: 14px;
-      box-sizing: border-box;
-      max-height: 80vh;
-      overflow-y: auto;
+
+    @keyframes selectedPulse{
+      0%, 100%{ transform:scale(1); }
+      50%{ transform:scale(1.5); }
     }
-    
-    .list-header {
-      margin: 0 0 12px 0;
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--blue);
-      text-transform: lowercase;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+
+    /* Verschiebemodus */
+    .moving{
+      outline:2px solid red;
+      outline-offset:2px;
     }
-    
-    .close-btn {
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: var(--text);
+
+    /* Standortbutton */
+    .locateBtn{
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:2px solid var(--blue);
+      background:#fff;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      box-shadow:0 8px 18px rgba(0,0,0,0.18);
     }
-    
-    .list-items {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+
+    .crosshair{
+      width:18px;
+      height:18px;
+      border:2px solid var(--blue);
+      border-radius:50%;
+      position:relative;
+      box-sizing:border-box;
     }
-    
-    .list-item {
-      padding: 10px;
-      border: 1px solid #cfd7e6;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
+
+    .crosshair::before,
+    .crosshair::after{
+      content:"";
+      position:absolute;
+      background:var(--blue);
+      left:50%;
+      top:50%;
+      transform:translate(-50%, -50%);
     }
-    
-    .list-item:hover {
-      background: rgba(0,74,149,0.05);
-      border-color: var(--blue);
+
+    .crosshair::before{
+      width:2px;
+      height:22px;
     }
-    
-    .bike-item {
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .bike-item .number {
-      font-weight: 800;
-      color: var(--bikePurple);
-    }
-    
-    .bike-item .name {
-      font-size: 14px;
-    }
-    
-    .bike-item .color {
-      font-size: 13px;
-      color: #666;
-    }
-    
-    .station-item {
-      font-size: 14px;
+
+    .crosshair::after{
+      width:22px;
+      height:2px;
     }
   </style>
 </head>
@@ -469,48 +538,64 @@
       <img id="logo" alt="logo" src="logo.png" />
       <h1>natebike</h1>
     </div>
-    <div class="menu-container">
-      <button id="menuBtn" class="menu-btn" type="button"></button>
-      <div id="dropdownMenu" class="dropdown-menu">
-        <div class="dropdown-item" data-type="stations">natebikestationen</div>
-        <div class="dropdown-item" data-type="bikes">natebikes</div>
+
+    <div class="headerActions">
+      <div class="menu-container">
+        <button id="menuBtn" class="menu-btn" type="button" title="Menü">
+          <div class="menu-lines"><span></span></div>
+        </button>
+
+        <div id="dropdownMenu" class="dropdown-menu">
+          <!-- Wichtig: data-kind ist NICHT der Supabase-Typ.
+               Die Zuordnung passiert im JavaScript:
+               bikes -> type === "bike"
+               notes -> type === "note" -->
+          <div class="dropdown-item" data-kind="notes">natebikestationen</div>
+          <div class="dropdown-item" data-kind="bikes">natebikes</div>
+        </div>
       </div>
+
+      <button id="adminBtn" class="adminBtn" type="button">Admin</button>
     </div>
-    <button id="adminBtn" class="adminBtn" type="button">Admin</button>
   </header>
 
   <div class="wrap">
+    <!-- Passwortansicht -->
     <div id="lockFrame">
       <div class="lockPanel">
         <div class="lockRow">
-          <div class="lockLabel">Passwort:</div>
+          <div>Passwort:</div>
           <input id="pwInput" type="password" autocomplete="current-password" />
         </div>
+
         <div class="lockFooter">
           <button class="btn" id="pwBtn" type="button">bestätigen</button>
         </div>
+
         <div id="pwMsg">falsches Passwort</div>
       </div>
     </div>
 
+    <!-- Kartenansicht -->
     <div id="mapFrame" style="display:none;">
       <div id="map"></div>
       <div id="statusBar" class="statusBar"></div>
     </div>
   </div>
 
-  <!-- Map menu (admin only) -->
+  <!-- Rechtsklick-Menü auf Karte -->
   <div id="ctxMenuMap" class="ctx-menu">
-    <div class="ctx-item" data-action="bike" id="ctxBike">neues Rad hinzufügen</div>
+    <div class="ctx-item" data-action="bike">neues Rad hinzufügen</div>
     <div class="ctx-item" data-action="note">natebikestation hinzufügen</div>
   </div>
 
-  <!-- Marker menu -->
+  <!-- Rechtsklick-Menü auf Marker -->
   <div id="ctxMenuMarker" class="ctx-menu">
     <div class="ctx-item" data-action="open">öffnen</div>
     <div class="ctx-item" data-action="move">verschieben</div>
   </div>
 
+  <!-- Detailmodal -->
   <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal">
       <h2 id="modalTitle">details</h2>
@@ -519,16 +604,18 @@
     </div>
   </div>
 
+  <!-- Adminmodal -->
   <div id="adminOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal">
       <h2>admin</h2>
+
       <div class="grid">
         <div class="label">Passwort</div>
         <input id="adminPwInput" type="password" autocomplete="current-password" />
       </div>
-      <div style="margin-top:10px;color:var(--danger);display:none;font-size:13px;" id="adminMsg">
-        falsches Passwort
-      </div>
+
+      <div id="adminMsg">falsches Passwort</div>
+
       <div class="modal-footer">
         <button class="btn secondary" id="adminCancelBtn" type="button">schließen</button>
         <button class="btn" id="adminOkBtn" type="button">bestätigen</button>
@@ -536,445 +623,782 @@
     </div>
   </div>
 
-  <!-- Liste Overlay -->
+  <!-- Listenmodal für natebikes / natebikestationen -->
   <div id="listOverlay" class="list-overlay">
     <div class="list-container">
       <div class="list-header">
-        <div id="listTitle">natebikes</div>
-        <button class="close-btn">×</button>
+        <div id="listTitle">liste</div>
+        <button class="close-btn" id="listCloseBtn" type="button">×</button>
       </div>
+
       <div id="listItems" class="list-items"></div>
     </div>
   </div>
 
   <script>
-    // --- config ---
+    /***********************
+     * Konfiguration
+     ***********************/
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
+
     const APP_PASSWORD = "drahtesel";
     const ADMIN_PASSWORD = "eseldraht";
 
     const KASSEL_CENTER = [51.3127, 9.4797];
     const DEFAULT_ZOOM = 13;
-    const LOCATION_REFRESH_MS = 5000;
 
-    // --- supabase ---
+    /***********************
+     * Supabase
+     ***********************/
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // --- map ---
-    const map = L.map('map', { center: KASSEL_CENTER, zoom: DEFAULT_ZOOM, dragging: true });
+    /***********************
+     * Karte
+     ***********************/
+    const map = L.map("map", {
+      center: KASSEL_CENTER,
+      zoom: DEFAULT_ZOOM
+    });
 
-    // Panes (station behind bike)
-    map.createPane('stationPane');
-    map.getPane('stationPane').style.zIndex = 380;
-    map.createPane('bikePane');
-    map.getPane('bikePane').style.zIndex = 420;
+    // Eigene Panes: Stationen hinter Fahrrädern
+    map.createPane("stationPane");
+    map.getPane("stationPane").style.zIndex = 380;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    map.createPane("bikePane");
+    map.getPane("bikePane").style.zIndex = 420;
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
+      attribution: "&copy; OpenStreetMap"
     }).addTo(map);
 
-    // Locate control
+    // Standortbutton
     const LocateControl = L.Control.extend({
-      options: { position: 'bottomright' },
-      onAdd: function() {
-        const btn = L.DomUtil.create('div', 'locateBtn');
-        btn.title = 'Standort zentrieren';
+      options:{ position:"bottomright" },
+      onAdd:function(){
+        const btn = L.DomUtil.create("div", "locateBtn");
+        btn.title = "Standort zentrieren";
         btn.innerHTML = '<div class="crosshair"></div>';
+
         L.DomEvent.disableClickPropagation(btn);
-        L.DomEvent.on(btn, 'click', async () => {
-          const ok = await centerOnDeviceOrKassel(true);
-          if(!ok) showStatus('standort nicht verfügbar');
+
+        L.DomEvent.on(btn, "click", () => {
+          map.locate({
+            setView:true,
+            maxZoom:16,
+            enableHighAccuracy:true
+          });
         });
+
         return btn;
       }
     });
+
     map.addControl(new LocateControl());
 
-    // device location marker (red ring)
     let locationMarker = null;
-    function setOrUpdateLocationMarker(latlng){
+
+    map.on("locationfound", (e) => {
       if(!locationMarker){
-        locationMarker = L.circleMarker(latlng, { radius: 10, color:'#ff0000', weight:3, fillOpacity:0 }).addTo(map);
+        locationMarker = L.circleMarker(e.latlng, {
+          radius:10,
+          color:"#ff0000",
+          weight:3,
+          fillOpacity:0
+        }).addTo(map);
       }else{
-        locationMarker.setLatLng(latlng);
+        locationMarker.setLatLng(e.latlng);
       }
-    }
-    let lastDeviceLatLng = null;
-    let locationTimer = null;
+    });
 
-    async function getDeviceLatLng(timeoutMs=4000){
-      return new Promise((resolve) => {
-        let done=false;
-        const ok = (e)=>{ if(done) return; done=true; resolve(e.latlng); };
-        const fail = ()=>{ if(done) return; done=true; resolve(null); };
-        map.once('locationfound', ok);
-        map.once('locationerror', fail);
-        map.locate({ setView:false, watch:false, enableHighAccuracy:true, maximumAge:15000, timeout: timeoutMs });
-        setTimeout(fail, timeoutMs+800);
-      });
-    }
-    async function refreshDeviceLocationOnce(){
-      const ll = await getDeviceLatLng(4000);
-      if(ll){
-        lastDeviceLatLng = ll;
-        setOrUpdateLocationMarker(ll);
-        return true;
-      }
-      return false;
-    }
-    function startLocationUpdates(){
-      if(locationTimer) clearInterval(locationTimer);
-      refreshDeviceLocationOnce();
-      locationTimer = setInterval(refreshDeviceLocationOnce, LOCATION_REFRESH_MS);
-    }
-    async function centerOnDeviceOrKassel(forceCenter=false){
-      const ok = await refreshDeviceLocationOnce();
-      if(ok && forceCenter){
-        map.setView(lastDeviceLatLng, 16);
-        return true;
-      }
-      if(ok) return true;
-      if(forceCenter) map.setView(KASSEL_CENTER, DEFAULT_ZOOM);
-      return false;
-    }
+    map.on("locationerror", () => {
+      showStatus("standort nicht verfügbar");
+    });
 
-    // --- ui helpers ---
-    const statusBar = document.getElementById('statusBar');
-    let statusTimer = null;
-    function showStatus(msg){
-      statusBar.textContent = msg;
-      statusBar.style.display = 'block';
-      clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => statusBar.style.display = 'none', 2500);
-    }
-    function escapeHtml(str){
-      return String(str ?? "")
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'","&#039;");
-    }
-
-    // --- admin ---
+    /***********************
+     * Globale Marker-Daten
+     ***********************/
+    const markers = new Map(); // dbId -> entry
+    let markersLoaded = false;
     let isAdmin = false;
-    const adminBtn = document.getElementById('adminBtn');
-    const adminOverlay = document.getElementById('adminOverlay');
-    const adminPwInput = document.getElementById('adminPwInput');
-    const adminMsg = document.getElementById('adminMsg');
-    const adminOkBtn = document.getElementById('adminOkBtn');
-    const adminCancelBtn = document.getElementById('adminCancelBtn');
-
-    function updateAdminUI(){
-      adminBtn.classList.toggle('isAdmin', isAdmin);
-    }
-    function openAdminModal(){
-      adminMsg.style.display = 'none';
-      adminPwInput.value = '';
-      adminOverlay.style.display = 'flex';
-      adminPwInput.focus();
-    }
-    function closeAdminModal(){ adminOverlay.style.display = 'none'; }
-    function logoutAdmin(){
-      isAdmin = false;
-      updateAdminUI();
-      showStatus('admin abgemeldet');
-    }
-    adminBtn.addEventListener('click', ()=>{ isAdmin ? logoutAdmin() : openAdminModal(); });
-    adminCancelBtn.addEventListener('click', closeAdminModal);
-    adminOverlay.addEventListener('click', (e)=>{ if(e.target===adminOverlay) closeAdminModal(); });
-    function confirmAdmin(){
-      const val = (adminPwInput.value || "").trim();
-      if(val !== ADMIN_PASSWORD){
-        adminMsg.textContent = "falsches Passwort";
-        adminMsg.style.display = 'block';
-        return;
-      }
-      isAdmin = true;
-      updateAdminUI();
-      closeAdminModal();
-      showStatus('admin aktiv');
-    }
-    adminOkBtn.addEventListener('click', confirmAdmin);
-    adminPwInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmAdmin(); });
-
-    // --- icons ---
-    function bikeIcon({ number='', rented=false, moving=false } = {}){
-      const cls = `bikeDot ${rented ? 'rented' : ''} ${moving ? 'move' : ''}`;
-      const safeNum = escapeHtml(number);
-      return L.divIcon({
-        className: '',
-        html: `<div class="bikeWrap"><div class="${cls}"><div class="bikeNum">${safeNum}</div></div></div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-      });
-    }
-
-    function stationIcon({ moving=false } = {}){
-      const cls = `stationIconImg ${moving ? 'move' : ''}`;
-      return L.divIcon({
-        className: '',
-        html: `<div class="stationIconWrap"><img class="${cls}" src="logo.png" alt=""/></div>`,
-        iconSize: [33, 33],
-        iconAnchor: [16.5, 16.5]
-      });
-    }
-
-    // --- marker state ---
-    const markers = new Map(); // leafletId -> entry
     let moveModeEntry = null;
 
-    function findEntryByDbId(dbId){
-      for (const entry of markers.values()){
-        if(entry.dbId === dbId) return entry;
-      }
-      return null;
+    /***********************
+     * Hilfsfunktionen
+     ***********************/
+    function escapeHtml(value){
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function showStatus(message){
+      const statusBar = document.getElementById("statusBar");
+      statusBar.textContent = message;
+      statusBar.style.display = "block";
+
+      clearTimeout(showStatus.timer);
+      showStatus.timer = setTimeout(() => {
+        statusBar.style.display = "none";
+      }, 2500);
+    }
+
+    function bikeSortValue(value){
+      const text = String(value ?? "").trim();
+      const number = Number(text);
+
+      return {
+        isNumber: text !== "" && Number.isFinite(number),
+        number,
+        text
+      };
+    }
+
+    function sortBikeEntries(a, b){
+      const av = bikeSortValue(a.bikeNumber);
+      const bv = bikeSortValue(b.bikeNumber);
+
+      if(av.isNumber && bv.isNumber) return av.number - bv.number;
+      if(av.isNumber && !bv.isNumber) return -1;
+      if(!av.isNumber && bv.isNumber) return 1;
+
+      return av.text.localeCompare(bv.text, "de", {
+        numeric:true,
+        sensitivity:"base"
+      });
+    }
+
+    /***********************
+     * Icons
+     ***********************/
+    function bikeIcon(entry){
+      const classes = [
+        "bikeDot",
+        entry.isRented ? "rented" : "",
+        entry.isMoving ? "moving" : "",
+        entry.isPulsing ? "selectedPulse" : ""
+      ].filter(Boolean).join(" ");
+
+      return L.divIcon({
+        className:"",
+        html: `
+          <div class="bikeWrap">
+            <div class="${classes}">
+              <div class="bikeNum">${escapeHtml(entry.bikeNumber)}</div>
+            </div>
+          </div>
+        `,
+        iconSize:[24, 24],
+        iconAnchor:[12, 12]
+      });
+    }
+
+    function stationIcon(entry){
+      const classes = [
+        "stationIconImg",
+        entry.isMoving ? "moving" : "",
+        entry.isPulsing ? "selectedPulse" : ""
+      ].filter(Boolean).join(" ");
+
+      return L.divIcon({
+        className:"",
+        html: `
+          <div class="stationIconWrap">
+            <img class="${classes}" src="logo.png" alt="" />
+          </div>
+        `,
+        iconSize:[33, 33],
+        iconAnchor:[16.5, 16.5]
+      });
     }
 
     function iconForEntry(entry){
-      const moving = (moveModeEntry && moveModeEntry === entry);
-      if(entry.type === 'bike'){
-        return bikeIcon({ number: entry.data.Nummer ?? '', rented: !!entry.isRented, moving });
-      }
-      return stationIcon({ moving });
+      return entry.type === "bike" ? bikeIcon(entry) : stationIcon(entry);
     }
 
-    function applyRowToEntry(entry, row){
-      if (!(moveModeEntry && moveModeEntry === entry) && typeof row.lat === 'number' && typeof row.lng === 'number'){
-        entry.marker.setLatLng([row.lat, row.lng]);
-      }
-      entry.isRented = !!row.is_rented;
-
-      if(entry.type === 'bike'){
-        entry.data.Nummer = row.bike_number ?? entry.data.Nummer;
-        entry.data.Name = row.name ?? entry.data.Name;
-        entry.data.Farbe = row.color ?? entry.data.Farbe;
-        entry.data.Bemerkung = row.remark ?? entry.data.Bemerkung;
-        entry.data.Schlosscode = row.code ?? entry.data.Schlosscode;
-      } else {
-        entry.data.Name = row.content ?? ' ';
-      }
-      entry.marker.setIcon(iconForEntry(entry));
-    }
-
+    /***********************
+     * Supabase-Funktionen
+     ***********************/
     async function dbLoadAll(){
-      const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending:true });
+      const { data, error } = await sb
+        .from("markers")
+        .select("*")
+        .order("created_at", { ascending:true });
+
       if(error) throw error;
       return data || [];
     }
+
     async function dbInsert(type, lat, lng){
-      const payload = { type, lat, lng, name:'natebike', color:'undefiniert', remark:'keine', photo_url:null, content:' ', is_rented:false, bike_number:'', code:'' };
-      const { data, error } = await sb.from('markers').insert(payload).select().single();
+      const payload = {
+        type,
+        lat,
+        lng,
+
+        // Standardwerte für Fahrräder
+        bike_number:"",
+        name:"natebike",
+        color:"undefiniert",
+        remark:"keine",
+        code:"",
+
+        // Standardwerte für Stationen
+        content:" ",
+
+        is_rented:false,
+        photo_url:null
+      };
+
+      const { data, error } = await sb
+        .from("markers")
+        .insert(payload)
+        .select()
+        .single();
+
       if(error) throw error;
       return data;
     }
+
     async function dbUpdate(id, patch){
-      const { error } = await sb.from('markers').update(patch).eq('id', id);
+      const { error } = await sb
+        .from("markers")
+        .update(patch)
+        .eq("id", id);
+
       if(error) throw error;
     }
+
     async function dbDelete(id){
-      const { error } = await sb.from('markers').delete().eq('id', id);
+      const { error } = await sb
+        .from("markers")
+        .delete()
+        .eq("id", id);
+
       if(error) throw error;
     }
 
-    function wireMarker(entry){
-      const m = entry.marker;
-      m.options.draggable = false;
-      if(m.dragging) m.dragging.disable();
+    /***********************
+     * Marker erzeugen / aktualisieren
+     ***********************/
+    function rowToEntry(row){
+      return {
+        id:row.id,
+        type:row.type, // WICHTIG: "bike" oder "note"
 
-      m.on('dragstart', ()=>map.dragging.disable());
-      m.on('dragend', async ()=>{
-        map.dragging.enable();
-        if(moveModeEntry === entry){
-          const ll = m.getLatLng();
-          await dbUpdate(entry.dbId, { lat: ll.lat, lng: ll.lng });
-          if(m.dragging) m.dragging.disable();
-          m.options.draggable = false;
-          moveModeEntry = null;
-          m.setIcon(iconForEntry(entry));
-          showStatus('position gespeichert');
-        }
-      });
+        lat:row.lat,
+        lng:row.lng,
 
-      // RIGHT-CLICK MENU:
-      // - bikes: always
-      // - stations: admin only
-      m.on('contextmenu', (e)=>{
-        L.DomEvent.stop(e);
-        if(entry.type === 'note' && !isAdmin) return;   // <-- change
-        openMarkerMenu(e.originalEvent, entry);
-      });
+        // Fahrradfelder
+        bikeNumber:row.bike_number ?? "",
+        bikeName:row.name ?? "",
+        bikeColor:row.color ?? "",
+        bikeRemark:row.remark ?? "",
+        bikeCode:row.code ?? "",
 
-      // CLICK OPEN:
-      // - bikes: always open window
-      // - stations: open window always, but editable only for admin (modal already handles that)
-      m.on('click', (e)=>{
-        L.DomEvent.stop(e);
-        entry.type === 'bike' ? openBikeWindow(entry) : openStationWindow(entry);
-      });
+        // Stationsfeld
+        content:row.content ?? "",
+
+        isRented:!!row.is_rented,
+        isMoving:false,
+        isPulsing:false,
+
+        marker:null
+      };
     }
 
-    function addMarkerFromRow(row){
-      const entry = {
-        type: row.type, // 'bike' or 'note'
-        dbId: row.id,
-        isRented: !!row.is_rented,
-        data: row.type === 'bike'
-          ? { Nummer: row.bike_number ?? '', Name: row.name ?? 'natebike', Farbe: row.color ?? 'undefiniert', Bemerkung: row.remark ?? 'keine', Schlosscode: row.code ?? '' }
-          : { Name: row.content ?? ' ' }
-      };
+    function addOrUpdateMarker(row){
+      let entry = markers.get(row.id);
 
-      const pane = (row.type === 'bike') ? 'bikePane' : 'stationPane';
+      if(!entry){
+        entry = rowToEntry(row);
 
-      entry.marker = L.marker(
-        { lat: row.lat, lng: row.lng },
-        { icon: iconForEntry(entry), draggable:false, pane }
-      ).addTo(map);
+        const pane = entry.type === "bike" ? "bikePane" : "stationPane";
 
-      markers.set(entry.marker._leaflet_id, entry);
-      wireMarker(entry);
+        entry.marker = L.marker([entry.lat, entry.lng], {
+          icon:iconForEntry(entry),
+          draggable:false,
+          pane
+        }).addTo(map);
+
+        markers.set(entry.id, entry);
+        wireMarker(entry);
+      }else{
+        // Vorhandenen Marker aktualisieren
+        entry.type = row.type;
+        entry.lat = row.lat;
+        entry.lng = row.lng;
+
+        entry.bikeNumber = row.bike_number ?? "";
+        entry.bikeName = row.name ?? "";
+        entry.bikeColor = row.color ?? "";
+        entry.bikeRemark = row.remark ?? "";
+        entry.bikeCode = row.code ?? "";
+
+        entry.content = row.content ?? "";
+        entry.isRented = !!row.is_rented;
+
+        if(!entry.isMoving){
+          entry.marker.setLatLng([entry.lat, entry.lng]);
+        }
+
+        entry.marker.setIcon(iconForEntry(entry));
+      }
+
       return entry;
     }
 
-    async function createBikeAt(latlng){
-      if(!isAdmin){ showStatus('nur admin'); return; }
-      const row = await dbInsert('bike', latlng.lat, latlng.lng);
-      addMarkerFromRow(row);
-    }
-    async function createStationAt(latlng){
-      if(!isAdmin){ showStatus('nur admin'); return; }
-      const row = await dbInsert('note', latlng.lat, latlng.lng);
-      addMarkerFromRow(row);
-    }
+    async function loadMarkersOnce(){
+      const rows = await dbLoadAll();
 
-    // --- realtime ---
-    sb.channel('markers-realtime')
-      .on('postgres_changes', { event:'*', schema:'public', table:'markers' }, (payload)=>{
-        if(payload.eventType === 'INSERT'){
-          const row = payload.new;
-          if(findEntryByDbId(row.id)) return;
-          addMarkerFromRow(row);
-        } else if(payload.eventType === 'UPDATE'){
-          const row = payload.new;
-          const entry = findEntryByDbId(row.id);
-          if(!entry){ addMarkerFromRow(row); return; }
-          applyRowToEntry(entry, row);
-        } else if(payload.eventType === 'DELETE'){
-          const row = payload.old;
-          const entry = findEntryByDbId(row.id);
-          if(!entry) return;
-          map.removeLayer(entry.marker);
-          markers.delete(entry.marker._leaflet_id);
+      rows.forEach(row => {
+        // Nur bekannte Markerarten verwenden
+        if(row.type === "bike" || row.type === "note"){
+          addOrUpdateMarker(row);
         }
-      })
-      .subscribe();
+      });
 
-    // --- menus ---
-    const ctxMenuMap = document.getElementById('ctxMenuMap');
-    const ctxMenuMarker = document.getElementById('ctxMenuMarker');
+      markersLoaded = true;
+    }
+
+    function findEntryById(id){
+      return markers.get(id) || null;
+    }
+
+    /***********************
+     * Marker-Verhalten
+     ***********************/
+    function wireMarker(entry){
+      const marker = entry.marker;
+
+      marker.on("click", (e) => {
+        L.DomEvent.stop(e);
+
+        if(entry.type === "bike"){
+          openBikeWindow(entry);
+        }else{
+          openStationWindow(entry);
+        }
+      });
+
+      marker.on("contextmenu", (e) => {
+        L.DomEvent.stop(e);
+
+        if(!isAdmin){
+          showStatus("nur admin");
+          return;
+        }
+
+        openMarkerMenu(e.originalEvent, entry);
+      });
+
+      marker.on("dragstart", () => {
+        map.dragging.disable();
+      });
+
+      marker.on("dragend", async () => {
+        map.dragging.enable();
+
+        if(moveModeEntry !== entry) return;
+
+        const ll = marker.getLatLng();
+
+        entry.lat = ll.lat;
+        entry.lng = ll.lng;
+
+        await dbUpdate(entry.id, {
+          lat:ll.lat,
+          lng:ll.lng
+        });
+
+        entry.isMoving = false;
+        moveModeEntry = null;
+
+        if(marker.dragging) marker.dragging.disable();
+        marker.setIcon(iconForEntry(entry));
+
+        showStatus("position gespeichert");
+      });
+    }
+
+    function pulseEntry(entry){
+      entry.isPulsing = true;
+      entry.marker.setIcon(iconForEntry(entry));
+
+      setTimeout(() => {
+        entry.isPulsing = false;
+        entry.marker.setIcon(iconForEntry(entry));
+      }, 1400);
+    }
+
+    /***********************
+     * Dropdown-Menü und Listen
+     ***********************/
+    const menuBtn = document.getElementById("menuBtn");
+    const dropdownMenu = document.getElementById("dropdownMenu");
+
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dropdownMenu.style.display =
+        dropdownMenu.style.display === "block" ? "none" : "block";
+    });
+
+    document.addEventListener("click", (e) => {
+      if(!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)){
+        dropdownMenu.style.display = "none";
+      }
+    });
+
+    document.querySelectorAll(".dropdown-item").forEach(item => {
+      item.addEventListener("click", async () => {
+        const kind = item.dataset.kind;
+
+        dropdownMenu.style.display = "none";
+
+        if(kind === "bikes"){
+          showBikeList();
+        }
+
+        if(kind === "notes"){
+          showNoteList();
+        }
+      });
+    });
+
+    function openList(title){
+      document.getElementById("listTitle").textContent = title;
+      document.getElementById("listItems").innerHTML = "";
+      document.getElementById("listOverlay").style.display = "flex";
+    }
+
+    function addEmptyListMessage(text){
+      const listItems = document.getElementById("listItems");
+      const div = document.createElement("div");
+      div.className = "empty-list";
+      div.textContent = text;
+      listItems.appendChild(div);
+    }
+
+    function addListRow(text, entry){
+      const listItems = document.getElementById("listItems");
+
+      const row = document.createElement("div");
+      row.className = "list-item";
+      row.textContent = text;
+
+      row.addEventListener("click", () => {
+        document.getElementById("listOverlay").style.display = "none";
+
+        map.setView([entry.lat, entry.lng], 17);
+        pulseEntry(entry);
+      });
+
+      listItems.appendChild(row);
+    }
+
+    function showBikeList(){
+      // WICHTIG:
+      // Hier werden die bereits vorhandenen Marker aus der Karte genommen.
+      // Gesucht wird nach Supabase type === "bike".
+      const bikes = Array.from(markers.values())
+        .filter(entry => entry.type === "bike")
+        .sort(sortBikeEntries);
+
+      openList("natebikes");
+
+      if(bikes.length === 0){
+        addEmptyListMessage("keine Fahrräder gefunden");
+        return;
+      }
+
+      bikes.forEach(entry => {
+        // Gewünscht: bikeNumber und bikeName in einer Zeile, mit Leerzeichen getrennt
+        const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
+        addListRow(line || "(ohne Nummer/Name)", entry);
+      });
+    }
+
+    function showNoteList(){
+      // WICHTIG:
+      // Hier werden die bereits vorhandenen Marker aus der Karte genommen.
+      // Gesucht wird nach Supabase type === "note".
+      const notes = Array.from(markers.values())
+        .filter(entry => entry.type === "note")
+        .sort((a, b) => Number(a.lng) - Number(b.lng)); // westlich nach östlich
+
+      openList("natebikestationen");
+
+      if(notes.length === 0){
+        addEmptyListMessage("keine Stationen gefunden");
+        return;
+      }
+
+      notes.forEach(entry => {
+        // Gewünscht: Inhalt des Markers anzeigen
+        const line = String(entry.content || "").trim();
+        addListRow(line || "(ohne Inhalt)", entry);
+      });
+    }
+
+    document.getElementById("listCloseBtn").addEventListener("click", () => {
+      document.getElementById("listOverlay").style.display = "none";
+    });
+
+    document.getElementById("listOverlay").addEventListener("click", (e) => {
+      if(e.target.id === "listOverlay"){
+        document.getElementById("listOverlay").style.display = "none";
+      }
+    });
+
+    /***********************
+     * Passwort / App öffnen
+     ***********************/
+    const lockFrame = document.getElementById("lockFrame");
+    const mapFrame = document.getElementById("mapFrame");
+    const pwInput = document.getElementById("pwInput");
+    const pwBtn = document.getElementById("pwBtn");
+    const pwMsg = document.getElementById("pwMsg");
+
+    async function unlock(){
+      const value = (pwInput.value || "").trim();
+
+      if(value !== APP_PASSWORD){
+        pwMsg.style.display = "block";
+        return;
+      }
+
+      pwMsg.style.display = "none";
+      lockFrame.style.display = "none";
+      mapFrame.style.display = "block";
+
+      setTimeout(() => {
+        map.invalidateSize();
+        map.locate({ setView:true, maxZoom:16, enableHighAccuracy:true });
+      }, 100);
+
+      try{
+        await loadMarkersOnce();
+      }catch(err){
+        console.error(err);
+        showStatus("marker konnten nicht geladen werden");
+      }
+    }
+
+    pwBtn.addEventListener("click", unlock);
+    pwInput.addEventListener("keydown", (e) => {
+      if(e.key === "Enter") unlock();
+    });
+
+    /***********************
+     * Admin
+     ***********************/
+    const adminBtn = document.getElementById("adminBtn");
+    const adminOverlay = document.getElementById("adminOverlay");
+    const adminPwInput = document.getElementById("adminPwInput");
+    const adminOkBtn = document.getElementById("adminOkBtn");
+    const adminCancelBtn = document.getElementById("adminCancelBtn");
+    const adminMsg = document.getElementById("adminMsg");
+
+    function updateAdminUI(){
+      adminBtn.classList.toggle("isAdmin", isAdmin);
+    }
+
+    function openAdminModal(){
+      adminPwInput.value = "";
+      adminMsg.style.display = "none";
+      adminOverlay.style.display = "flex";
+      adminPwInput.focus();
+    }
+
+    function closeAdminModal(){
+      adminOverlay.style.display = "none";
+    }
+
+    function confirmAdmin(){
+      const value = (adminPwInput.value || "").trim();
+
+      if(value !== ADMIN_PASSWORD){
+        adminMsg.style.display = "block";
+        return;
+      }
+
+      isAdmin = true;
+      updateAdminUI();
+      closeAdminModal();
+      showStatus("admin aktiv");
+    }
+
+    adminBtn.addEventListener("click", () => {
+      if(isAdmin){
+        isAdmin = false;
+        updateAdminUI();
+        showStatus("admin abgemeldet");
+      }else{
+        openAdminModal();
+      }
+    });
+
+    adminOkBtn.addEventListener("click", confirmAdmin);
+    adminPwInput.addEventListener("keydown", (e) => {
+      if(e.key === "Enter") confirmAdmin();
+    });
+
+    adminCancelBtn.addEventListener("click", closeAdminModal);
+
+    adminOverlay.addEventListener("click", (e) => {
+      if(e.target === adminOverlay) closeAdminModal();
+    });
+
+    /***********************
+     * Karte: Admin-Kontextmenü
+     ***********************/
+    const ctxMenuMap = document.getElementById("ctxMenuMap");
+    const ctxMenuMarker = document.getElementById("ctxMenuMarker");
+
     let ctxMapLatLng = null;
     let ctxMarkerEntry = null;
 
-    function hideMenus(){
-      ctxMenuMap.style.display = 'none';
-      ctxMenuMarker.style.display = 'none';
+    function hideContextMenus(){
+      ctxMenuMap.style.display = "none";
+      ctxMenuMarker.style.display = "none";
+      ctxMapLatLng = null;
       ctxMarkerEntry = null;
     }
 
-    map.getContainer().addEventListener('contextmenu', (e)=>e.preventDefault());
+    map.getContainer().addEventListener("contextmenu", e => e.preventDefault());
 
-    map.on('contextmenu', (e)=>{
+    map.on("contextmenu", (e) => {
       if(!isAdmin) return;
+
       ctxMapLatLng = e.latlng;
-      const oe = e.originalEvent;
-      hideMenus();
-      ctxMenuMap.style.left = `${oe.clientX}px`;
-      ctxMenuMap.style.top  = `${oe.clientY}px`;
-      ctxMenuMap.style.display = 'block';
+
+      hideContextMenus();
+
+      ctxMenuMap.style.left = `${e.originalEvent.clientX}px`;
+      ctxMenuMap.style.top = `${e.originalEvent.clientY}px`;
+      ctxMenuMap.style.display = "block";
     });
 
-    ctxMenuMap.addEventListener('pointerdown', (e)=>e.stopPropagation());
-    ctxMenuMarker.addEventListener('pointerdown', (e)=>e.stopPropagation());
+    map.on("click", hideContextMenus);
+    map.on("movestart", hideContextMenus);
 
-    map.on('click', hideMenus);
-    map.on('movestart', hideMenus);
-    document.addEventListener('pointerdown', (e)=>{
-      if(!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target)) hideMenus();
+    document.addEventListener("pointerdown", (e) => {
+      if(!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target)){
+        hideContextMenus();
+      }
     });
 
-    ctxMenuMap.addEventListener('pointerdown', async (e)=>{
-      const item = e.target.closest('.ctx-item');
+    ctxMenuMap.addEventListener("pointerdown", async (e) => {
+      const item = e.target.closest(".ctx-item");
       if(!item || !ctxMapLatLng) return;
+
       const action = item.dataset.action;
-      hideMenus();
-      if(action === 'bike') await createBikeAt(ctxMapLatLng);
-      if(action === 'note') await createStationAt(ctxMapLatLng);
+      const latlng = ctxMapLatLng;
+
+      hideContextMenus();
+
+      try{
+        if(action === "bike"){
+          const row = await dbInsert("bike", latlng.lat, latlng.lng);
+          addOrUpdateMarker(row);
+        }
+
+        if(action === "note"){
+          const row = await dbInsert("note", latlng.lat, latlng.lng);
+          addOrUpdateMarker(row);
+        }
+      }catch(err){
+        console.error(err);
+        showStatus("konnte nicht gespeichert werden");
+      }
     });
 
     function openMarkerMenu(mouseEvent, entry){
-      hideMenus();
+      hideContextMenus();
+
       ctxMarkerEntry = entry;
+
       ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
-      ctxMenuMarker.style.top  = `${mouseEvent.clientY}px`;
-      ctxMenuMarker.style.display = 'block';
+      ctxMenuMarker.style.top = `${mouseEvent.clientY}px`;
+      ctxMenuMarker.style.display = "block";
     }
 
-    ctxMenuMarker.addEventListener('pointerdown', (e)=>{
-      const item = e.target.closest('.ctx-item');
+    ctxMenuMarker.addEventListener("pointerdown", (e) => {
+      const item = e.target.closest(".ctx-item");
       if(!item || !ctxMarkerEntry) return;
+
       const action = item.dataset.action;
       const entry = ctxMarkerEntry;
-      hideMenus();
 
-      if(action === 'open'){
-        entry.type === 'bike' ? openBikeWindow(entry) : openStationWindow(entry);
+      hideContextMenus();
+
+      if(action === "open"){
+        if(entry.type === "bike") openBikeWindow(entry);
+        else openStationWindow(entry);
       }
 
-      if(action === 'move'){
-        // bikes unchanged; stations only admin
-        if(entry.type === 'note' && !isAdmin){ showStatus('nur admin'); return; } // <-- change
+      if(action === "move"){
+        if(entry.isRented){
+          showStatus("nicht verschiebbar");
+          return;
+        }
 
-        if(entry.isRented){ showStatus('nicht verschiebbar'); return; }
-        if(entry.marker.dragging) entry.marker.dragging.enable();
-        entry.marker.options.draggable = true;
         moveModeEntry = entry;
+        entry.isMoving = true;
         entry.marker.setIcon(iconForEntry(entry));
-        showStatus('ziehen und loslassen');
+
+        if(entry.marker.dragging) entry.marker.dragging.enable();
+
+        showStatus("ziehen und loslassen");
       }
     });
 
-    // --- modal windows ---
-    const overlay = document.getElementById('modalOverlay');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalBody = document.getElementById('modalBody');
-    const modalFooter = document.getElementById('modalFooter');
+    /***********************
+     * Detailfenster Fahrrad / Station
+     ***********************/
+    const modalOverlay = document.getElementById("modalOverlay");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+    const modalFooter = document.getElementById("modalFooter");
 
-    function openModal(){ overlay.style.display = 'flex'; }
-    function closeModal(){
-      overlay.style.display = 'none';
-      modalBody.innerHTML = '';
-      modalFooter.innerHTML = '';
-      modalTitle.textContent = 'details';
+    function openModal(){
+      modalOverlay.style.display = "flex";
     }
-    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
+
+    function closeModal(){
+      modalOverlay.style.display = "none";
+      modalTitle.textContent = "details";
+      modalBody.innerHTML = "";
+      modalFooter.innerHTML = "";
+    }
+
+    modalOverlay.addEventListener("click", (e) => {
+      if(e.target === modalOverlay) closeModal();
+    });
 
     function openBikeWindow(entry){
-      modalTitle.textContent = 'geparktes fahrrad';
-      const ro = isAdmin ? '' : 'readonly';
+      modalTitle.textContent = "geparktes fahrrad";
+
+      const readonly = isAdmin ? "" : "readonly";
 
       modalBody.innerHTML = `
         <div class="label">Nummer</div>
-        <input type="text" id="bikeNumber" ${ro} value="${escapeHtml(entry.data.Nummer)}"/>
+        <input type="text" id="bikeNumberInput" ${readonly} value="${escapeHtml(entry.bikeNumber)}" />
+
         <div class="label">Name</div>
-        <input type="text" id="bikeName" ${ro} value="${escapeHtml(entry.data.Name)}"/>
+        <input type="text" id="bikeNameInput" ${readonly} value="${escapeHtml(entry.bikeName)}" />
+
         <div class="label">Farbe</div>
-        <input type="text" id="bikeColor" ${ro} value="${escapeHtml(entry.data.Farbe)}"/>
+        <input type="text" id="bikeColorInput" ${readonly} value="${escapeHtml(entry.bikeColor)}" />
+
         <div class="label">Bemerkung</div>
-        <input type="text" id="bikeRemark" ${ro} value="${escapeHtml(entry.data.Bemerkung)}"/>
+        <input type="text" id="bikeRemarkInput" ${readonly} value="${escapeHtml(entry.bikeRemark)}" />
+
         <div class="label">Schlosscode</div>
-        <input type="text" id="bikeCode" ${ro} value="${escapeHtml(entry.data.Schlosscode)}"/>
+        <input type="text" id="bikeCodeInput" ${readonly} value="${escapeHtml(entry.bikeCode)}" />
       `;
 
       if(isAdmin){
@@ -983,218 +1407,122 @@
           <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
         `;
 
-        document.getElementById('bikeSaveBtn').addEventListener('click', async ()=>{
-          const out = {};
-          const v1 = document.getElementById('bikeNumber').value.trim();
-          const v2 = document.getElementById('bikeName').value.trim();
-          const v3 = document.getElementById('bikeColor').value.trim();
-          const v4 = document.getElementById('bikeRemark').value.trim();
-          const v5 = document.getElementById('bikeCode').value.trim();
-          if(v1 !== '') out.bike_number = v1;
-          if(v2 !== '') out.name = v2;
-          if(v3 !== '') out.color = v3;
-          if(v4 !== '') out.remark = v4;
-          if(v5 !== '') out.code = v5;
-          if(Object.keys(out).length) await dbUpdate(entry.dbId, out);
-          closeModal();
+        document.getElementById("bikeSaveBtn").addEventListener("click", async () => {
+          const patch = {
+            bike_number:document.getElementById("bikeNumberInput").value.trim(),
+            name:document.getElementById("bikeNameInput").value.trim(),
+            color:document.getElementById("bikeColorInput").value.trim(),
+            remark:document.getElementById("bikeRemarkInput").value.trim(),
+            code:document.getElementById("bikeCodeInput").value.trim()
+          };
+
+          try{
+            await dbUpdate(entry.id, patch);
+            Object.assign(entry, {
+              bikeNumber:patch.bike_number,
+              bikeName:patch.name,
+              bikeColor:patch.color,
+              bikeRemark:patch.remark,
+              bikeCode:patch.code
+            });
+            entry.marker.setIcon(iconForEntry(entry));
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus("speichern fehlgeschlagen");
+          }
         }, { once:true });
 
-        document.getElementById('bikeDeleteBtn').addEventListener('click', async ()=>{
-          await dbDelete(entry.dbId);
-          closeModal();
+        document.getElementById("bikeDeleteBtn").addEventListener("click", async () => {
+          try{
+            await dbDelete(entry.id);
+            map.removeLayer(entry.marker);
+            markers.delete(entry.id);
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus("löschen fehlgeschlagen");
+          }
         }, { once:true });
       }
+
       openModal();
     }
 
     function openStationWindow(entry){
-      modalTitle.textContent = 'natebikestation';
-      const ro = isAdmin ? '' : 'readonly';
+      modalTitle.textContent = "natebikestation";
+
+      const readonly = isAdmin ? "" : "readonly";
 
       modalBody.innerHTML = `
-        <div class="label">Name</div>
-        <textarea id="stationName" ${ro}>${escapeHtml(entry.data.Name)}</textarea>
+        <div class="label">Inhalt</div>
+        <textarea id="stationContentInput" ${readonly}>${escapeHtml(entry.content)}</textarea>
       `;
 
-      // edit/delete only for admin (already)
       if(isAdmin){
         modalFooter.innerHTML = `
           <button class="btn" id="stationSaveBtn" type="button">speichern</button>
           <button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>
         `;
-        document.getElementById('stationSaveBtn').addEventListener('click', async ()=>{
-          const v = document.getElementById('stationName').value.trim();
-          if(v !== '') await dbUpdate(entry.dbId, { content: v });
-          closeModal();
+
+        document.getElementById("stationSaveBtn").addEventListener("click", async () => {
+          const content = document.getElementById("stationContentInput").value.trim();
+
+          try{
+            await dbUpdate(entry.id, { content });
+            entry.content = content;
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus("speichern fehlgeschlagen");
+          }
         }, { once:true });
 
-        document.getElementById('stationDeleteBtn').addEventListener('click', async ()=>{
-          await dbDelete(entry.dbId);
-          closeModal();
+        document.getElementById("stationDeleteBtn").addEventListener("click", async () => {
+          try{
+            await dbDelete(entry.id);
+            map.removeLayer(entry.marker);
+            markers.delete(entry.id);
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus("löschen fehlgeschlagen");
+          }
         }, { once:true });
       }
+
       openModal();
     }
 
-    // --- unlock ---
-    const pwBtn = document.getElementById('pwBtn');
-    const pwInputEl = document.getElementById('pwInput');
-    const pwMsgEl = document.getElementById('pwMsg');
+    /***********************
+     * Supabase Realtime
+     ***********************/
+    sb.channel("markers-realtime")
+      .on("postgres_changes", {
+        event:"*",
+        schema:"public",
+        table:"markers"
+      }, payload => {
+        if(payload.eventType === "INSERT" || payload.eventType === "UPDATE"){
+          const row = payload.new;
 
-    async function unlock(){
-      const val = (pwInputEl.value || "").trim();
-      if(val !== APP_PASSWORD){
-        pwMsgEl.textContent = "falsches Passwort";
-        pwMsgEl.style.display = 'block';
-        return;
-      }
-      pwMsgEl.style.display = 'none';
-      lockFrame.style.display = 'none';
-      mapFrame.style.display = 'block';
-      setTimeout(()=>map.invalidateSize(), 100);
-
-      const ok = await centerOnDeviceOrKassel(true);
-      if(!ok) showStatus('standort nicht verfügbar – kassel');
-
-      startLocationUpdates();
-      updateAdminUI();
-
-      const rows = await dbLoadAll();
-      rows.forEach((row)=>{ if(!findEntryByDbId(row.id)) addMarkerFromRow(row); });
-    }
-
-    pwBtn.addEventListener('click', unlock);
-    pwInputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') unlock(); });
-
-    // --- Dropdown-Menü ---
-    const menuBtn = document.getElementById('menuBtn');
-    const dropdownMenu = document.getElementById('dropdownMenu');
-    const listOverlay = document.getElementById('listOverlay');
-    const listTitle = document.getElementById('listTitle');
-    const listItems = document.getElementById('listItems');
-
-    // Dropdown-Menü öffnen/schließen
-    menuBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (dropdownMenu.style.display === 'block') {
-        dropdownMenu.style.display = 'none';
-      } else {
-        dropdownMenu.style.display = 'block';
-      }
-    });
-
-    // Dropdown-Menü schließen wenn außerhalb geklickt wird
-    document.addEventListener('click', (e) => {
-      if (!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
-        dropdownMenu.style.display = 'none';
-      }
-    });
-
-    // Dropdown-Menü Einträge
-    document.querySelectorAll('.dropdown-item').forEach(item => {
-      item.addEventListener('click', async () => {
-        const type = item.dataset.type;
-        await showList(type);
-        dropdownMenu.style.display = 'none';
-      });
-    });
-
-    // Liste anzeigen
-    async function showList(type) {
-      try {
-        const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending:true });
-        if (error) throw error;
-        
-        // Filter nach Typ
-        const filteredData = data.filter(row => row.type === type);
-        
-        // Sortieren
-        if (type === 'bikes') {
-          // Nach Nummer sortieren
-          filteredData.sort((a, b) => {
-            const numA = parseInt(a.bike_number) || 0;
-            const numB = parseInt(b.bike_number) || 0;
-            return numA - numB;
-          });
-        } else {
-          // Nach östlicher Position sortieren
-          filteredData.sort((a, b) => a.lng - b.lng);
-        }
-        
-        // Liste erstellen
-        listTitle.textContent = type === 'bikes' ? 'natebikes' : 'natebikestationen';
-        listItems.innerHTML = '';
-        
-        filteredData.forEach(row => {
-          const listItem = document.createElement('div');
-          listItem.className = 'list-item';
-          
-          if (type === 'bikes') {
-            // Für Fahrräder: bike_number und name in einer Zeile
-            listItem.textContent = `${escapeHtml(row.bike_number)} ${escapeHtml(row.name)}`;
-          } else {
-            // Für Stationen: Inhalt des Markers
-            listItem.textContent = escapeHtml(row.content);
+          if(row.type === "bike" || row.type === "note"){
+            addOrUpdateMarker(row);
           }
-          
-          listItem.addEventListener('click', () => {
-            const entry = findEntryByDbId(row.id);
-            if (entry) {
-              // Karte zentrieren
-              map.setView([row.lat, row.lng], 16);
-              
-              // Marker pulsieren
-              pulseMarker(entry.marker);
-            }
-            listOverlay.style.display = 'none';
-          });
-          
-          listItems.appendChild(listItem);
-        });
-        
-        listOverlay.style.display = 'flex';
-      } catch (err) {
-        console.error('Fehler beim Laden der Daten:', err);
-        showStatus('Fehler beim Laden der Daten');
-      }
-    }
-
-    // Marker pulsieren
-    function pulseMarker(marker) {
-      const originalSize = marker.options.icon.options.iconSize;
-      const pulseCount = 3;
-      let pulseIndex = 0;
-      
-      const pulseInterval = setInterval(() => {
-        if (pulseIndex >= pulseCount * 2) {
-          clearInterval(pulseInterval);
-          // Zurücksetzen auf Originalgröße
-          marker.setIcon(iconForEntry(findEntryByDbId(marker.options.dbId)));
-          return;
         }
-        
-        const scale = pulseIndex % 2 === 0 ? 1.5 : 1.0;
-        const newIcon = L.divIcon({
-          className: '',
-          html: marker.options.icon.options.html.replace(
-            /style="[^"]*"/,
-            `style="transform: scale(${scale})"`
-          ),
-          iconSize: [originalSize[0] * scale, originalSize[1] * scale],
-          iconAnchor: [originalSize[0] * scale / 2, originalSize[1] * scale / 2]
-        });
-        
-        marker.setIcon(newIcon);
-        pulseIndex++;
-      }, 200);
-    }
 
-    // Close list overlay
-    document.querySelector('.close-btn').addEventListener('click', () => {
-      listOverlay.style.display = 'none';
-    });
+        if(payload.eventType === "DELETE"){
+          const oldRow = payload.old;
+          const entry = findEntryById(oldRow.id);
 
-    // Initialisiere die Sichtbarkeit
+          if(entry){
+            map.removeLayer(entry.marker);
+            markers.delete(entry.id);
+          }
+        }
+      })
+      .subscribe();
+
     updateAdminUI();
   </script>
 </body>
