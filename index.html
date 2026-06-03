@@ -1535,44 +1535,41 @@
     }
 
     function openReturnChoiceDialog(){
-      return new Promise(resolve => {
-        const overlay = document.getElementById("returnChoiceOverlay");
-        const autoBtn = document.getElementById("returnAutoBtn");
-        const manualBtn = document.getElementById("returnManualBtn");
-        const cancelBtn = document.getElementById("returnCancelBtn");
-        const cancelX = document.getElementById("returnCancelX");
+  return new Promise(resolve => {
+    const overlay = document.getElementById("returnChoiceOverlay");
+    const autoBtn = document.getElementById("returnAutoBtn");
+    const manualBtn = document.getElementById("returnManualBtn");
+    const cancelX = document.getElementById("returnCancelX");
 
-        function close(value){
-          overlay.style.display = "none";
+    function close(value){
+      overlay.style.display = "none";
 
-          autoBtn.removeEventListener("click", onAuto);
-          manualBtn.removeEventListener("click", onManual);
-          cancelBtn.removeEventListener("click", onCancel);
-          cancelX.removeEventListener("click", onCancel);
-          overlay.removeEventListener("click", onOverlay);
+      autoBtn.removeEventListener("click", onAuto);
+      manualBtn.removeEventListener("click", onManual);
+      cancelX.removeEventListener("click", onCancel);
+      overlay.removeEventListener("click", onOverlay);
 
-          resolve(value);
-        }
-
-        function onAuto(){ close("auto"); }
-        function onManual(){ close("manual"); }
-        function onCancel(){ close("cancel"); }
-
-        function onOverlay(e){
-          if(e.target === overlay){
-            close("cancel");
-          }
-        }
-
-        autoBtn.addEventListener("click", onAuto);
-        manualBtn.addEventListener("click", onManual);
-        cancelBtn.addEventListener("click", onCancel);
-        cancelX.addEventListener("click", onCancel);
-        overlay.addEventListener("click", onOverlay);
-
-        overlay.style.display = "flex";
-      });
+      resolve(value);
     }
+
+    function onAuto(){ close("auto"); }
+    function onManual(){ close("manual"); }
+    function onCancel(){ close("cancel"); }
+
+    function onOverlay(e){
+      if(e.target === overlay){
+        close("cancel");
+      }
+    }
+
+    autoBtn.addEventListener("click", onAuto);
+    manualBtn.addEventListener("click", onManual);
+    cancelX.addEventListener("click", onCancel);
+    overlay.addEventListener("click", onOverlay);
+
+    overlay.style.display = "flex";
+  });
+}
 
     const menuBtn = document.getElementById("menuBtn");
     const dropdownMenu = document.getElementById("dropdownMenu");
