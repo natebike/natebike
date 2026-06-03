@@ -5,20 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>natebike</title>
 
-  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   />
+
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
   ></script>
 
-  <!-- Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
@@ -30,14 +29,14 @@
       --adminGrey:#c9c9c9;
       --adminGreen:#9be39b;
       --text:#0b1a2a;
-      --bg:#ffffff;
+      --bg:#fff;
       --border:#cfd7e6;
     }
 
     html, body{
       height:100%;
       margin:0;
-      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:var(--bg);
       color:var(--text);
     }
@@ -70,10 +69,9 @@
       color:var(--blue);
       text-transform:lowercase;
       white-space:nowrap;
-      font-family:"Century Gothic", "URW Gothic L", "Futura", Arial, sans-serif;
+      font-family:"Century Gothic","URW Gothic L","Futura",Arial,sans-serif;
     }
 
-    /* Menü und Admin erscheinen erst nach Passwort + Name */
     .headerActions{
       margin-left:auto;
       display:none;
@@ -81,7 +79,6 @@
       gap:8px;
     }
 
-    /* Menübutton */
     .menu-container{
       position:relative;
       display:inline-block;
@@ -130,7 +127,7 @@
       border-radius:8px;
       min-width:220px;
       padding:6px;
-      box-shadow:0 8px 22px rgba(0,0,0,0.14);
+      box-shadow:0 8px 22px rgba(0,0,0,.14);
       z-index:20000;
       margin-top:5px;
     }
@@ -143,10 +140,9 @@
     }
 
     .dropdown-item:hover{
-      background:rgba(0,74,149,0.08);
+      background:rgba(0,74,149,.08);
     }
 
-    /* Adminbutton */
     .adminBtn{
       background:var(--adminGrey);
       border:none;
@@ -193,7 +189,7 @@
     }
 
     .panel{
-      width:min(520px, 92%);
+      width:min(520px,92%);
       border:3px solid var(--blue);
       border-radius:12px;
       padding:16px;
@@ -268,7 +264,7 @@
       left:10px;
       bottom:10px;
       z-index:5000;
-      background:rgba(255,255,255,0.94);
+      background:rgba(255,255,255,.94);
       border:1px solid var(--border);
       border-radius:10px;
       padding:8px 10px;
@@ -278,7 +274,6 @@
       max-width:70%;
     }
 
-    /* Kontextmenüs */
     .ctx-menu{
       position:fixed;
       z-index:50000;
@@ -286,7 +281,7 @@
       border:2px solid var(--blue);
       border-radius:8px;
       min-width:220px;
-      box-shadow:0 8px 22px rgba(0,0,0,0.14);
+      box-shadow:0 8px 22px rgba(0,0,0,.14);
       padding:6px;
       display:none;
       user-select:none;
@@ -300,14 +295,13 @@
     }
 
     .ctx-item:hover{
-      background:rgba(0,74,149,0.08);
+      background:rgba(0,74,149,.08);
     }
 
-    /* Modal-Grundlayout */
     .modal-overlay{
       position:fixed;
       inset:0;
-      background:rgba(0,0,0,0.25);
+      background:rgba(0,0,0,.25);
       display:none;
       z-index:10000;
       align-items:center;
@@ -317,7 +311,7 @@
     }
 
     .modal{
-      width:min(640px, 95vw);
+      width:min(640px,95vw);
       background:#fff;
       border:3px solid var(--blue);
       border-radius:10px;
@@ -325,12 +319,38 @@
       box-sizing:border-box;
     }
 
-    .modal h2{
-      margin:0 0 12px 0;
+    .modalHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .modalHeader h2{
+      margin:0;
       font-size:16px;
       font-weight:800;
       color:var(--blue);
       text-transform:lowercase;
+    }
+
+    .modalCloseX{
+      width:30px;
+      height:30px;
+      border:none;
+      background:transparent;
+      color:var(--danger);
+      font-size:28px;
+      font-weight:900;
+      line-height:1;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+    }
+
+    .modalCloseX:hover{
+      transform:scale(1.08);
     }
 
     .grid{
@@ -352,11 +372,10 @@
       align-items:center;
     }
 
-    /* Listenfenster */
     .list-overlay{
       position:fixed;
       inset:0;
-      background:rgba(0,0,0,0.45);
+      background:rgba(0,0,0,.45);
       display:none;
       z-index:30000;
       align-items:center;
@@ -366,7 +385,7 @@
     }
 
     .list-container{
-      width:min(620px, 95vw);
+      width:min(620px,95vw);
       background:#fff;
       border:3px solid var(--blue);
       border-radius:10px;
@@ -411,7 +430,7 @@
     }
 
     .list-item:hover{
-      background:rgba(0,74,149,0.06);
+      background:rgba(0,74,149,.06);
       border-color:var(--blue);
     }
 
@@ -421,10 +440,9 @@
       font-style:italic;
     }
 
-    /* Chat */
     .chat-modal{
-      width:min(720px, 96vw);
-      height:min(720px, 88vh);
+      width:min(720px,96vw);
+      height:min(720px,88vh);
       display:flex;
       flex-direction:column;
       position:relative;
@@ -440,6 +458,10 @@
 
     .chatHeader h2{
       margin:0;
+      font-size:16px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
     }
 
     .chatHeaderActions{
@@ -460,10 +482,6 @@
       cursor:pointer;
       display:grid;
       place-items:center;
-    }
-
-    .chatCloseX:hover{
-      transform:scale(1.08);
     }
 
     .chatClearBtn{
@@ -559,7 +577,7 @@
     }
 
     .iconBtn:hover{
-      background:rgba(0,74,149,0.06);
+      background:rgba(0,74,149,.06);
     }
 
     .iconBtn svg{
@@ -598,7 +616,6 @@
       border:1px solid var(--border);
     }
 
-    /* Fahrradmarker */
     .bikeWrap{
       position:relative;
       width:24px;
@@ -611,7 +628,7 @@
       inset:0;
       border-radius:50%;
       background:var(--bikePurple);
-      box-shadow:0 2px 7px rgba(0,0,0,0.22);
+      box-shadow:0 2px 7px rgba(0,0,0,.22);
       display:grid;
       place-items:center;
     }
@@ -625,7 +642,7 @@
       font-weight:900;
       color:#fff;
       line-height:1;
-      text-shadow:0 1px 2px rgba(0,0,0,0.35);
+      text-shadow:0 1px 2px rgba(0,0,0,.35);
       user-select:none;
       white-space:nowrap;
       max-width:22px;
@@ -633,7 +650,6 @@
       text-overflow:ellipsis;
     }
 
-    /* Stationsmarker */
     .stationIconWrap{
       position:relative;
       width:33px;
@@ -647,16 +663,16 @@
       width:33px;
       height:33px;
       object-fit:contain;
-      filter:drop-shadow(0 4px 10px rgba(0,0,0,0.22));
+      filter:drop-shadow(0 4px 10px rgba(0,0,0,.22));
     }
 
     .selectedPulse{
-      animation:selectedPulse 0.45s ease-in-out 3;
+      animation:selectedPulse .45s ease-in-out 3;
       transform-origin:center center;
     }
 
     @keyframes selectedPulse{
-      0%, 100%{ transform:scale(1); }
+      0%,100%{ transform:scale(1); }
       50%{ transform:scale(1.5); }
     }
 
@@ -665,7 +681,6 @@
       outline-offset:2px;
     }
 
-    /* Standortbutton */
     .locateBtn{
       width:44px;
       height:44px;
@@ -675,7 +690,7 @@
       display:grid;
       place-items:center;
       cursor:pointer;
-      box-shadow:0 8px 18px rgba(0,0,0,0.18);
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
     }
 
     .crosshair{
@@ -694,7 +709,7 @@
       background:var(--blue);
       left:50%;
       top:50%;
-      transform:translate(-50%, -50%);
+      transform:translate(-50%,-50%);
     }
 
     .crosshair::before{
@@ -734,7 +749,6 @@
   </header>
 
   <div class="wrap">
-    <!-- Passwortansicht -->
     <div id="lockFrame">
       <div class="panel">
         <div class="formRow">
@@ -750,7 +764,6 @@
       </div>
     </div>
 
-    <!-- Namenseingabe nach erfolgreicher Passworteingabe -->
     <div id="nameFrame" style="display:none;">
       <div class="panel">
         <div class="formRow">
@@ -766,43 +779,44 @@
       </div>
     </div>
 
-    <!-- Kartenansicht -->
     <div id="mapFrame" style="display:none;">
       <div id="map"></div>
       <div id="statusBar" class="statusBar"></div>
     </div>
   </div>
 
-  <!-- Rechtsklick-Menü auf Karte -->
   <div id="ctxMenuMap" class="ctx-menu">
     <div class="ctx-item" data-action="bike">neues Rad hinzufügen</div>
     <div class="ctx-item" data-action="note">natebikestation hinzufügen</div>
   </div>
 
-  <!-- Rechtsklick-Menü auf Marker -->
   <div id="ctxMenuMarker" class="ctx-menu">
     <div class="ctx-item" data-action="open">öffnen</div>
     <div class="ctx-item" data-action="move">verschieben</div>
   </div>
 
-  <!-- Rechtsklick-Menü auf Chatnachricht -->
   <div id="ctxMenuChat" class="ctx-menu">
     <div class="ctx-item" data-action="delete">nachricht löschen</div>
   </div>
 
-  <!-- Detailmodal -->
   <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal">
-      <h2 id="modalTitle">details</h2>
+      <div class="modalHeader">
+        <h2 id="modalTitle">details</h2>
+        <button id="modalCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
+
       <div class="grid" id="modalBody"></div>
       <div class="modal-footer" id="modalFooter"></div>
     </div>
   </div>
 
-  <!-- Adminmodal -->
   <div id="adminOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal">
-      <h2>admin</h2>
+      <div class="modalHeader">
+        <h2>admin</h2>
+        <button id="adminCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
 
       <div class="grid">
         <div class="label">Passwort</div>
@@ -812,13 +826,11 @@
       <div id="adminMsg">falsches Passwort</div>
 
       <div class="modal-footer">
-        <button class="btn secondary" id="adminCancelBtn" type="button">schließen</button>
         <button class="btn" id="adminOkBtn" type="button">bestätigen</button>
       </div>
     </div>
   </div>
 
-  <!-- Listenmodal für natebikes / natebikestationen -->
   <div id="listOverlay" class="list-overlay">
     <div class="list-container">
       <div class="list-header">
@@ -830,10 +842,8 @@
     </div>
   </div>
 
-  <!-- Chatmodal -->
   <div id="chatOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal chat-modal">
-
       <div class="chatHeader">
         <h2>chat</h2>
 
@@ -862,7 +872,6 @@
           <div class="charCount"><span id="charCount">0</span>/144</div>
         </div>
 
-        <!-- Foto-Symbol -->
         <button class="iconBtn" id="photoBtn" type="button" title="foto aufnehmen">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <rect x="3" y="4" width="18" height="16" rx="2"></rect>
@@ -871,7 +880,6 @@
           </svg>
         </button>
 
-        <!-- Papierflieger-Symbol -->
         <button class="iconBtn sendIconBtn" id="sendChatBtn" type="button" title="senden">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 11.5L21 3l-4.5 18-4.2-7.2L3 11.5z"></path>
@@ -885,45 +893,28 @@
   </div>
 
   <script>
-    /***********************
-     * Konfiguration
-     ***********************/
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
 
-    // Nutzerpasswort zum Betreten der App
     const APP_PASSWORD = "drahtesel";
-
-    // Adminpasswort
     const ADMIN_PASSWORD = "eseldraht";
-
     const KASSEL_CENTER = [51.3127, 9.4797];
     const DEFAULT_ZOOM = 13;
 
-    /***********************
-     * Supabase
-     ***********************/
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    /***********************
-     * App-Zustand
-     ***********************/
     let currentUserName = "";
     let isAdmin = false;
     let moveModeEntry = null;
-
-    const markers = new Map(); // dbId -> entry
-
-    const renderedChatMessages = new Set();
     let selectedPhotoData = null;
     let ctxChatMessageId = null;
 
-    /***********************
-     * Karte
-     ***********************/
+    const markers = new Map();
+    const renderedChatMessages = new Set();
+
     const map = L.map("map", {
-      center: KASSEL_CENTER,
-      zoom: DEFAULT_ZOOM
+      center:KASSEL_CENTER,
+      zoom:DEFAULT_ZOOM
     });
 
     map.createPane("stationPane");
@@ -933,8 +924,8 @@
     map.getPane("bikePane").style.zIndex = 420;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap"
+      maxZoom:19,
+      attribution:"&copy; OpenStreetMap"
     }).addTo(map);
 
     const LocateControl = L.Control.extend({
@@ -962,7 +953,7 @@
 
     let locationMarker = null;
 
-    map.on("locationfound", (e) => {
+    map.on("locationfound", e => {
       if(!locationMarker){
         locationMarker = L.circleMarker(e.latlng, {
           radius:10,
@@ -975,20 +966,15 @@
       }
     });
 
-    map.on("locationerror", () => {
-      showStatus("standort nicht verfügbar");
-    });
+    map.on("locationerror", () => showStatus("standort nicht verfügbar"));
 
-    /***********************
-     * Hilfsfunktionen
-     ***********************/
     function escapeHtml(value){
       return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
     function showStatus(message){
@@ -1018,13 +1004,13 @@
       const number = Number(text);
 
       return {
-        isNumber: text !== "" && Number.isFinite(number),
+        isNumber:text !== "" && Number.isFinite(number),
         number,
         text
       };
     }
 
-    function sortBikeEntries(a, b){
+    function sortBikeEntries(a,b){
       const av = bikeSortValue(a.bikeNumber);
       const bv = bikeSortValue(b.bikeNumber);
 
@@ -1038,9 +1024,6 @@
       });
     }
 
-    /***********************
-     * Icons
-     ***********************/
     function bikeIcon(entry){
       const classes = [
         "bikeDot",
@@ -1051,15 +1034,15 @@
 
       return L.divIcon({
         className:"",
-        html: `
+        html:`
           <div class="bikeWrap">
             <div class="${classes}">
               <div class="bikeNum">${escapeHtml(entry.bikeNumber)}</div>
             </div>
           </div>
         `,
-        iconSize:[24, 24],
-        iconAnchor:[12, 12]
+        iconSize:[24,24],
+        iconAnchor:[12,12]
       });
     }
 
@@ -1072,13 +1055,13 @@
 
       return L.divIcon({
         className:"",
-        html: `
+        html:`
           <div class="stationIconWrap">
             <img class="${classes}" src="logo.png" alt="" />
           </div>
         `,
-        iconSize:[33, 33],
-        iconAnchor:[16.5, 16.5]
+        iconSize:[33,33],
+        iconAnchor:[16.5,16.5]
       });
     }
 
@@ -1086,9 +1069,6 @@
       return entry.type === "bike" ? bikeIcon(entry) : stationIcon(entry);
     }
 
-    /***********************
-     * Supabase: Marker
-     ***********************/
     async function dbLoadAllMarkers(){
       const { data, error } = await sb
         .from("markers")
@@ -1142,29 +1122,21 @@
       if(error) throw error;
     }
 
-    /***********************
-     * Marker erzeugen / aktualisieren
-     ***********************/
     function rowToEntry(row){
       return {
         id:row.id,
         type:row.type,
-
         lat:row.lat,
         lng:row.lng,
-
         bikeNumber:row.bike_number ?? "",
         bikeName:row.name ?? "",
         bikeColor:row.color ?? "",
         bikeRemark:row.remark ?? "",
         bikeCode:row.code ?? "",
-
         content:row.content ?? "",
-
         isRented:!!row.is_rented,
         isMoving:false,
         isPulsing:false,
-
         marker:null
       };
     }
@@ -1191,13 +1163,11 @@
         entry.type = row.type;
         entry.lat = row.lat;
         entry.lng = row.lng;
-
         entry.bikeNumber = row.bike_number ?? "";
         entry.bikeName = row.name ?? "";
         entry.bikeColor = row.color ?? "";
         entry.bikeRemark = row.remark ?? "";
         entry.bikeCode = row.code ?? "";
-
         entry.content = row.content ?? "";
         entry.isRented = !!row.is_rented;
 
@@ -1225,23 +1195,15 @@
       return markers.get(id) || null;
     }
 
-    /***********************
-     * Marker-Verhalten
-     ***********************/
     function wireMarker(entry){
       const marker = entry.marker;
 
-      marker.on("click", (e) => {
+      marker.on("click", e => {
         L.DomEvent.stop(e);
-
-        if(entry.type === "bike"){
-          openBikeWindow(entry);
-        }else{
-          openStationWindow(entry);
-        }
+        entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
       });
 
-      marker.on("contextmenu", (e) => {
+      marker.on("contextmenu", e => {
         L.DomEvent.stop(e);
 
         if(!isAdmin){
@@ -1252,9 +1214,7 @@
         openMarkerMenu(e.originalEvent, entry);
       });
 
-      marker.on("dragstart", () => {
-        map.dragging.disable();
-      });
+      marker.on("dragstart", () => map.dragging.disable());
 
       marker.on("dragend", async () => {
         map.dragging.enable();
@@ -1291,26 +1251,22 @@
       }, 1400);
     }
 
-    /***********************
-     * Menü und Listen
-     ***********************/
     const menuBtn = document.getElementById("menuBtn");
     const dropdownMenu = document.getElementById("dropdownMenu");
 
-    menuBtn.addEventListener("click", (e) => {
+    menuBtn.addEventListener("click", e => {
       e.stopPropagation();
-      dropdownMenu.style.display =
-        dropdownMenu.style.display === "block" ? "none" : "block";
+      dropdownMenu.style.display = dropdownMenu.style.display === "block" ? "none" : "block";
     });
 
-    document.addEventListener("click", (e) => {
+    document.addEventListener("click", e => {
       if(!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)){
         dropdownMenu.style.display = "none";
       }
     });
 
     document.querySelectorAll(".dropdown-item").forEach(item => {
-      item.addEventListener("click", async () => {
+      item.addEventListener("click", () => {
         const kind = item.dataset.kind;
         dropdownMenu.style.display = "none";
 
@@ -1327,28 +1283,24 @@
     }
 
     function addEmptyListMessage(text){
-      const listItems = document.getElementById("listItems");
       const div = document.createElement("div");
       div.className = "empty-list";
       div.textContent = text;
-      listItems.appendChild(div);
+      document.getElementById("listItems").appendChild(div);
     }
 
     function addListRow(text, entry){
-      const listItems = document.getElementById("listItems");
-
       const row = document.createElement("div");
       row.className = "list-item";
       row.textContent = text;
 
       row.addEventListener("click", () => {
         document.getElementById("listOverlay").style.display = "none";
-
         map.setView([entry.lat, entry.lng], 17);
         pulseEntry(entry);
       });
 
-      listItems.appendChild(row);
+      document.getElementById("listItems").appendChild(row);
     }
 
     function showBikeList(){
@@ -1372,7 +1324,7 @@
     function showNoteList(){
       const notes = Array.from(markers.values())
         .filter(entry => entry.type === "note")
-        .sort((a, b) => Number(a.lng) - Number(b.lng));
+        .sort((a,b) => Number(a.lng) - Number(b.lng));
 
       openList("natebikestationen");
 
@@ -1391,15 +1343,12 @@
       document.getElementById("listOverlay").style.display = "none";
     });
 
-    document.getElementById("listOverlay").addEventListener("click", (e) => {
+    document.getElementById("listOverlay").addEventListener("click", e => {
       if(e.target.id === "listOverlay"){
         document.getElementById("listOverlay").style.display = "none";
       }
     });
 
-    /***********************
-     * App-Login und Namenseingabe
-     ***********************/
     const lockFrame = document.getElementById("lockFrame");
     const nameFrame = document.getElementById("nameFrame");
     const mapFrame = document.getElementById("mapFrame");
@@ -1428,17 +1377,19 @@
       }
 
       currentUserName = name;
-      document.getElementById("nameMsg").style.display = "none";
 
+      document.getElementById("nameMsg").style.display = "none";
       nameFrame.style.display = "none";
       mapFrame.style.display = "block";
-
-      // Menü und Admin erst nach Passwort + Name anzeigen
       headerActions.style.display = "flex";
 
       setTimeout(() => {
         map.invalidateSize();
-        map.locate({ setView:true, maxZoom:16, enableHighAccuracy:true });
+        map.locate({
+          setView:true,
+          maxZoom:16,
+          enableHighAccuracy:true
+        });
       }, 100);
 
       try{
@@ -1450,18 +1401,15 @@
     }
 
     document.getElementById("pwBtn").addEventListener("click", checkPassword);
-    document.getElementById("pwInput").addEventListener("keydown", (e) => {
+    document.getElementById("pwInput").addEventListener("keydown", e => {
       if(e.key === "Enter") checkPassword();
     });
 
     document.getElementById("nameBtn").addEventListener("click", finishNameLogin);
-    document.getElementById("nameInput").addEventListener("keydown", (e) => {
+    document.getElementById("nameInput").addEventListener("keydown", e => {
       if(e.key === "Enter") finishNameLogin();
     });
 
-    /***********************
-     * Admin
-     ***********************/
     const adminBtn = document.getElementById("adminBtn");
     const adminOverlay = document.getElementById("adminOverlay");
     const adminPwInput = document.getElementById("adminPwInput");
@@ -1512,19 +1460,16 @@
     });
 
     document.getElementById("adminOkBtn").addEventListener("click", confirmAdmin);
-    adminPwInput.addEventListener("keydown", (e) => {
+    adminPwInput.addEventListener("keydown", e => {
       if(e.key === "Enter") confirmAdmin();
     });
 
-    document.getElementById("adminCancelBtn").addEventListener("click", closeAdminModal);
+    document.getElementById("adminCloseBtn").addEventListener("click", closeAdminModal);
 
-    adminOverlay.addEventListener("click", (e) => {
+    adminOverlay.addEventListener("click", e => {
       if(e.target === adminOverlay) closeAdminModal();
     });
 
-    /***********************
-     * Admin-Kontextmenüs Marker/Karte/Chat
-     ***********************/
     const ctxMenuMap = document.getElementById("ctxMenuMap");
     const ctxMenuMarker = document.getElementById("ctxMenuMarker");
     const ctxMenuChat = document.getElementById("ctxMenuChat");
@@ -1536,7 +1481,6 @@
       ctxMenuMap.style.display = "none";
       ctxMenuMarker.style.display = "none";
       ctxMenuChat.style.display = "none";
-
       ctxMapLatLng = null;
       ctxMarkerEntry = null;
       ctxChatMessageId = null;
@@ -1544,11 +1488,10 @@
 
     map.getContainer().addEventListener("contextmenu", e => e.preventDefault());
 
-    map.on("contextmenu", (e) => {
+    map.on("contextmenu", e => {
       if(!isAdmin) return;
 
       ctxMapLatLng = e.latlng;
-
       hideContextMenus();
 
       ctxMenuMap.style.left = `${e.originalEvent.clientX}px`;
@@ -1559,7 +1502,7 @@
     map.on("click", hideContextMenus);
     map.on("movestart", hideContextMenus);
 
-    document.addEventListener("pointerdown", (e) => {
+    document.addEventListener("pointerdown", e => {
       if(
         !ctxMenuMap.contains(e.target) &&
         !ctxMenuMarker.contains(e.target) &&
@@ -1569,7 +1512,7 @@
       }
     });
 
-    ctxMenuMap.addEventListener("pointerdown", async (e) => {
+    ctxMenuMap.addEventListener("pointerdown", async e => {
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxMapLatLng) return;
 
@@ -1604,7 +1547,7 @@
       ctxMenuMarker.style.display = "block";
     }
 
-    ctxMenuMarker.addEventListener("pointerdown", (e) => {
+    ctxMenuMarker.addEventListener("pointerdown", e => {
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxMarkerEntry) return;
 
@@ -1614,8 +1557,7 @@
       hideContextMenus();
 
       if(action === "open"){
-        if(entry.type === "bike") openBikeWindow(entry);
-        else openStationWindow(entry);
+        entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
       }
 
       if(action === "move"){
@@ -1634,9 +1576,6 @@
       }
     });
 
-    /***********************
-     * Detailfenster Fahrrad / Station
-     ***********************/
     const modalOverlay = document.getElementById("modalOverlay");
     const modalTitle = document.getElementById("modalTitle");
     const modalBody = document.getElementById("modalBody");
@@ -1653,108 +1592,105 @@
       modalFooter.innerHTML = "";
     }
 
-    modalOverlay.addEventListener("click", (e) => {
+    modalOverlay.addEventListener("click", e => {
       if(e.target === modalOverlay) closeModal();
     });
 
+    document.getElementById("modalCloseBtn").addEventListener("click", closeModal);
+
     function openBikeWindow(entry){
-  modalTitle.textContent = "geparktes fahrrad";
+      modalTitle.textContent = "geparktes fahrrad";
 
-  // Nur Admins dürfen diese Felder ändern
-  const adminReadonly = isAdmin ? "" : "readonly";
+      const adminReadonly = isAdmin ? "" : "readonly";
 
-  // Bemerkung darf jeder ändern
-  const remarkReadonly = "";
+      modalBody.innerHTML = `
+        <div class="label">Nummer</div>
+        <input type="text" id="bikeNumberInput" ${adminReadonly} value="${escapeHtml(entry.bikeNumber)}" />
 
-  modalBody.innerHTML = `
-    <div class="label">Nummer</div>
-    <input type="text" id="bikeNumberInput" ${adminReadonly} value="${escapeHtml(entry.bikeNumber)}" />
+        <div class="label">Name</div>
+        <input type="text" id="bikeNameInput" ${adminReadonly} value="${escapeHtml(entry.bikeName)}" />
 
-    <div class="label">Name</div>
-    <input type="text" id="bikeNameInput" ${adminReadonly} value="${escapeHtml(entry.bikeName)}" />
+        <div class="label">Farbe</div>
+        <input type="text" id="bikeColorInput" ${adminReadonly} value="${escapeHtml(entry.bikeColor)}" />
 
-    <div class="label">Farbe</div>
-    <input type="text" id="bikeColorInput" ${adminReadonly} value="${escapeHtml(entry.bikeColor)}" />
+        <div class="label">Bemerkung</div>
+        <input type="text" id="bikeRemarkInput" value="${escapeHtml(entry.bikeRemark)}" />
 
-    <div class="label">Bemerkung</div>
-    <input type="text" id="bikeRemarkInput" ${remarkReadonly} value="${escapeHtml(entry.bikeRemark)}" />
+        <div class="label">Schlosscode</div>
+        <input type="text" id="bikeCodeInput" ${adminReadonly} value="${escapeHtml(entry.bikeCode)}" />
+      `;
 
-    <div class="label">Schlosscode</div>
-    <input type="text" id="bikeCodeInput" ${adminReadonly} value="${escapeHtml(entry.bikeCode)}" />
-  `;
+      if(isAdmin){
+        modalFooter.innerHTML = `
+          <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
+          <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
+        `;
 
-  // Admin: alles speichern + löschen
-  if(isAdmin){
-    modalFooter.innerHTML = `
-      <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
-      <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
-    `;
+        document.getElementById("bikeSaveBtn").addEventListener("click", async () => {
+          const patch = {
+            bike_number:document.getElementById("bikeNumberInput").value.trim(),
+            name:document.getElementById("bikeNameInput").value.trim(),
+            color:document.getElementById("bikeColorInput").value.trim(),
+            remark:document.getElementById("bikeRemarkInput").value.trim(),
+            code:document.getElementById("bikeCodeInput").value.trim()
+          };
 
-    document.getElementById("bikeSaveBtn").addEventListener("click", async () => {
-      const patch = {
-        bike_number:document.getElementById("bikeNumberInput").value.trim(),
-        name:document.getElementById("bikeNameInput").value.trim(),
-        color:document.getElementById("bikeColorInput").value.trim(),
-        remark:document.getElementById("bikeRemarkInput").value.trim(),
-        code:document.getElementById("bikeCodeInput").value.trim()
-      };
+          try{
+            await dbUpdateMarker(entry.id, patch);
 
-      try{
-        await dbUpdateMarker(entry.id, patch);
+            entry.bikeNumber = patch.bike_number;
+            entry.bikeName = patch.name;
+            entry.bikeColor = patch.color;
+            entry.bikeRemark = patch.remark;
+            entry.bikeCode = patch.code;
 
-        entry.bikeNumber = patch.bike_number;
-        entry.bikeName = patch.name;
-        entry.bikeColor = patch.color;
-        entry.bikeRemark = patch.remark;
-        entry.bikeCode = patch.code;
+            entry.marker.setIcon(iconForEntry(entry));
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus("speichern fehlgeschlagen");
+          }
+        }, { once:true });
 
-        entry.marker.setIcon(iconForEntry(entry));
-        closeModal();
-      }catch(err){
-        console.error(err);
-        showStatus("speichern fehlgeschlagen");
+        document.getElementById("bikeDeleteBtn").addEventListener("click", async () => {
+          try{
+            await dbDeleteMarker(entry.id);
+            map.removeLayer(entry.marker);
+            markers.delete(entry.id);
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus("löschen fehlgeschlagen");
+          }
+        }, { once:true });
+
+      }else{
+        modalFooter.innerHTML = `
+          <button class="btn" id="bikeRemarkSaveBtn" type="button">speichern</button>
+        `;
+
+        document.getElementById("bikeRemarkSaveBtn").addEventListener("click", async () => {
+          const newRemark = document.getElementById("bikeRemarkInput").value.trim();
+
+          try{
+            await dbUpdateMarker(entry.id, {
+              remark:newRemark
+            });
+
+            entry.bikeRemark = newRemark;
+
+            closeModal();
+            showStatus("bemerkung gespeichert");
+          }catch(err){
+            console.error(err);
+            showStatus("speichern fehlgeschlagen");
+          }
+        }, { once:true });
       }
-    }, { once:true });
 
-    document.getElementById("bikeDeleteBtn").addEventListener("click", async () => {
-      try{
-        await dbDeleteMarker(entry.id);
-        map.removeLayer(entry.marker);
-        markers.delete(entry.id);
-        closeModal();
-      }catch(err){
-        console.error(err);
-        showStatus("löschen fehlgeschlagen");
-      }
-    }, { once:true });
+      openModal();
+    }
 
-  } else {
-    // Normale Nutzer: nur Bemerkung speichern
-    modalFooter.innerHTML = `
-      <button class="btn" id="bikeRemarkSaveBtn" type="button">speichern</button>
-    `;
-
-    document.getElementById("bikeRemarkSaveBtn").addEventListener("click", async () => {
-      const newRemark = document.getElementById("bikeRemarkInput").value.trim();
-
-      try{
-        await dbUpdateMarker(entry.id, {
-          remark:newRemark
-        });
-
-        entry.bikeRemark = newRemark;
-
-        closeModal();
-        showStatus("bemerkung gespeichert");
-      }catch(err){
-        console.error(err);
-        showStatus("speichern fehlgeschlagen");
-      }
-    }, { once:true });
-  }
-
-  openModal();
-}
     function openStationWindow(entry){
       modalTitle.textContent = "natebikestation";
 
@@ -1800,9 +1736,6 @@
       openModal();
     }
 
-    /***********************
-     * Chat: Supabase
-     ***********************/
     async function dbLoadChatMessages(){
       const { data, error } = await sb
         .from("chat_messages")
@@ -1849,9 +1782,6 @@
       if(error) throw error;
     }
 
-    /***********************
-     * Chat: Anzeige
-     ***********************/
     function openChat(){
       document.getElementById("chatOverlay").style.display = "flex";
       updateAdminUI();
@@ -1908,8 +1838,7 @@
         box.appendChild(img);
       }
 
-      // Wichtig: Rechtsklickmenü für Admins auf Chatnachrichten
-      box.addEventListener("contextmenu", (e) => {
+      box.addEventListener("contextmenu", e => {
         if(!isAdmin) return;
 
         e.preventDefault();
@@ -1939,7 +1868,7 @@
 
     document.getElementById("chatCloseBtn").addEventListener("click", closeChat);
 
-    document.getElementById("chatOverlay").addEventListener("click", (e) => {
+    document.getElementById("chatOverlay").addEventListener("click", e => {
       if(e.target.id === "chatOverlay") closeChat();
     });
 
@@ -1948,14 +1877,11 @@
         document.getElementById("chatTextInput").value.length;
     });
 
-    /***********************
-     * Chat: Foto verkleinern auf max. 200x200
-     ***********************/
     document.getElementById("photoBtn").addEventListener("click", () => {
       document.getElementById("photoInput").click();
     });
 
-    document.getElementById("photoInput").addEventListener("change", async (e) => {
+    document.getElementById("photoInput").addEventListener("change", async e => {
       const file = e.target.files && e.target.files[0];
       if(!file) return;
 
@@ -2008,7 +1934,7 @@
             const ctx = canvas.getContext("2d");
             ctx.drawImage(img, 0, 0, width, height);
 
-            resolve(canvas.toDataURL("image/jpeg", 0.75));
+            resolve(canvas.toDataURL("image/jpeg", .75));
           };
 
           img.src = reader.result;
@@ -2018,12 +1944,9 @@
       });
     }
 
-    /***********************
-     * Chat: Senden / Löschen / Leeren
-     ***********************/
     document.getElementById("sendChatBtn").addEventListener("click", sendChatMessage);
 
-    document.getElementById("chatTextInput").addEventListener("keydown", (e) => {
+    document.getElementById("chatTextInput").addEventListener("keydown", e => {
       if(e.key === "Enter" && !e.shiftKey){
         e.preventDefault();
         sendChatMessage();
@@ -2044,18 +1967,14 @@
       }
 
       try{
-        // Nachricht speichern und gespeicherten Datensatz zurückbekommen
         const savedMessage = await dbInsertChatMessage(message, selectedPhotoData);
 
-        // Sofort lokal anzeigen
         renderChatMessage(savedMessage);
         scrollChatBottom();
 
-        // Eingabe leeren
         input.value = "";
         document.getElementById("charCount").textContent = "0";
 
-        // Foto zurücksetzen
         selectedPhotoData = null;
         document.getElementById("photoInput").value = "";
         document.getElementById("photoPreview").style.display = "none";
@@ -2067,7 +1986,7 @@
       }
     }
 
-    ctxMenuChat.addEventListener("pointerdown", async (e) => {
+    ctxMenuChat.addEventListener("pointerdown", async e => {
       e.stopPropagation();
 
       const item = e.target.closest(".ctx-item");
@@ -2119,9 +2038,6 @@
       }
     }
 
-    /***********************
-     * Supabase Realtime: Marker
-     ***********************/
     sb.channel("markers-realtime")
       .on("postgres_changes", {
         event:"*",
@@ -2148,9 +2064,6 @@
       })
       .subscribe();
 
-    /***********************
-     * Supabase Realtime: Chat
-     ***********************/
     sb.channel("chat-realtime")
       .on("postgres_changes", {
         event:"*",
