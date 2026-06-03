@@ -31,6 +31,10 @@
       --text:#0b1a2a;
       --bg:#fff;
       --border:#cfd7e6;
+
+      /* Rahmenstärke für Fenster, Menüs und Modale.
+         Der Kartenrahmen bleibt separat bei 4px. */
+      --windowBorder:1.5pt;
     }
 
     html, body{
@@ -123,7 +127,7 @@
       right:0;
       display:none;
       background:#fff;
-      border:2px solid var(--blue);
+      border:var(--windowBorder) solid var(--blue);
       border-radius:8px;
       min-width:220px;
       padding:6px;
@@ -165,11 +169,22 @@
       box-sizing:border-box;
     }
 
-    #mapFrame,
+    /* Kartenrahmen bleibt unverändert dick */
+    #mapFrame{
+      height:100%;
+      border:4px solid var(--blue);
+      border-radius:8px;
+      box-sizing:border-box;
+      overflow:hidden;
+      background:#fff;
+      position:relative;
+    }
+
+    /* Andere Fenster mit 1,5 pt Rahmen */
     #lockFrame,
     #nameFrame{
       height:100%;
-      border:4px solid var(--blue);
+      border:var(--windowBorder) solid var(--blue);
       border-radius:8px;
       box-sizing:border-box;
       overflow:hidden;
@@ -190,7 +205,7 @@
 
     .panel{
       width:min(520px,92%);
-      border:3px solid var(--blue);
+      border:var(--windowBorder) solid var(--blue);
       border-radius:12px;
       padding:16px;
       box-sizing:border-box;
@@ -278,7 +293,7 @@
       position:fixed;
       z-index:50000;
       background:#fff;
-      border:2px solid var(--blue);
+      border:var(--windowBorder) solid var(--blue);
       border-radius:8px;
       min-width:220px;
       box-shadow:0 8px 22px rgba(0,0,0,.14);
@@ -313,7 +328,7 @@
     .modal{
       width:min(640px,95vw);
       background:#fff;
-      border:3px solid var(--blue);
+      border:var(--windowBorder) solid var(--blue);
       border-radius:10px;
       padding:14px;
       box-sizing:border-box;
@@ -387,7 +402,7 @@
     .list-container{
       width:min(620px,95vw);
       background:#fff;
-      border:3px solid var(--blue);
+      border:var(--windowBorder) solid var(--blue);
       border-radius:10px;
       padding:14px;
       box-sizing:border-box;
