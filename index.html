@@ -32,9 +32,8 @@
       --bg:#fff;
       --border:#cfd7e6;
 
-      /* Rahmenstärke für Fenster, Menüs und Modale.
-         Der Kartenrahmen bleibt separat bei 4px. */
-      --windowBorder:1.5pt;
+      /* Rahmenstärke für Fenster, Menüs und Modale */
+      --windowBorder:0.5pt;
     }
 
     html, body{
@@ -169,7 +168,7 @@
       box-sizing:border-box;
     }
 
-    /* Kartenrahmen bleibt unverändert dick */
+    /* Kartenrahmen bleibt unverändert */
     #mapFrame{
       height:100%;
       border:4px solid var(--blue);
@@ -180,17 +179,17 @@
       position:relative;
     }
 
-   /* Anmelde- und Namensseite ohne großen äußeren Rahmen */
-#lockFrame,
-#nameFrame{
-  height:100%;
-  border:none;
-  border-radius:0;
-  box-sizing:border-box;
-  overflow:hidden;
-  background:#fff;
-  position:relative;
-}
+    /* Anmelde- und Namensseite ohne großen äußeren Rahmen */
+    #lockFrame,
+    #nameFrame{
+      height:100%;
+      border:none;
+      border-radius:0;
+      box-sizing:border-box;
+      overflow:hidden;
+      background:#fff;
+      position:relative;
+    }
 
     #map{
       height:100%;
@@ -899,6 +898,32 @@
     </div>
   </div>
 
+  <!-- Dialog für Rückgabe -->
+  <div id="returnChoiceOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <h2>rückgabe</h2>
+        <button id="returnCancelX" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
+
+      <div style="font-size:14px; margin-bottom:14px;">
+        Standort automatisch übernehmen?
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn secondary" id="returnManualBtn" type="button">
+          natebike manuell verschieben
+        </button>
+        <button class="btn secondary" id="returnCancelBtn" type="button">
+          abbrechen
+        </button>
+        <button class="btn" id="returnAutoBtn" type="button">
+          ja
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
@@ -1097,6 +1122,7 @@
         remark:"keine",
         code:"",
         content:" ",
+        status:"verfügbar",
         is_rented:false,
         photo_url:null
       };
@@ -1130,6 +1156,8 @@
     }
 
     function rowToEntry(row){
+      const status = row.status ?? "verfügbar";
+
       return {
         id:row.id,
         type:row.type,
@@ -1141,7 +1169,8 @@
         bikeRemark:row.remark ?? "",
         bikeCode:row.code ?? "",
         content:row.content ?? "",
-        isRented:!!row.is_rented,
+        status,
+        isRented:status !== "verfügbar" ? true : !!row.is_rented,
         isMoving:false,
         isPulsing:false,
         marker:null
@@ -1167,6 +1196,8 @@
         markers.set(entry.id, entry);
         wireMarker(entry);
       }else{
+        const status = row.status ?? "verfügbar";
+
         entry.type = row.type;
         entry.lat = row.lat;
         entry.lng = row.lng;
@@ -1176,7 +1207,8 @@
         entry.bikeRemark = row.remark ?? "";
         entry.bikeCode = row.code ?? "";
         entry.content = row.content ?? "";
-        entry.isRented = !!row.is_rented;
+        entry.status = status;
+        entry.isRented = status !== "verfügbar" ? true : !!row.is_rented;
 
         if(!entry.isMoving){
           entry.marker.setLatLng([entry.lat, entry.lng]);
@@ -1213,8 +1245,9 @@
       marker.on("contextmenu", e => {
         L.DomEvent.stop(e);
 
-        if(!isAdmin){
-          showStatus("nur admin");
+        /* bikes: Rechtsklickmenü immer verfügbar
+           notes: Rechtsklickmenü nur für Admins */
+        if(entry.type === "note" && !isAdmin){
           return;
         }
 
@@ -1256,6 +1289,178 @@
         entry.isPulsing = false;
         entry.marker.setIcon(iconForEntry(entry));
       }, 1400);
+    }
+
+    function startMoveMode(entry){
+      if(!entry) return;
+
+      if(entry.isRented && entry.status !== "verfügbar"){
+        showStatus("nicht verschiebbar");
+        return;
+      }
+
+      moveModeEntry = entry;
+      entry.isMoving = true;
+      entry.marker.setIcon(iconForEntry(entry));
+
+      if(entry.marker.dragging){
+        entry.marker.dragging.enable();
+      }
+
+      showStatus("ziehen und loslassen");
+    }
+
+    function getCurrentDeviceLatLng(timeoutMs = 6000){
+      return new Promise(resolve => {
+        let done = false;
+
+        function finish(value){
+          if(done) return;
+          done = true;
+
+          map.off("locationfound", onFound);
+          map.off("locationerror", onError);
+
+          resolve(value);
+        }
+
+        function onFound(e){
+          finish(e.latlng);
+        }
+
+        function onError(){
+          finish(null);
+        }
+
+        map.on("locationfound", onFound);
+        map.on("locationerror", onError);
+
+        map.locate({
+          setView:false,
+          enableHighAccuracy:true,
+          timeout:timeoutMs,
+          maximumAge:0
+        });
+
+        setTimeout(() => finish(null), timeoutMs + 1000);
+      });
+    }
+
+    function borrowedStatusText(){
+      return `von ${currentUserName} ausgeliehen`;
+    }
+
+    async function borrowBike(entry){
+      const newStatus = borrowedStatusText();
+
+      try{
+        await dbUpdateMarker(entry.id, {
+          status:newStatus,
+          is_rented:true
+        });
+
+        entry.status = newStatus;
+        entry.isRented = true;
+        entry.marker.setIcon(iconForEntry(entry));
+
+        closeModal();
+        openBikeWindow(entry);
+
+        showStatus("natebike ausgeliehen");
+      }catch(err){
+        console.error(err);
+        showStatus("ausleihen fehlgeschlagen");
+      }
+    }
+
+    async function returnBike(entry){
+      const choice = await openReturnChoiceDialog();
+
+      if(choice === "cancel"){
+        return;
+      }
+
+      try{
+        const patch = {
+          status:"verfügbar",
+          is_rented:false
+        };
+
+        if(choice === "auto"){
+          const ll = await getCurrentDeviceLatLng();
+
+          if(!ll){
+            showStatus("standort nicht verfügbar");
+            return;
+          }
+
+          patch.lat = ll.lat;
+          patch.lng = ll.lng;
+
+          entry.lat = ll.lat;
+          entry.lng = ll.lng;
+          entry.marker.setLatLng([ll.lat, ll.lng]);
+        }
+
+        await dbUpdateMarker(entry.id, patch);
+
+        entry.status = "verfügbar";
+        entry.isRented = false;
+        entry.marker.setIcon(iconForEntry(entry));
+
+        closeModal();
+
+        if(choice === "manual"){
+          startMoveMode(entry);
+        }else{
+          openBikeWindow(entry);
+        }
+
+        showStatus("natebike zurückgegeben");
+      }catch(err){
+        console.error(err);
+        showStatus("zurückgeben fehlgeschlagen");
+      }
+    }
+
+    function openReturnChoiceDialog(){
+      return new Promise(resolve => {
+        const overlay = document.getElementById("returnChoiceOverlay");
+        const autoBtn = document.getElementById("returnAutoBtn");
+        const manualBtn = document.getElementById("returnManualBtn");
+        const cancelBtn = document.getElementById("returnCancelBtn");
+        const cancelX = document.getElementById("returnCancelX");
+
+        function close(value){
+          overlay.style.display = "none";
+
+          autoBtn.removeEventListener("click", onAuto);
+          manualBtn.removeEventListener("click", onManual);
+          cancelBtn.removeEventListener("click", onCancel);
+          cancelX.removeEventListener("click", onCancel);
+          overlay.removeEventListener("click", onOverlay);
+
+          resolve(value);
+        }
+
+        function onAuto(){ close("auto"); }
+        function onManual(){ close("manual"); }
+        function onCancel(){ close("cancel"); }
+
+        function onOverlay(e){
+          if(e.target === overlay){
+            close("cancel");
+          }
+        }
+
+        autoBtn.addEventListener("click", onAuto);
+        manualBtn.addEventListener("click", onManual);
+        cancelBtn.addEventListener("click", onCancel);
+        cancelX.addEventListener("click", onCancel);
+        overlay.addEventListener("click", onOverlay);
+
+        overlay.style.display = "flex";
+      });
     }
 
     const menuBtn = document.getElementById("menuBtn");
@@ -1568,18 +1773,7 @@
       }
 
       if(action === "move"){
-        if(entry.isRented){
-          showStatus("nicht verschiebbar");
-          return;
-        }
-
-        moveModeEntry = entry;
-        entry.isMoving = true;
-        entry.marker.setIcon(iconForEntry(entry));
-
-        if(entry.marker.dragging) entry.marker.dragging.enable();
-
-        showStatus("ziehen und loslassen");
+        startMoveMode(entry);
       }
     });
 
@@ -1609,6 +1803,8 @@
       modalTitle.textContent = "geparktes fahrrad";
 
       const adminReadonly = isAdmin ? "" : "readonly";
+      const statusText = entry.status || "verfügbar";
+      const isAvailable = statusText === "verfügbar";
 
       modalBody.innerHTML = `
         <div class="label">Nummer</div>
@@ -1625,10 +1821,18 @@
 
         <div class="label">Schlosscode</div>
         <input type="text" id="bikeCodeInput" ${adminReadonly} value="${escapeHtml(entry.bikeCode)}" />
+
+        <div class="label">Status</div>
+        <input type="text" id="bikeStatusInput" readonly value="${escapeHtml(statusText)}" />
       `;
+
+      const loanButtonHtml = isAvailable
+        ? `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`
+        : `<button class="btn secondary" id="bikeReturnBtn" type="button">zurückgeben</button>`;
 
       if(isAdmin){
         modalFooter.innerHTML = `
+          ${loanButtonHtml}
           <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
           <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
         `;
@@ -1673,6 +1877,7 @@
 
       }else{
         modalFooter.innerHTML = `
+          ${loanButtonHtml}
           <button class="btn" id="bikeRemarkSaveBtn" type="button">speichern</button>
         `;
 
@@ -1693,6 +1898,16 @@
             showStatus("speichern fehlgeschlagen");
           }
         }, { once:true });
+      }
+
+      const loanBtn = document.getElementById("bikeLoanBtn");
+      if(loanBtn){
+        loanBtn.addEventListener("click", () => borrowBike(entry), { once:true });
+      }
+
+      const returnBtn = document.getElementById("bikeReturnBtn");
+      if(returnBtn){
+        returnBtn.addEventListener("click", () => returnBike(entry), { once:true });
       }
 
       openModal();
