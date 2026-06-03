@@ -24,15 +24,13 @@
     :root{
       --blue:#004a95;
       --bikePurple:#6a00ff;
-      --rentRed:#d7191c;
+      --rentGrey:#8a8a8a;
       --danger:#7a0b0b;
       --adminGrey:#c9c9c9;
       --adminGreen:#9be39b;
       --text:#0b1a2a;
       --bg:#fff;
       --border:#cfd7e6;
-
-      /* Rahmenstärke für Fenster, Menüs und Modale */
       --windowBorder:0.5pt;
     }
 
@@ -168,7 +166,6 @@
       box-sizing:border-box;
     }
 
-    /* Kartenrahmen bleibt unverändert */
     #mapFrame{
       height:100%;
       border:4px solid var(--blue);
@@ -179,7 +176,6 @@
       position:relative;
     }
 
-    /* Anmelde- und Namensseite ohne großen äußeren Rahmen */
     #lockFrame,
     #nameFrame{
       height:100%;
@@ -189,17 +185,13 @@
       overflow:hidden;
       background:#fff;
       position:relative;
+      display:grid;
+      place-items:center;
     }
 
     #map{
       height:100%;
       width:100%;
-    }
-
-    #lockFrame,
-    #nameFrame{
-      display:grid;
-      place-items:center;
     }
 
     .panel{
@@ -271,6 +263,15 @@
 
     .btn.danger{
       background:var(--danger);
+    }
+
+    .btn.returnBikeBtn{
+      background:var(--bikePurple);
+      color:#fff;
+    }
+
+    .btn.returnBikeBtn:hover{
+      background:#5700d1;
     }
 
     .statusBar{
@@ -384,6 +385,15 @@
       margin-top:14px;
       gap:10px;
       align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .statusAvailable{
+      border:2px solid var(--adminGreen) !important;
+    }
+
+    .statusBorrowed{
+      border:2px solid var(--bikePurple) !important;
     }
 
     .list-overlay{
@@ -549,6 +559,23 @@
       border:1px solid var(--border);
     }
 
+    .chatMessage.systemMessage{
+      background:transparent;
+      border:none;
+      padding:2px 6px;
+      max-width:100%;
+    }
+
+    .chatMessage.systemMessage .chatMeta{
+      display:none;
+    }
+
+    .chatMessage.systemMessage .chatText{
+      font-size:11px;
+      color:#667;
+      font-style:italic;
+    }
+
     .chatInputArea{
       margin-top:10px;
       display:grid;
@@ -640,7 +667,7 @@
     }
 
     .bikeDot.rented{
-      background:var(--rentRed);
+      background:var(--rentGrey);
     }
 
     .bikeNum{
@@ -898,7 +925,6 @@
     </div>
   </div>
 
-  <!-- Dialog für Rückgabe -->
   <div id="returnChoiceOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal">
       <div class="modalHeader">
@@ -1239,14 +1265,17 @@
 
       marker.on("click", e => {
         L.DomEvent.stop(e);
+
+        if(moveModeEntry){
+          return;
+        }
+
         entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
       });
 
       marker.on("contextmenu", e => {
         L.DomEvent.stop(e);
 
-        /* bikes: Rechtsklickmenü immer verfügbar
-           notes: Rechtsklickmenü nur für Admins */
         if(entry.type === "note" && !isAdmin){
           return;
         }
@@ -1256,7 +1285,7 @@
 
       marker.on("dragstart", () => map.dragging.disable());
 
-      marker.on("dragend", async () => {
+      marker.on("dragend", () => {
         map.dragging.enable();
 
         if(moveModeEntry !== entry) return;
@@ -1266,18 +1295,7 @@
         entry.lat = ll.lat;
         entry.lng = ll.lng;
 
-        await dbUpdateMarker(entry.id, {
-          lat:ll.lat,
-          lng:ll.lng
-        });
-
-        entry.isMoving = false;
-        moveModeEntry = null;
-
-        if(marker.dragging) marker.dragging.disable();
-
-        marker.setIcon(iconForEntry(entry));
-        showStatus("position gespeichert");
+        showStatus("zum abschließen auf karte klicken");
       });
     }
 
@@ -1294,11 +1312,6 @@
     function startMoveMode(entry){
       if(!entry) return;
 
-      if(entry.isRented && entry.status !== "verfügbar"){
-        showStatus("nicht verschiebbar");
-        return;
-      }
-
       moveModeEntry = entry;
       entry.isMoving = true;
       entry.marker.setIcon(iconForEntry(entry));
@@ -1307,7 +1320,38 @@
         entry.marker.dragging.enable();
       }
 
-      showStatus("ziehen und loslassen");
+      showStatus("marker verschieben, dann auf karte klicken");
+    }
+
+    async function finishMoveMode(){
+      if(!moveModeEntry) return;
+
+      const entry = moveModeEntry;
+      const ll = entry.marker.getLatLng();
+
+      try{
+        await dbUpdateMarker(entry.id, {
+          lat:ll.lat,
+          lng:ll.lng
+        });
+
+        entry.lat = ll.lat;
+        entry.lng = ll.lng;
+
+        entry.isMoving = false;
+        moveModeEntry = null;
+
+        if(entry.marker.dragging){
+          entry.marker.dragging.disable();
+        }
+
+        entry.marker.setIcon(iconForEntry(entry));
+
+        showStatus("position gespeichert");
+      }catch(err){
+        console.error(err);
+        showStatus("position konnte nicht gespeichert werden");
+      }
     }
 
     function getCurrentDeviceLatLng(timeoutMs = 6000){
@@ -1350,6 +1394,23 @@
       return `von ${currentUserName} ausgeliehen`;
     }
 
+    async function dbInsertSystemChatMessage(message){
+      const payload = {
+        user_name:"system",
+        message,
+        photo_data:null
+      };
+
+      const { data, error } = await sb
+        .from("chat_messages")
+        .insert(payload)
+        .select()
+        .single();
+
+      if(error) throw error;
+      return data;
+    }
+
     async function borrowBike(entry){
       const newStatus = borrowedStatusText();
 
@@ -1362,6 +1423,13 @@
         entry.status = newStatus;
         entry.isRented = true;
         entry.marker.setIcon(iconForEntry(entry));
+
+        const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
+        const systemMessage = `${currentUserName} hat natebike${numberText} ausgeliehen`;
+
+        const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
+        renderChatMessage(savedSystemMessage);
+        scrollChatBottom();
 
         closeModal();
         openBikeWindow(entry);
@@ -1407,6 +1475,13 @@
         entry.status = "verfügbar";
         entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
+
+        const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
+        const systemMessage = `${currentUserName} hat natebike${numberText} zurückgegeben`;
+
+        const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
+        renderChatMessage(savedSystemMessage);
+        scrollChatBottom();
 
         closeModal();
 
@@ -1711,7 +1786,15 @@
       ctxMenuMap.style.display = "block";
     });
 
-    map.on("click", hideContextMenus);
+    map.on("click", async () => {
+      if(moveModeEntry){
+        await finishMoveMode();
+        return;
+      }
+
+      hideContextMenus();
+    });
+
     map.on("movestart", hideContextMenus);
 
     document.addEventListener("pointerdown", e => {
@@ -1823,12 +1906,18 @@
         <input type="text" id="bikeCodeInput" ${adminReadonly} value="${escapeHtml(entry.bikeCode)}" />
 
         <div class="label">Status</div>
-        <input type="text" id="bikeStatusInput" readonly value="${escapeHtml(statusText)}" />
+        <input
+          type="text"
+          id="bikeStatusInput"
+          class="${isAvailable ? "statusAvailable" : "statusBorrowed"}"
+          readonly
+          value="${escapeHtml(statusText)}"
+        />
       `;
 
       const loanButtonHtml = isAvailable
         ? `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`
-        : `<button class="btn secondary" id="bikeReturnBtn" type="button">zurückgeben</button>`;
+        : `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
 
       if(isAdmin){
         modalFooter.innerHTML = `
@@ -2036,14 +2125,21 @@
 
       renderedChatMessages.add(row.id);
 
+      const isSystemMessage = row.user_name === "system";
+
       const box = document.createElement("div");
-      box.className = "chatMessage";
+      box.className = isSystemMessage
+        ? "chatMessage systemMessage"
+        : "chatMessage";
+
       box.dataset.id = row.id;
 
-      const meta = document.createElement("div");
-      meta.className = "chatMeta";
-      meta.textContent = `${row.user_name || "unbekannt"} • ${formatDateTime(row.created_at)}`;
-      box.appendChild(meta);
+      if(!isSystemMessage){
+        const meta = document.createElement("div");
+        meta.className = "chatMeta";
+        meta.textContent = `${row.user_name || "unbekannt"} • ${formatDateTime(row.created_at)}`;
+        box.appendChild(meta);
+      }
 
       if(row.message){
         const text = document.createElement("div");
