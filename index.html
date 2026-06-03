@@ -1,5 +1,3 @@
-
-
 <!doctype html>
 <html lang="de">
 <head>
@@ -79,6 +77,56 @@
       background: var(--adminGreen);
       border-color: #3b8f3b;
       color: #0b2a0b;
+    }
+
+    /* Dropdown-Menü */
+    .menu-container {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .menu-btn {
+      background: var(--blue);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-left: 10px;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: #fff;
+      border: 2px solid var(--blue);
+      border-radius: 8px;
+      min-width: 200px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.14);
+      padding: 6px;
+      display: none;
+      z-index: 1000;
+      margin-top: 5px;
+    }
+    
+    .dropdown-item {
+      padding: 10px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text);
+    }
+    
+    .dropdown-item:hover {
+      background: rgba(0,74,149,0.08);
     }
 
     .wrap{
@@ -318,6 +366,91 @@
       0%, 100% { filter: drop-shadow(0 0 0 rgba(255,0,0,0.0)) drop-shadow(0 4px 10px rgba(0,0,0,0.22)); transform: scale(1.0); }
       50%      { filter: drop-shadow(0 0 6px rgba(255,0,0,0.6)) drop-shadow(0 4px 10px rgba(0,0,0,0.22)); transform: scale(1.06); }
     }
+
+    /* Liste Stil */
+    .list-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    
+    .list-container {
+      width: min(600px, 95vw);
+      background: #fff;
+      border: 3px solid var(--blue);
+      border-radius: 10px;
+      padding: 14px;
+      box-sizing: border-box;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    
+    .list-header {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--blue);
+      text-transform: lowercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--text);
+    }
+    
+    .list-items {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .list-item {
+      padding: 10px;
+      border: 1px solid #cfd7e6;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .list-item:hover {
+      background: rgba(0,74,149,0.05);
+      border-color: var(--blue);
+    }
+    
+    .bike-item {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .bike-item .number {
+      font-weight: 800;
+      color: var(--bikePurple);
+    }
+    
+    .bike-item .name {
+      font-size: 14px;
+    }
+    
+    .bike-item .color {
+      font-size: 13px;
+      color: #666;
+    }
+    
+    .station-item {
+      font-size: 14px;
+    }
   </style>
 </head>
 
@@ -328,6 +461,13 @@
       <h1>natebike</h1>
     </div>
     <button id="adminBtn" class="adminBtn" type="button">Admin</button>
+    <div class="menu-container">
+      <button id="menuBtn" class="menu-btn" type="button">☰</button>
+      <div id="dropdownMenu" class="dropdown-menu">
+        <div class="dropdown-item" data-type="stations">natebikestationen</div>
+        <div class="dropdown-item" data-type="bikes">natebikes</div>
+      </div>
+    </div>
   </header>
 
   <div class="wrap">
@@ -384,6 +524,17 @@
         <button class="btn secondary" id="adminCancelBtn" type="button">schließen</button>
         <button class="btn" id="adminOkBtn" type="button">bestätigen</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Liste Overlay -->
+  <div id="listOverlay" class="list-overlay">
+    <div class="list-container">
+      <div class="list-header">
+        <div id="listTitle">natebikes</div>
+        <button class="close-btn">×</button>
+      </div>
+      <div id="listItems" class="list-items"></div>
     </div>
   </div>
 
@@ -509,10 +660,14 @@
 
     function updateAdminUI(){
       adminBtn.classList.toggle('isAdmin', isAdmin);
-      const ctxBike = document.getElementById('ctxBike');
-      if(ctxBike){
-        if(isAdmin) ctxBike.classList.remove('disabled');
-        else ctxBike.classList.add('disabled');
+      
+      // Admin Button und Menu sichtbar machen wenn eingeloggt
+      if (isAdmin) {
+        adminBtn.style.display = 'block';
+        document.querySelector('.menu-container').style.display = 'inline-block';
+      } else {
+        adminBtn.style.display = 'none';
+        document.querySelector('.menu-container').style.display = 'none';
       }
     }
     function openAdminModal(){
@@ -599,7 +754,7 @@
         entry.data.Bemerkung = row.remark ?? entry.data.Bemerkung;
         entry.data.Schlosscode = row.code ?? entry.data.Schlosscode;
       } else {
-        entry.data.Name = row.content ?? entry.data.Name;
+        entry.data.Name = row.content ?? ' ';
       }
       entry.marker.setIcon(iconForEntry(entry));
     }
@@ -911,6 +1066,141 @@
     pwBtn.addEventListener('click', unlock);
     pwInputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') unlock(); });
 
+    // --- Dropdown-Menü ---
+    const menuBtn = document.getElementById('menuBtn');
+    const dropdownMenu = document.getElementById('dropdownMenu');
+    const listOverlay = document.getElementById('listOverlay');
+    const listTitle = document.getElementById('listTitle');
+    const listItems = document.getElementById('listItems');
+
+    // Dropdown-Menü öffnen/schließen
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dropdownMenu.style.display === 'block') {
+        dropdownMenu.style.display = 'none';
+      } else {
+        dropdownMenu.style.display = 'block';
+      }
+    });
+
+    // Dropdown-Menü schließen wenn außerhalb geklickt wird
+    document.addEventListener('click', (e) => {
+      if (!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+        dropdownMenu.style.display = 'none';
+      }
+    });
+
+    // Dropdown-Menü Einträge
+    document.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const type = item.dataset.type;
+        await showList(type);
+        dropdownMenu.style.display = 'none';
+      });
+    });
+
+    // Liste anzeigen
+    async function showList(type) {
+      try {
+        const { data, error } = await sb.from('markers').select('*').order('created_at', { ascending:true });
+        if (error) throw error;
+        
+        // Filter nach Typ
+        const filteredData = data.filter(row => row.type === type);
+        
+        // Sortieren
+        if (type === 'bikes') {
+          // Nach Nummer sortieren
+          filteredData.sort((a, b) => {
+            const numA = parseInt(a.bike_number) || 0;
+            const numB = parseInt(b.bike_number) || 0;
+            return numA - numB;
+          });
+        } else {
+          // Nach östlicher Position sortieren
+          filteredData.sort((a, b) => a.lng - b.lng);
+        }
+        
+        // Liste erstellen
+        listTitle.textContent = type === 'bikes' ? 'natebikes' : 'natebikestationen';
+        listItems.innerHTML = '';
+        
+        filteredData.forEach(row => {
+          const listItem = document.createElement('div');
+          listItem.className = 'list-item';
+          
+          if (type === 'bikes') {
+            listItem.innerHTML = `
+              <div class="bike-item">
+                <span class="number">${escapeHtml(row.bike_number)}</span>
+                <span class="name">${escapeHtml(row.name)}</span>
+                <span class="color">${escapeHtml(row.color)}</span>
+              </div>
+            `;
+          } else {
+            listItem.innerHTML = `
+              <div class="station-item">${escapeHtml(row.content)}</div>
+            `;
+          }
+          
+          listItem.addEventListener('click', () => {
+            const entry = findEntryByDbId(row.id);
+            if (entry) {
+              // Karte zentrieren
+              map.setView([row.lat, row.lng], 16);
+              
+              // Marker pulsieren
+              pulseMarker(entry.marker);
+            }
+            listOverlay.style.display = 'none';
+          });
+          
+          listItems.appendChild(listItem);
+        });
+        
+        listOverlay.style.display = 'flex';
+      } catch (err) {
+        console.error('Fehler beim Laden der Daten:', err);
+        showStatus('Fehler beim Laden der Daten');
+      }
+    }
+
+    // Marker pulsieren
+    function pulseMarker(marker) {
+      const originalSize = marker.options.icon.options.iconSize;
+      const pulseCount = 3;
+      let pulseIndex = 0;
+      
+      const pulseInterval = setInterval(() => {
+        if (pulseIndex >= pulseCount * 2) {
+          clearInterval(pulseInterval);
+          // Zurücksetzen auf Originalgröße
+          marker.setIcon(iconForEntry(findEntryByDbId(marker.options.dbId)));
+          return;
+        }
+        
+        const scale = pulseIndex % 2 === 0 ? 1.5 : 1.0;
+        const newIcon = L.divIcon({
+          className: '',
+          html: marker.options.icon.options.html.replace(
+            /style="[^"]*"/,
+            `style="transform: scale(${scale})"`
+          ),
+          iconSize: [originalSize[0] * scale, originalSize[1] * scale],
+          iconAnchor: [originalSize[0] * scale / 2, originalSize[1] * scale / 2]
+        });
+        
+        marker.setIcon(newIcon);
+        pulseIndex++;
+      }, 200);
+    }
+
+    // Close list overlay
+    document.querySelector('.close-btn').addEventListener('click', () => {
+      listOverlay.style.display = 'none';
+    });
+
+    // Initialisiere die Sichtbarkeit
     updateAdminUI();
   </script>
 </body>
