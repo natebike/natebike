@@ -1,21 +1,16 @@
 <!doctype html>
 <html lang="de">
 <head>
-
-<link rel="icon" href="logo.png" type="image/png">
-
-<link rel="apple-touch-icon" href="logo.png">
-
-<link rel="manifest" href="manifest.webmanifest">
-
-<meta name="theme-color" content="#004a95">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="natebike">
-
-  
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>natebike</title>
+
+  <link rel="icon" href="logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#004a95">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="natebike">
 
   <link
     rel="stylesheet"
@@ -41,12 +36,12 @@
       --adminGrey:#c9c9c9;
       --adminGreen:#9be39b;
       --text:#0b1a2a;
-      --bg:#ffffff;
+      --bg:#fff;
       --border:#cfd7e6;
       --windowBorder:0.5pt;
     }
 
-    html, body{
+    html,body{
       height:100%;
       margin:0;
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
@@ -55,7 +50,7 @@
     }
 
     header{
-      padding:14px 16px 8px 16px;
+      padding:14px 16px 8px;
       display:flex;
       align-items:center;
       gap:12px;
@@ -126,9 +121,9 @@
       border-radius:4px;
     }
 
-    .menu-lines::before{ top:0; }
-    .menu-lines span{ top:8px; }
-    .menu-lines::after{ top:16px; }
+    .menu-lines::before{top:0;}
+    .menu-lines span{top:8px;}
+    .menu-lines::after{top:16px;}
 
     .dropdown-menu{
       position:absolute;
@@ -173,7 +168,7 @@
     }
 
     .wrap{
-      padding:8px 16px 16px 16px;
+      padding:8px 16px 16px;
       height:calc(100% - 70px);
       box-sizing:border-box;
     }
@@ -188,8 +183,7 @@
       position:relative;
     }
 
-    #lockFrame,
-    #nameFrame{
+    #lockFrame,#nameFrame{
       height:100%;
       border:none;
       border-radius:0;
@@ -222,9 +216,7 @@
       align-items:center;
     }
 
-    input[type="password"],
-    input[type="text"],
-    textarea{
+    input[type="password"],input[type="text"],textarea{
       width:100%;
       border:1px solid var(--border);
       border-radius:8px;
@@ -246,9 +238,7 @@
       gap:10px;
     }
 
-    #pwMsg,
-    #nameMsg,
-    #adminMsg{
+    #pwMsg,#nameMsg,#adminMsg{
       margin-top:10px;
       color:var(--danger);
       font-size:13px;
@@ -362,7 +352,7 @@
       text-transform:lowercase;
     }
 
-    .modalCloseX{
+    .modalCloseX,.chatCloseX{
       width:30px;
       height:30px;
       border:none;
@@ -376,7 +366,7 @@
       place-items:center;
     }
 
-    .modalCloseX:hover{
+    .modalCloseX:hover,.chatCloseX:hover{
       transform:scale(1.08);
     }
 
@@ -401,11 +391,11 @@
     }
 
     .statusAvailable{
-      border:2px solid var(--adminGreen) !important;
+      border:2px solid var(--adminGreen)!important;
     }
 
     .statusBorrowed{
-      border:2px solid var(--bikePurple) !important;
+      border:2px solid var(--bikePurple)!important;
     }
 
     .list-overlay{
@@ -432,7 +422,7 @@
     }
 
     .list-header{
-      margin:0 0 12px 0;
+      margin:0 0 12px;
       font-size:16px;
       font-weight:800;
       color:var(--blue);
@@ -496,20 +486,6 @@
       display:flex;
       align-items:center;
       gap:8px;
-    }
-
-    .chatCloseX{
-      width:30px;
-      height:30px;
-      border:none;
-      background:transparent;
-      color:var(--danger);
-      font-size:28px;
-      font-weight:900;
-      line-height:1;
-      cursor:pointer;
-      display:grid;
-      place-items:center;
     }
 
     .chatClearBtn{
@@ -717,8 +693,8 @@
     }
 
     @keyframes selectedPulse{
-      0%,100%{ transform:scale(1); }
-      50%{ transform:scale(1.5); }
+      0%,100%{transform:scale(1);}
+      50%{transform:scale(1.5);}
     }
 
     .moving{
@@ -727,32 +703,32 @@
     }
 
     .leaflet-control-zoom{
-      border:none !important;
-      box-shadow:0 8px 18px rgba(0,0,0,.14) !important;
-      border-radius:10px !important;
+      border:none!important;
+      box-shadow:0 8px 18px rgba(0,0,0,.14)!important;
+      border-radius:10px!important;
       overflow:hidden;
       background:#fff;
     }
 
     .leaflet-control-zoom a{
-      width:36px !important;
-      height:36px !important;
-      line-height:36px !important;
-      border:none !important;
-      background:#fff !important;
-      color:var(--blue) !important;
-      font-size:22px !important;
-      font-weight:900 !important;
-      text-decoration:none !important;
+      width:36px!important;
+      height:36px!important;
+      line-height:36px!important;
+      border:none!important;
+      background:#fff!important;
+      color:var(--blue)!important;
+      font-size:22px!important;
+      font-weight:900!important;
+      text-decoration:none!important;
     }
 
     .leaflet-control-zoom a:hover{
-      background:rgba(0,74,149,.06) !important;
-      color:var(--blue) !important;
+      background:rgba(0,74,149,.06)!important;
+      color:var(--blue)!important;
     }
 
     .leaflet-control-zoom-in{
-      border-bottom:1px solid var(--border) !important;
+      border-bottom:1px solid var(--border)!important;
     }
 
     .locateBtn{
@@ -1846,7 +1822,10 @@
       }
     });
 
-    ctxMenuMap.addEventListener("pointerdown", async e => {
+    /* Robustere Funktionslogik für die beiden Kartenmenü-Buttons */
+    ctxMenuMap.addEventListener("click", async e => {
+      e.stopPropagation();
+
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxMapLatLng) return;
 
@@ -1859,11 +1838,13 @@
         if(action === "bike"){
           const row = await dbInsertMarker("bike", latlng.lat, latlng.lng);
           addOrUpdateMarker(row);
+          showStatus("rad hinzugefügt");
         }
 
         if(action === "note"){
           const row = await dbInsertMarker("note", latlng.lat, latlng.lng);
           addOrUpdateMarker(row);
+          showStatus("station hinzugefügt");
         }
       }catch(err){
         console.error(err);
@@ -1881,7 +1862,9 @@
       ctxMenuMarker.style.display = "block";
     }
 
-    ctxMenuMarker.addEventListener("pointerdown", e => {
+    ctxMenuMarker.addEventListener("click", e => {
+      e.stopPropagation();
+
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxMarkerEntry) return;
 
@@ -2343,7 +2326,7 @@
       }
     }
 
-    ctxMenuChat.addEventListener("pointerdown", async e => {
+    ctxMenuChat.addEventListener("click", async e => {
       e.stopPropagation();
 
       const item = e.target.closest(".ctx-item");
