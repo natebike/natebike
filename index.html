@@ -29,7 +29,7 @@
       --adminGrey:#c9c9c9;
       --adminGreen:#9be39b;
       --text:#0b1a2a;
-      --bg:#fff;
+      --bg:#ffffff;
       --border:#cfd7e6;
       --windowBorder:0.5pt;
     }
@@ -166,7 +166,6 @@
       box-sizing:border-box;
     }
 
-    /* Blauer Kartenrahmen entfernt */
     #mapFrame{
       height:100%;
       border:none;
@@ -715,7 +714,6 @@
       outline-offset:2px;
     }
 
-    /* Leaflet-Zoombuttons im passenden Design */
     .leaflet-control-zoom{
       border:none !important;
       box-shadow:0 8px 18px rgba(0,0,0,.14) !important;
@@ -745,7 +743,6 @@
       border-bottom:1px solid var(--border) !important;
     }
 
-    /* Standortbutton ohne Rahmen */
     .locateBtn{
       width:44px;
       height:44px;
@@ -975,9 +972,6 @@
       <div class="modal-footer">
         <button class="btn secondary" id="returnManualBtn" type="button">
           natebike manuell verschieben
-        </button>
-        <button class="btn secondary" id="returnCancelBtn" type="button">
-          abbrechen
         </button>
         <button class="btn" id="returnAutoBtn" type="button">
           ja
@@ -1535,41 +1529,41 @@
     }
 
     function openReturnChoiceDialog(){
-  return new Promise(resolve => {
-    const overlay = document.getElementById("returnChoiceOverlay");
-    const autoBtn = document.getElementById("returnAutoBtn");
-    const manualBtn = document.getElementById("returnManualBtn");
-    const cancelX = document.getElementById("returnCancelX");
+      return new Promise(resolve => {
+        const overlay = document.getElementById("returnChoiceOverlay");
+        const autoBtn = document.getElementById("returnAutoBtn");
+        const manualBtn = document.getElementById("returnManualBtn");
+        const cancelX = document.getElementById("returnCancelX");
 
-    function close(value){
-      overlay.style.display = "none";
+        function close(value){
+          overlay.style.display = "none";
 
-      autoBtn.removeEventListener("click", onAuto);
-      manualBtn.removeEventListener("click", onManual);
-      cancelX.removeEventListener("click", onCancel);
-      overlay.removeEventListener("click", onOverlay);
+          autoBtn.removeEventListener("click", onAuto);
+          manualBtn.removeEventListener("click", onManual);
+          cancelX.removeEventListener("click", onCancel);
+          overlay.removeEventListener("click", onOverlay);
 
-      resolve(value);
+          resolve(value);
+        }
+
+        function onAuto(){ close("auto"); }
+        function onManual(){ close("manual"); }
+        function onCancel(){ close("cancel"); }
+
+        function onOverlay(e){
+          if(e.target === overlay){
+            close("cancel");
+          }
+        }
+
+        autoBtn.addEventListener("click", onAuto);
+        manualBtn.addEventListener("click", onManual);
+        cancelX.addEventListener("click", onCancel);
+        overlay.addEventListener("click", onOverlay);
+
+        overlay.style.display = "flex";
+      });
     }
-
-    function onAuto(){ close("auto"); }
-    function onManual(){ close("manual"); }
-    function onCancel(){ close("cancel"); }
-
-    function onOverlay(e){
-      if(e.target === overlay){
-        close("cancel");
-      }
-    }
-
-    autoBtn.addEventListener("click", onAuto);
-    manualBtn.addEventListener("click", onManual);
-    cancelX.addEventListener("click", onCancel);
-    overlay.addEventListener("click", onOverlay);
-
-    overlay.style.display = "flex";
-  });
-}
 
     const menuBtn = document.getElementById("menuBtn");
     const dropdownMenu = document.getElementById("dropdownMenu");
