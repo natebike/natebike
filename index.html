@@ -180,17 +180,17 @@
       position:relative;
     }
 
-    /* Andere Fenster mit 1,5 pt Rahmen */
-    #lockFrame,
-    #nameFrame{
-      height:100%;
-      border:var(--windowBorder) solid var(--blue);
-      border-radius:8px;
-      box-sizing:border-box;
-      overflow:hidden;
-      background:#fff;
-      position:relative;
-    }
+   /* Anmelde- und Namensseite ohne großen äußeren Rahmen */
+#lockFrame,
+#nameFrame{
+  height:100%;
+  border:none;
+  border-radius:0;
+  box-sizing:border-box;
+  overflow:hidden;
+  background:#fff;
+  position:relative;
+}
 
     #map{
       height:100%;
