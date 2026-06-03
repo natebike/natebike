@@ -1130,17 +1130,11 @@
           listItem.className = 'list-item';
           
           if (type === 'bikes') {
-            listItem.innerHTML = `
-              <div class="bike-item">
-                <span class="number">${escapeHtml(row.bike_number)}</span>
-                <span class="name">${escapeHtml(row.name)}</span>
-                <span class="color">${escapeHtml(row.color)}</span>
-              </div>
-            `;
+            // Für Fahrräder: bike_number und name in einer Zeile
+            listItem.textContent = `${escapeHtml(row.bike_number)} ${escapeHtml(row.name)}`;
           } else {
-            listItem.innerHTML = `
-              <div class="station-item">${escapeHtml(row.content)}</div>
-            `;
+            // Für Stationen: Inhalt des Markers
+            listItem.textContent = escapeHtml(row.content);
           }
           
           listItem.addEventListener('click', () => {
