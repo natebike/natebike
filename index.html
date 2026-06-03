@@ -1,4 +1,1663 @@
-function openBikeWindow(entry){
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>natebike</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --blue:#004a95;
+      --bikePurple:#6a00ff;
+      --rentRed:#d7191c;
+      --danger:#7a0b0b;
+      --adminGrey:#c9c9c9;
+      --adminGreen:#9be39b;
+      --text:#0b1a2a;
+      --bg:#ffffff;
+      --border:#cfd7e6;
+    }
+
+    html, body{
+      height:100%;
+      margin:0;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    header{
+      padding:14px 16px 8px 16px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .headerLeft{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+    }
+
+    #logo{
+      width:40px;
+      height:40px;
+      border-radius:8px;
+      object-fit:contain;
+    }
+
+    h1{
+      margin:0;
+      font-size:30px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
+      white-space:nowrap;
+      font-family:"Century Gothic", "URW Gothic L", "Futura", Arial, sans-serif;
+    }
+
+    /* Menü und Admin erscheinen erst nach Passwort + Name */
+    .headerActions{
+      margin-left:auto;
+      display:none;
+      align-items:center;
+      gap:8px;
+    }
+
+    /* Menübutton */
+    .menu-container{
+      position:relative;
+      display:inline-block;
+    }
+
+    .menu-btn{
+      width:44px;
+      height:44px;
+      border:none;
+      background:transparent;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      padding:0;
+    }
+
+    .menu-lines{
+      width:28px;
+      height:20px;
+      position:relative;
+    }
+
+    .menu-lines::before,
+    .menu-lines::after,
+    .menu-lines span{
+      content:"";
+      position:absolute;
+      left:0;
+      width:28px;
+      height:3px;
+      background:var(--blue);
+      border-radius:4px;
+    }
+
+    .menu-lines::before{ top:0; }
+    .menu-lines span{ top:8px; }
+    .menu-lines::after{ top:16px; }
+
+    .dropdown-menu{
+      position:absolute;
+      top:100%;
+      right:0;
+      display:none;
+      background:#fff;
+      border:2px solid var(--blue);
+      border-radius:8px;
+      min-width:220px;
+      padding:6px;
+      box-shadow:0 8px 22px rgba(0,0,0,0.14);
+      z-index:20000;
+      margin-top:5px;
+    }
+
+    .dropdown-item{
+      padding:10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .dropdown-item:hover{
+      background:rgba(0,74,149,0.08);
+    }
+
+    /* Adminbutton */
+    .adminBtn{
+      background:var(--adminGrey);
+      border:none;
+      color:#1b1b1b;
+      border-radius:10px;
+      padding:9px 13px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .adminBtn.isAdmin{
+      background:var(--adminGreen);
+      color:#0b2a0b;
+    }
+
+    .wrap{
+      padding:8px 16px 16px 16px;
+      height:calc(100% - 70px);
+      box-sizing:border-box;
+    }
+
+    #mapFrame,
+    #lockFrame,
+    #nameFrame{
+      height:100%;
+      border:4px solid var(--blue);
+      border-radius:8px;
+      box-sizing:border-box;
+      overflow:hidden;
+      background:#fff;
+      position:relative;
+    }
+
+    #map{
+      height:100%;
+      width:100%;
+    }
+
+    #lockFrame,
+    #nameFrame{
+      display:grid;
+      place-items:center;
+    }
+
+    .panel{
+      width:min(520px, 92%);
+      border:3px solid var(--blue);
+      border-radius:12px;
+      padding:16px;
+      box-sizing:border-box;
+      background:#fff;
+    }
+
+    .formRow{
+      display:grid;
+      grid-template-columns:110px 1fr;
+      gap:12px;
+      align-items:center;
+    }
+
+    input[type="password"],
+    input[type="text"],
+    textarea{
+      width:100%;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      font-size:14px;
+      box-sizing:border-box;
+      outline:none;
+    }
+
+    textarea{
+      min-height:72px;
+      resize:vertical;
+    }
+
+    .footer{
+      display:flex;
+      justify-content:flex-end;
+      margin-top:14px;
+      gap:10px;
+    }
+
+    #pwMsg,
+    #nameMsg,
+    #adminMsg{
+      margin-top:10px;
+      color:var(--danger);
+      font-size:13px;
+      display:none;
+    }
+
+    .btn{
+      background:var(--blue);
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      padding:10px 14px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      text-transform:lowercase;
+    }
+
+    .btn.secondary{
+      background:#e8f0ff;
+      border:1px solid #b9c6f2;
+      color:var(--blue);
+    }
+
+    .btn.danger{
+      background:var(--danger);
+    }
+
+    .statusBar{
+      position:absolute;
+      left:10px;
+      bottom:10px;
+      z-index:5000;
+      background:rgba(255,255,255,0.94);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:12px;
+      color:#25324a;
+      display:none;
+      max-width:70%;
+    }
+
+    /* Kontextmenüs */
+    .ctx-menu{
+      position:fixed;
+      z-index:50000;
+      background:#fff;
+      border:2px solid var(--blue);
+      border-radius:8px;
+      min-width:220px;
+      box-shadow:0 8px 22px rgba(0,0,0,0.14);
+      padding:6px;
+      display:none;
+      user-select:none;
+    }
+
+    .ctx-item{
+      padding:10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .ctx-item:hover{
+      background:rgba(0,74,149,0.08);
+    }
+
+    /* Modal-Grundlayout */
+    .modal-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.25);
+      display:none;
+      z-index:10000;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      box-sizing:border-box;
+    }
+
+    .modal{
+      width:min(640px, 95vw);
+      background:#fff;
+      border:3px solid var(--blue);
+      border-radius:10px;
+      padding:14px;
+      box-sizing:border-box;
+    }
+
+    .modal h2{
+      margin:0 0 12px 0;
+      font-size:16px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:140px 1fr;
+      gap:10px 12px;
+      align-items:center;
+    }
+
+    .label{
+      font-size:14px;
+    }
+
+    .modal-footer{
+      display:flex;
+      justify-content:flex-end;
+      margin-top:14px;
+      gap:10px;
+      align-items:center;
+    }
+
+    /* Listenfenster */
+    .list-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.45);
+      display:none;
+      z-index:30000;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      box-sizing:border-box;
+    }
+
+    .list-container{
+      width:min(620px, 95vw);
+      background:#fff;
+      border:3px solid var(--blue);
+      border-radius:10px;
+      padding:14px;
+      box-sizing:border-box;
+      max-height:80vh;
+      overflow-y:auto;
+    }
+
+    .list-header{
+      margin:0 0 12px 0;
+      font-size:16px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .close-btn{
+      background:none;
+      border:none;
+      font-size:26px;
+      cursor:pointer;
+      color:var(--text);
+    }
+
+    .list-items{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .list-item{
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+      line-height:1.35;
+    }
+
+    .list-item:hover{
+      background:rgba(0,74,149,0.06);
+      border-color:var(--blue);
+    }
+
+    .empty-list{
+      padding:16px;
+      color:#666;
+      font-style:italic;
+    }
+
+    /* Chat */
+    .chat-modal{
+      width:min(720px, 96vw);
+      height:min(720px, 88vh);
+      display:flex;
+      flex-direction:column;
+      position:relative;
+    }
+
+    .chatHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .chatHeader h2{
+      margin:0;
+    }
+
+    .chatHeaderActions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .chatCloseX{
+      width:30px;
+      height:30px;
+      border:none;
+      background:transparent;
+      color:var(--danger);
+      font-size:28px;
+      font-weight:900;
+      line-height:1;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+    }
+
+    .chatCloseX:hover{
+      transform:scale(1.08);
+    }
+
+    .chatClearBtn{
+      background:var(--danger);
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      padding:7px 10px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+      text-transform:lowercase;
+    }
+
+    .chatMessages{
+      flex:1;
+      overflow-y:auto;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      background:#fafcff;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .chatMessage{
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:8px 10px;
+      max-width:95%;
+      cursor:default;
+    }
+
+    .chatMessage:hover{
+      border-color:#b9c6f2;
+    }
+
+    .chatMeta{
+      font-size:11px;
+      color:#667;
+      margin-bottom:4px;
+      text-transform:lowercase;
+    }
+
+    .chatText{
+      font-size:14px;
+      white-space:pre-wrap;
+      overflow-wrap:anywhere;
+    }
+
+    .chatPhoto{
+      display:block;
+      margin-top:6px;
+      max-width:200px;
+      max-height:200px;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+
+    .chatInputArea{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:1fr auto auto;
+      gap:8px;
+      align-items:end;
+    }
+
+    .chatInputArea textarea{
+      min-height:48px;
+      max-height:90px;
+      resize:vertical;
+    }
+
+    .charCount{
+      font-size:11px;
+      color:#667;
+      margin-top:4px;
+    }
+
+    .iconBtn{
+      width:44px;
+      height:44px;
+      border:2px solid var(--blue);
+      background:#fff;
+      color:var(--blue);
+      border-radius:10px;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      padding:0;
+    }
+
+    .iconBtn:hover{
+      background:rgba(0,74,149,0.06);
+    }
+
+    .iconBtn svg{
+      width:24px;
+      height:24px;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:2;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+
+    .sendIconBtn{
+      background:var(--blue);
+      color:#fff;
+    }
+
+    .sendIconBtn:hover{
+      background:#003d7a;
+    }
+
+    .photoPreview{
+      margin-top:8px;
+      display:none;
+      align-items:center;
+      gap:8px;
+      font-size:12px;
+      color:#445;
+    }
+
+    .photoPreview img{
+      width:54px;
+      height:54px;
+      object-fit:cover;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+
+    /* Fahrradmarker */
+    .bikeWrap{
+      position:relative;
+      width:24px;
+      height:24px;
+      pointer-events:none;
+    }
+
+    .bikeDot{
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background:var(--bikePurple);
+      box-shadow:0 2px 7px rgba(0,0,0,0.22);
+      display:grid;
+      place-items:center;
+    }
+
+    .bikeDot.rented{
+      background:var(--rentRed);
+    }
+
+    .bikeNum{
+      font-size:12px;
+      font-weight:900;
+      color:#fff;
+      line-height:1;
+      text-shadow:0 1px 2px rgba(0,0,0,0.35);
+      user-select:none;
+      white-space:nowrap;
+      max-width:22px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    /* Stationsmarker */
+    .stationIconWrap{
+      position:relative;
+      width:33px;
+      height:33px;
+      pointer-events:none;
+    }
+
+    .stationIconImg{
+      position:absolute;
+      inset:0;
+      width:33px;
+      height:33px;
+      object-fit:contain;
+      filter:drop-shadow(0 4px 10px rgba(0,0,0,0.22));
+    }
+
+    .selectedPulse{
+      animation:selectedPulse 0.45s ease-in-out 3;
+      transform-origin:center center;
+    }
+
+    @keyframes selectedPulse{
+      0%, 100%{ transform:scale(1); }
+      50%{ transform:scale(1.5); }
+    }
+
+    .moving{
+      outline:2px solid red;
+      outline-offset:2px;
+    }
+
+    /* Standortbutton */
+    .locateBtn{
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:2px solid var(--blue);
+      background:#fff;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      box-shadow:0 8px 18px rgba(0,0,0,0.18);
+    }
+
+    .crosshair{
+      width:18px;
+      height:18px;
+      border:2px solid var(--blue);
+      border-radius:50%;
+      position:relative;
+      box-sizing:border-box;
+    }
+
+    .crosshair::before,
+    .crosshair::after{
+      content:"";
+      position:absolute;
+      background:var(--blue);
+      left:50%;
+      top:50%;
+      transform:translate(-50%, -50%);
+    }
+
+    .crosshair::before{
+      width:2px;
+      height:22px;
+    }
+
+    .crosshair::after{
+      width:22px;
+      height:2px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="headerLeft">
+      <img id="logo" alt="logo" src="logo.png" />
+      <h1>natebike</h1>
+    </div>
+
+    <div id="headerActions" class="headerActions">
+      <div class="menu-container">
+        <button id="menuBtn" class="menu-btn" type="button" title="Menü">
+          <div class="menu-lines"><span></span></div>
+        </button>
+
+        <div id="dropdownMenu" class="dropdown-menu">
+          <div class="dropdown-item" data-kind="notes">natebikestationen</div>
+          <div class="dropdown-item" data-kind="bikes">natebikes</div>
+          <div class="dropdown-item" data-kind="chat">chat</div>
+        </div>
+      </div>
+
+      <button id="adminBtn" class="adminBtn" type="button">Admin</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- Passwortansicht -->
+    <div id="lockFrame">
+      <div class="panel">
+        <div class="formRow">
+          <div>Passwort:</div>
+          <input id="pwInput" type="password" autocomplete="current-password" />
+        </div>
+
+        <div class="footer">
+          <button class="btn" id="pwBtn" type="button">bestätigen</button>
+        </div>
+
+        <div id="pwMsg">falsches Passwort</div>
+      </div>
+    </div>
+
+    <!-- Namenseingabe nach erfolgreicher Passworteingabe -->
+    <div id="nameFrame" style="display:none;">
+      <div class="panel">
+        <div class="formRow">
+          <div>Name:</div>
+          <input id="nameInput" type="text" maxlength="40" autocomplete="name" />
+        </div>
+
+        <div class="footer">
+          <button class="btn" id="nameBtn" type="button">weiter</button>
+        </div>
+
+        <div id="nameMsg">bitte Namen eingeben</div>
+      </div>
+    </div>
+
+    <!-- Kartenansicht -->
+    <div id="mapFrame" style="display:none;">
+      <div id="map"></div>
+      <div id="statusBar" class="statusBar"></div>
+    </div>
+  </div>
+
+  <!-- Rechtsklick-Menü auf Karte -->
+  <div id="ctxMenuMap" class="ctx-menu">
+    <div class="ctx-item" data-action="bike">neues Rad hinzufügen</div>
+    <div class="ctx-item" data-action="note">natebikestation hinzufügen</div>
+  </div>
+
+  <!-- Rechtsklick-Menü auf Marker -->
+  <div id="ctxMenuMarker" class="ctx-menu">
+    <div class="ctx-item" data-action="open">öffnen</div>
+    <div class="ctx-item" data-action="move">verschieben</div>
+  </div>
+
+  <!-- Rechtsklick-Menü auf Chatnachricht -->
+  <div id="ctxMenuChat" class="ctx-menu">
+    <div class="ctx-item" data-action="delete">nachricht löschen</div>
+  </div>
+
+  <!-- Detailmodal -->
+  <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2 id="modalTitle">details</h2>
+      <div class="grid" id="modalBody"></div>
+      <div class="modal-footer" id="modalFooter"></div>
+    </div>
+  </div>
+
+  <!-- Adminmodal -->
+  <div id="adminOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2>admin</h2>
+
+      <div class="grid">
+        <div class="label">Passwort</div>
+        <input id="adminPwInput" type="password" autocomplete="current-password" />
+      </div>
+
+      <div id="adminMsg">falsches Passwort</div>
+
+      <div class="modal-footer">
+        <button class="btn secondary" id="adminCancelBtn" type="button">schließen</button>
+        <button class="btn" id="adminOkBtn" type="button">bestätigen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Listenmodal für natebikes / natebikestationen -->
+  <div id="listOverlay" class="list-overlay">
+    <div class="list-container">
+      <div class="list-header">
+        <div id="listTitle">liste</div>
+        <button class="close-btn" id="listCloseBtn" type="button">×</button>
+      </div>
+
+      <div id="listItems" class="list-items"></div>
+    </div>
+  </div>
+
+  <!-- Chatmodal -->
+  <div id="chatOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal chat-modal">
+
+      <div class="chatHeader">
+        <h2>chat</h2>
+
+        <div class="chatHeaderActions">
+          <button id="clearChatBtn" class="chatClearBtn" type="button" style="display:none;">
+            chat leeren
+          </button>
+
+          <button id="chatCloseBtn" class="chatCloseX" type="button" title="schließen">
+            ×
+          </button>
+        </div>
+      </div>
+
+      <div id="chatMessages" class="chatMessages"></div>
+
+      <div class="photoPreview" id="photoPreview">
+        <img id="photoPreviewImg" alt="" />
+        <span>foto bereit</span>
+        <button class="btn secondary" id="removePhotoBtn" type="button">entfernen</button>
+      </div>
+
+      <div class="chatInputArea">
+        <div>
+          <textarea id="chatTextInput" maxlength="144" placeholder="nachricht schreiben"></textarea>
+          <div class="charCount"><span id="charCount">0</span>/144</div>
+        </div>
+
+        <!-- Foto-Symbol -->
+        <button class="iconBtn" id="photoBtn" type="button" title="foto aufnehmen">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+            <circle cx="8" cy="9" r="2"></circle>
+            <path d="M4 18l5.5-6 4 4 2.5-3 4 5"></path>
+          </svg>
+        </button>
+
+        <!-- Papierflieger-Symbol -->
+        <button class="iconBtn sendIconBtn" id="sendChatBtn" type="button" title="senden">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 11.5L21 3l-4.5 18-4.2-7.2L3 11.5z"></path>
+            <path d="M12.3 13.8L21 3"></path>
+          </svg>
+        </button>
+
+        <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none;" />
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***********************
+     * Konfiguration
+     ***********************/
+    const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
+
+    // Nutzerpasswort zum Betreten der App
+    const APP_PASSWORD = "drahtesel";
+
+    // Adminpasswort
+    const ADMIN_PASSWORD = "eseldraht";
+
+    const KASSEL_CENTER = [51.3127, 9.4797];
+    const DEFAULT_ZOOM = 13;
+
+    /***********************
+     * Supabase
+     ***********************/
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    /***********************
+     * App-Zustand
+     ***********************/
+    let currentUserName = "";
+    let isAdmin = false;
+    let moveModeEntry = null;
+
+    const markers = new Map(); // dbId -> entry
+
+    const renderedChatMessages = new Set();
+    let selectedPhotoData = null;
+    let ctxChatMessageId = null;
+
+    /***********************
+     * Karte
+     ***********************/
+    const map = L.map("map", {
+      center: KASSEL_CENTER,
+      zoom: DEFAULT_ZOOM
+    });
+
+    map.createPane("stationPane");
+    map.getPane("stationPane").style.zIndex = 380;
+
+    map.createPane("bikePane");
+    map.getPane("bikePane").style.zIndex = 420;
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+
+    const LocateControl = L.Control.extend({
+      options:{ position:"bottomright" },
+      onAdd:function(){
+        const btn = L.DomUtil.create("div", "locateBtn");
+        btn.title = "Standort zentrieren";
+        btn.innerHTML = '<div class="crosshair"></div>';
+
+        L.DomEvent.disableClickPropagation(btn);
+
+        L.DomEvent.on(btn, "click", () => {
+          map.locate({
+            setView:true,
+            maxZoom:16,
+            enableHighAccuracy:true
+          });
+        });
+
+        return btn;
+      }
+    });
+
+    map.addControl(new LocateControl());
+
+    let locationMarker = null;
+
+    map.on("locationfound", (e) => {
+      if(!locationMarker){
+        locationMarker = L.circleMarker(e.latlng, {
+          radius:10,
+          color:"#ff0000",
+          weight:3,
+          fillOpacity:0
+        }).addTo(map);
+      }else{
+        locationMarker.setLatLng(e.latlng);
+      }
+    });
+
+    map.on("locationerror", () => {
+      showStatus("standort nicht verfügbar");
+    });
+
+    /***********************
+     * Hilfsfunktionen
+     ***********************/
+    function escapeHtml(value){
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function showStatus(message){
+      const statusBar = document.getElementById("statusBar");
+      statusBar.textContent = message;
+      statusBar.style.display = "block";
+
+      clearTimeout(showStatus.timer);
+      showStatus.timer = setTimeout(() => {
+        statusBar.style.display = "none";
+      }, 2500);
+    }
+
+    function formatDateTime(value){
+      const d = new Date(value);
+      return d.toLocaleString("de-DE", {
+        day:"2-digit",
+        month:"2-digit",
+        year:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
+      }).toLowerCase();
+    }
+
+    function bikeSortValue(value){
+      const text = String(value ?? "").trim();
+      const number = Number(text);
+
+      return {
+        isNumber: text !== "" && Number.isFinite(number),
+        number,
+        text
+      };
+    }
+
+    function sortBikeEntries(a, b){
+      const av = bikeSortValue(a.bikeNumber);
+      const bv = bikeSortValue(b.bikeNumber);
+
+      if(av.isNumber && bv.isNumber) return av.number - bv.number;
+      if(av.isNumber && !bv.isNumber) return -1;
+      if(!av.isNumber && bv.isNumber) return 1;
+
+      return av.text.localeCompare(bv.text, "de", {
+        numeric:true,
+        sensitivity:"base"
+      });
+    }
+
+    /***********************
+     * Icons
+     ***********************/
+    function bikeIcon(entry){
+      const classes = [
+        "bikeDot",
+        entry.isRented ? "rented" : "",
+        entry.isMoving ? "moving" : "",
+        entry.isPulsing ? "selectedPulse" : ""
+      ].filter(Boolean).join(" ");
+
+      return L.divIcon({
+        className:"",
+        html: `
+          <div class="bikeWrap">
+            <div class="${classes}">
+              <div class="bikeNum">${escapeHtml(entry.bikeNumber)}</div>
+            </div>
+          </div>
+        `,
+        iconSize:[24, 24],
+        iconAnchor:[12, 12]
+      });
+    }
+
+    function stationIcon(entry){
+      const classes = [
+        "stationIconImg",
+        entry.isMoving ? "moving" : "",
+        entry.isPulsing ? "selectedPulse" : ""
+      ].filter(Boolean).join(" ");
+
+      return L.divIcon({
+        className:"",
+        html: `
+          <div class="stationIconWrap">
+            <img class="${classes}" src="logo.png" alt="" />
+          </div>
+        `,
+        iconSize:[33, 33],
+        iconAnchor:[16.5, 16.5]
+      });
+    }
+
+    function iconForEntry(entry){
+      return entry.type === "bike" ? bikeIcon(entry) : stationIcon(entry);
+    }
+
+    /***********************
+     * Supabase: Marker
+     ***********************/
+    async function dbLoadAllMarkers(){
+      const { data, error } = await sb
+        .from("markers")
+        .select("*")
+        .order("created_at", { ascending:true });
+
+      if(error) throw error;
+      return data || [];
+    }
+
+    async function dbInsertMarker(type, lat, lng){
+      const payload = {
+        type,
+        lat,
+        lng,
+        bike_number:"",
+        name:"natebike",
+        color:"undefiniert",
+        remark:"keine",
+        code:"",
+        content:" ",
+        is_rented:false,
+        photo_url:null
+      };
+
+      const { data, error } = await sb
+        .from("markers")
+        .insert(payload)
+        .select()
+        .single();
+
+      if(error) throw error;
+      return data;
+    }
+
+    async function dbUpdateMarker(id, patch){
+      const { error } = await sb
+        .from("markers")
+        .update(patch)
+        .eq("id", id);
+
+      if(error) throw error;
+    }
+
+    async function dbDeleteMarker(id){
+      const { error } = await sb
+        .from("markers")
+        .delete()
+        .eq("id", id);
+
+      if(error) throw error;
+    }
+
+    /***********************
+     * Marker erzeugen / aktualisieren
+     ***********************/
+    function rowToEntry(row){
+      return {
+        id:row.id,
+        type:row.type,
+
+        lat:row.lat,
+        lng:row.lng,
+
+        bikeNumber:row.bike_number ?? "",
+        bikeName:row.name ?? "",
+        bikeColor:row.color ?? "",
+        bikeRemark:row.remark ?? "",
+        bikeCode:row.code ?? "",
+
+        content:row.content ?? "",
+
+        isRented:!!row.is_rented,
+        isMoving:false,
+        isPulsing:false,
+
+        marker:null
+      };
+    }
+
+    function addOrUpdateMarker(row){
+      let entry = markers.get(row.id);
+
+      if(!entry){
+        entry = rowToEntry(row);
+
+        const pane = entry.type === "bike" ? "bikePane" : "stationPane";
+
+        entry.marker = L.marker([entry.lat, entry.lng], {
+          icon:iconForEntry(entry),
+          draggable:true,
+          pane
+        }).addTo(map);
+
+        if(entry.marker.dragging) entry.marker.dragging.disable();
+
+        markers.set(entry.id, entry);
+        wireMarker(entry);
+      }else{
+        entry.type = row.type;
+        entry.lat = row.lat;
+        entry.lng = row.lng;
+
+        entry.bikeNumber = row.bike_number ?? "";
+        entry.bikeName = row.name ?? "";
+        entry.bikeColor = row.color ?? "";
+        entry.bikeRemark = row.remark ?? "";
+        entry.bikeCode = row.code ?? "";
+
+        entry.content = row.content ?? "";
+        entry.isRented = !!row.is_rented;
+
+        if(!entry.isMoving){
+          entry.marker.setLatLng([entry.lat, entry.lng]);
+        }
+
+        entry.marker.setIcon(iconForEntry(entry));
+      }
+
+      return entry;
+    }
+
+    async function loadMarkersOnce(){
+      const rows = await dbLoadAllMarkers();
+
+      rows.forEach(row => {
+        if(row.type === "bike" || row.type === "note"){
+          addOrUpdateMarker(row);
+        }
+      });
+    }
+
+    function findEntryById(id){
+      return markers.get(id) || null;
+    }
+
+    /***********************
+     * Marker-Verhalten
+     ***********************/
+    function wireMarker(entry){
+      const marker = entry.marker;
+
+      marker.on("click", (e) => {
+        L.DomEvent.stop(e);
+
+        if(entry.type === "bike"){
+          openBikeWindow(entry);
+        }else{
+          openStationWindow(entry);
+        }
+      });
+
+      marker.on("contextmenu", (e) => {
+        L.DomEvent.stop(e);
+
+        if(!isAdmin){
+          showStatus("nur admin");
+          return;
+        }
+
+        openMarkerMenu(e.originalEvent, entry);
+      });
+
+      marker.on("dragstart", () => {
+        map.dragging.disable();
+      });
+
+      marker.on("dragend", async () => {
+        map.dragging.enable();
+
+        if(moveModeEntry !== entry) return;
+
+        const ll = marker.getLatLng();
+
+        entry.lat = ll.lat;
+        entry.lng = ll.lng;
+
+        await dbUpdateMarker(entry.id, {
+          lat:ll.lat,
+          lng:ll.lng
+        });
+
+        entry.isMoving = false;
+        moveModeEntry = null;
+
+        if(marker.dragging) marker.dragging.disable();
+
+        marker.setIcon(iconForEntry(entry));
+        showStatus("position gespeichert");
+      });
+    }
+
+    function pulseEntry(entry){
+      entry.isPulsing = true;
+      entry.marker.setIcon(iconForEntry(entry));
+
+      setTimeout(() => {
+        entry.isPulsing = false;
+        entry.marker.setIcon(iconForEntry(entry));
+      }, 1400);
+    }
+
+    /***********************
+     * Menü und Listen
+     ***********************/
+    const menuBtn = document.getElementById("menuBtn");
+    const dropdownMenu = document.getElementById("dropdownMenu");
+
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dropdownMenu.style.display =
+        dropdownMenu.style.display === "block" ? "none" : "block";
+    });
+
+    document.addEventListener("click", (e) => {
+      if(!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)){
+        dropdownMenu.style.display = "none";
+      }
+    });
+
+    document.querySelectorAll(".dropdown-item").forEach(item => {
+      item.addEventListener("click", async () => {
+        const kind = item.dataset.kind;
+        dropdownMenu.style.display = "none";
+
+        if(kind === "bikes") showBikeList();
+        if(kind === "notes") showNoteList();
+        if(kind === "chat") openChat();
+      });
+    });
+
+    function openList(title){
+      document.getElementById("listTitle").textContent = title;
+      document.getElementById("listItems").innerHTML = "";
+      document.getElementById("listOverlay").style.display = "flex";
+    }
+
+    function addEmptyListMessage(text){
+      const listItems = document.getElementById("listItems");
+      const div = document.createElement("div");
+      div.className = "empty-list";
+      div.textContent = text;
+      listItems.appendChild(div);
+    }
+
+    function addListRow(text, entry){
+      const listItems = document.getElementById("listItems");
+
+      const row = document.createElement("div");
+      row.className = "list-item";
+      row.textContent = text;
+
+      row.addEventListener("click", () => {
+        document.getElementById("listOverlay").style.display = "none";
+
+        map.setView([entry.lat, entry.lng], 17);
+        pulseEntry(entry);
+      });
+
+      listItems.appendChild(row);
+    }
+
+    function showBikeList(){
+      const bikes = Array.from(markers.values())
+        .filter(entry => entry.type === "bike")
+        .sort(sortBikeEntries);
+
+      openList("natebikes");
+
+      if(bikes.length === 0){
+        addEmptyListMessage("keine Fahrräder gefunden");
+        return;
+      }
+
+      bikes.forEach(entry => {
+        const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
+        addListRow(line || "(ohne Nummer/Name)", entry);
+      });
+    }
+
+    function showNoteList(){
+      const notes = Array.from(markers.values())
+        .filter(entry => entry.type === "note")
+        .sort((a, b) => Number(a.lng) - Number(b.lng));
+
+      openList("natebikestationen");
+
+      if(notes.length === 0){
+        addEmptyListMessage("keine Stationen gefunden");
+        return;
+      }
+
+      notes.forEach(entry => {
+        const line = String(entry.content || "").trim();
+        addListRow(line || "(ohne Inhalt)", entry);
+      });
+    }
+
+    document.getElementById("listCloseBtn").addEventListener("click", () => {
+      document.getElementById("listOverlay").style.display = "none";
+    });
+
+    document.getElementById("listOverlay").addEventListener("click", (e) => {
+      if(e.target.id === "listOverlay"){
+        document.getElementById("listOverlay").style.display = "none";
+      }
+    });
+
+    /***********************
+     * App-Login und Namenseingabe
+     ***********************/
+    const lockFrame = document.getElementById("lockFrame");
+    const nameFrame = document.getElementById("nameFrame");
+    const mapFrame = document.getElementById("mapFrame");
+    const headerActions = document.getElementById("headerActions");
+
+    async function checkPassword(){
+      const value = (document.getElementById("pwInput").value || "").trim();
+
+      if(value !== APP_PASSWORD){
+        document.getElementById("pwMsg").style.display = "block";
+        return;
+      }
+
+      document.getElementById("pwMsg").style.display = "none";
+      lockFrame.style.display = "none";
+      nameFrame.style.display = "grid";
+      document.getElementById("nameInput").focus();
+    }
+
+    async function finishNameLogin(){
+      const name = (document.getElementById("nameInput").value || "").trim();
+
+      if(!name){
+        document.getElementById("nameMsg").style.display = "block";
+        return;
+      }
+
+      currentUserName = name;
+      document.getElementById("nameMsg").style.display = "none";
+
+      nameFrame.style.display = "none";
+      mapFrame.style.display = "block";
+
+      // Menü und Admin erst nach Passwort + Name anzeigen
+      headerActions.style.display = "flex";
+
+      setTimeout(() => {
+        map.invalidateSize();
+        map.locate({ setView:true, maxZoom:16, enableHighAccuracy:true });
+      }, 100);
+
+      try{
+        await loadMarkersOnce();
+      }catch(err){
+        console.error(err);
+        showStatus("marker konnten nicht geladen werden");
+      }
+    }
+
+    document.getElementById("pwBtn").addEventListener("click", checkPassword);
+    document.getElementById("pwInput").addEventListener("keydown", (e) => {
+      if(e.key === "Enter") checkPassword();
+    });
+
+    document.getElementById("nameBtn").addEventListener("click", finishNameLogin);
+    document.getElementById("nameInput").addEventListener("keydown", (e) => {
+      if(e.key === "Enter") finishNameLogin();
+    });
+
+    /***********************
+     * Admin
+     ***********************/
+    const adminBtn = document.getElementById("adminBtn");
+    const adminOverlay = document.getElementById("adminOverlay");
+    const adminPwInput = document.getElementById("adminPwInput");
+    const adminMsg = document.getElementById("adminMsg");
+
+    function updateAdminUI(){
+      adminBtn.classList.toggle("isAdmin", isAdmin);
+
+      const clearChatBtn = document.getElementById("clearChatBtn");
+      if(clearChatBtn){
+        clearChatBtn.style.display = isAdmin ? "inline-block" : "none";
+      }
+    }
+
+    function openAdminModal(){
+      adminPwInput.value = "";
+      adminMsg.style.display = "none";
+      adminOverlay.style.display = "flex";
+      adminPwInput.focus();
+    }
+
+    function closeAdminModal(){
+      adminOverlay.style.display = "none";
+    }
+
+    function confirmAdmin(){
+      const value = (adminPwInput.value || "").trim();
+
+      if(value !== ADMIN_PASSWORD){
+        adminMsg.style.display = "block";
+        return;
+      }
+
+      isAdmin = true;
+      updateAdminUI();
+      closeAdminModal();
+      showStatus("admin aktiv");
+    }
+
+    adminBtn.addEventListener("click", () => {
+      if(isAdmin){
+        isAdmin = false;
+        updateAdminUI();
+        showStatus("admin abgemeldet");
+      }else{
+        openAdminModal();
+      }
+    });
+
+    document.getElementById("adminOkBtn").addEventListener("click", confirmAdmin);
+    adminPwInput.addEventListener("keydown", (e) => {
+      if(e.key === "Enter") confirmAdmin();
+    });
+
+    document.getElementById("adminCancelBtn").addEventListener("click", closeAdminModal);
+
+    adminOverlay.addEventListener("click", (e) => {
+      if(e.target === adminOverlay) closeAdminModal();
+    });
+
+    /***********************
+     * Admin-Kontextmenüs Marker/Karte/Chat
+     ***********************/
+    const ctxMenuMap = document.getElementById("ctxMenuMap");
+    const ctxMenuMarker = document.getElementById("ctxMenuMarker");
+    const ctxMenuChat = document.getElementById("ctxMenuChat");
+
+    let ctxMapLatLng = null;
+    let ctxMarkerEntry = null;
+
+    function hideContextMenus(){
+      ctxMenuMap.style.display = "none";
+      ctxMenuMarker.style.display = "none";
+      ctxMenuChat.style.display = "none";
+
+      ctxMapLatLng = null;
+      ctxMarkerEntry = null;
+      ctxChatMessageId = null;
+    }
+
+    map.getContainer().addEventListener("contextmenu", e => e.preventDefault());
+
+    map.on("contextmenu", (e) => {
+      if(!isAdmin) return;
+
+      ctxMapLatLng = e.latlng;
+
+      hideContextMenus();
+
+      ctxMenuMap.style.left = `${e.originalEvent.clientX}px`;
+      ctxMenuMap.style.top = `${e.originalEvent.clientY}px`;
+      ctxMenuMap.style.display = "block";
+    });
+
+    map.on("click", hideContextMenus);
+    map.on("movestart", hideContextMenus);
+
+    document.addEventListener("pointerdown", (e) => {
+      if(
+        !ctxMenuMap.contains(e.target) &&
+        !ctxMenuMarker.contains(e.target) &&
+        !ctxMenuChat.contains(e.target)
+      ){
+        hideContextMenus();
+      }
+    });
+
+    ctxMenuMap.addEventListener("pointerdown", async (e) => {
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxMapLatLng) return;
+
+      const action = item.dataset.action;
+      const latlng = ctxMapLatLng;
+
+      hideContextMenus();
+
+      try{
+        if(action === "bike"){
+          const row = await dbInsertMarker("bike", latlng.lat, latlng.lng);
+          addOrUpdateMarker(row);
+        }
+
+        if(action === "note"){
+          const row = await dbInsertMarker("note", latlng.lat, latlng.lng);
+          addOrUpdateMarker(row);
+        }
+      }catch(err){
+        console.error(err);
+        showStatus("konnte nicht gespeichert werden");
+      }
+    });
+
+    function openMarkerMenu(mouseEvent, entry){
+      hideContextMenus();
+
+      ctxMarkerEntry = entry;
+
+      ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
+      ctxMenuMarker.style.top = `${mouseEvent.clientY}px`;
+      ctxMenuMarker.style.display = "block";
+    }
+
+    ctxMenuMarker.addEventListener("pointerdown", (e) => {
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxMarkerEntry) return;
+
+      const action = item.dataset.action;
+      const entry = ctxMarkerEntry;
+
+      hideContextMenus();
+
+      if(action === "open"){
+        if(entry.type === "bike") openBikeWindow(entry);
+        else openStationWindow(entry);
+      }
+
+      if(action === "move"){
+        if(entry.isRented){
+          showStatus("nicht verschiebbar");
+          return;
+        }
+
+        moveModeEntry = entry;
+        entry.isMoving = true;
+        entry.marker.setIcon(iconForEntry(entry));
+
+        if(entry.marker.dragging) entry.marker.dragging.enable();
+
+        showStatus("ziehen und loslassen");
+      }
+    });
+
+    /***********************
+     * Detailfenster Fahrrad / Station
+     ***********************/
+    const modalOverlay = document.getElementById("modalOverlay");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+    const modalFooter = document.getElementById("modalFooter");
+
+    function openModal(){
+      modalOverlay.style.display = "flex";
+    }
+
+    function closeModal(){
+      modalOverlay.style.display = "none";
+      modalTitle.textContent = "details";
+      modalBody.innerHTML = "";
+      modalFooter.innerHTML = "";
+    }
+
+    modalOverlay.addEventListener("click", (e) => {
+      if(e.target === modalOverlay) closeModal();
+    });
+
+    function openBikeWindow(entry){
   modalTitle.textContent = "geparktes fahrrad";
 
   // Nur Admins dürfen diese Felder ändern
@@ -96,3 +1755,420 @@ function openBikeWindow(entry){
 
   openModal();
 }
+    function openStationWindow(entry){
+      modalTitle.textContent = "natebikestation";
+
+      const readonly = isAdmin ? "" : "readonly";
+
+      modalBody.innerHTML = `
+        <div class="label">Inhalt</div>
+        <textarea id="stationContentInput" ${readonly}>${escapeHtml(entry.content)}</textarea>
+      `;
+
+      if(isAdmin){
+        modalFooter.innerHTML = `
+          <button class="btn" id="stationSaveBtn" type="button">speichern</button>
+          <button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>
+        `;
+
+        document.getElementById("stationSaveBtn").addEventListener("click", async () => {
+          const content = document.getElementById("stationContentInput").value.trim();
+
+          try{
+            await dbUpdateMarker(entry.id, { content });
+            entry.content = content;
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus("speichern fehlgeschlagen");
+          }
+        }, { once:true });
+
+        document.getElementById("stationDeleteBtn").addEventListener("click", async () => {
+          try{
+            await dbDeleteMarker(entry.id);
+            map.removeLayer(entry.marker);
+            markers.delete(entry.id);
+            closeModal();
+          }catch(err){
+            console.error(err);
+            showStatus("löschen fehlgeschlagen");
+          }
+        }, { once:true });
+      }
+
+      openModal();
+    }
+
+    /***********************
+     * Chat: Supabase
+     ***********************/
+    async function dbLoadChatMessages(){
+      const { data, error } = await sb
+        .from("chat_messages")
+        .select("*")
+        .order("created_at", { ascending:true })
+        .limit(300);
+
+      if(error) throw error;
+      return data || [];
+    }
+
+    async function dbInsertChatMessage(message, photoData){
+      const payload = {
+        user_name:currentUserName,
+        message:message || "",
+        photo_data:photoData || null
+      };
+
+      const { data, error } = await sb
+        .from("chat_messages")
+        .insert(payload)
+        .select()
+        .single();
+
+      if(error) throw error;
+      return data;
+    }
+
+    async function dbDeleteChatMessage(id){
+      const { error } = await sb
+        .from("chat_messages")
+        .delete()
+        .eq("id", id);
+
+      if(error) throw error;
+    }
+
+    async function dbClearChat(){
+      const { error } = await sb
+        .from("chat_messages")
+        .delete()
+        .gte("created_at", "1970-01-01T00:00:00Z");
+
+      if(error) throw error;
+    }
+
+    /***********************
+     * Chat: Anzeige
+     ***********************/
+    function openChat(){
+      document.getElementById("chatOverlay").style.display = "flex";
+      updateAdminUI();
+      loadChatMessages();
+    }
+
+    function closeChat(){
+      document.getElementById("chatOverlay").style.display = "none";
+      hideContextMenus();
+    }
+
+    async function loadChatMessages(){
+      try{
+        const rows = await dbLoadChatMessages();
+
+        document.getElementById("chatMessages").innerHTML = "";
+        renderedChatMessages.clear();
+
+        rows.forEach(renderChatMessage);
+        scrollChatBottom();
+      }catch(err){
+        console.error(err);
+        showStatus("chat konnte nicht geladen werden");
+      }
+    }
+
+    function renderChatMessage(row){
+      if(!row || !row.id) return;
+      if(renderedChatMessages.has(row.id)) return;
+
+      renderedChatMessages.add(row.id);
+
+      const box = document.createElement("div");
+      box.className = "chatMessage";
+      box.dataset.id = row.id;
+
+      const meta = document.createElement("div");
+      meta.className = "chatMeta";
+      meta.textContent = `${row.user_name || "unbekannt"} • ${formatDateTime(row.created_at)}`;
+      box.appendChild(meta);
+
+      if(row.message){
+        const text = document.createElement("div");
+        text.className = "chatText";
+        text.textContent = row.message;
+        box.appendChild(text);
+      }
+
+      if(row.photo_data){
+        const img = document.createElement("img");
+        img.className = "chatPhoto";
+        img.src = row.photo_data;
+        img.alt = "foto";
+        box.appendChild(img);
+      }
+
+      // Wichtig: Rechtsklickmenü für Admins auf Chatnachrichten
+      box.addEventListener("contextmenu", (e) => {
+        if(!isAdmin) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        ctxChatMessageId = row.id;
+
+        ctxMenuChat.style.left = `${e.clientX}px`;
+        ctxMenuChat.style.top = `${e.clientY}px`;
+        ctxMenuChat.style.display = "block";
+      });
+
+      document.getElementById("chatMessages").appendChild(box);
+    }
+
+    function removeChatMessageFromView(id){
+      renderedChatMessages.delete(id);
+
+      const el = document.querySelector(`.chatMessage[data-id="${CSS.escape(String(id))}"]`);
+      if(el) el.remove();
+    }
+
+    function scrollChatBottom(){
+      const chatMessages = document.getElementById("chatMessages");
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    document.getElementById("chatCloseBtn").addEventListener("click", closeChat);
+
+    document.getElementById("chatOverlay").addEventListener("click", (e) => {
+      if(e.target.id === "chatOverlay") closeChat();
+    });
+
+    document.getElementById("chatTextInput").addEventListener("input", () => {
+      document.getElementById("charCount").textContent =
+        document.getElementById("chatTextInput").value.length;
+    });
+
+    /***********************
+     * Chat: Foto verkleinern auf max. 200x200
+     ***********************/
+    document.getElementById("photoBtn").addEventListener("click", () => {
+      document.getElementById("photoInput").click();
+    });
+
+    document.getElementById("photoInput").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+
+      try{
+        selectedPhotoData = await resizeImageToDataUrl(file, 200, 200);
+
+        document.getElementById("photoPreviewImg").src = selectedPhotoData;
+        document.getElementById("photoPreview").style.display = "flex";
+      }catch(err){
+        console.error(err);
+        showStatus("foto konnte nicht verarbeitet werden");
+      }
+    });
+
+    document.getElementById("removePhotoBtn").addEventListener("click", () => {
+      selectedPhotoData = null;
+      document.getElementById("photoInput").value = "";
+      document.getElementById("photoPreview").style.display = "none";
+      document.getElementById("photoPreviewImg").src = "";
+    });
+
+    function resizeImageToDataUrl(file, maxWidth, maxHeight){
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onerror = reject;
+
+        reader.onload = () => {
+          const img = new Image();
+
+          img.onerror = reject;
+
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+
+            const scale = Math.min(
+              maxWidth / width,
+              maxHeight / height,
+              1
+            );
+
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            resolve(canvas.toDataURL("image/jpeg", 0.75));
+          };
+
+          img.src = reader.result;
+        };
+
+        reader.readAsDataURL(file);
+      });
+    }
+
+    /***********************
+     * Chat: Senden / Löschen / Leeren
+     ***********************/
+    document.getElementById("sendChatBtn").addEventListener("click", sendChatMessage);
+
+    document.getElementById("chatTextInput").addEventListener("keydown", (e) => {
+      if(e.key === "Enter" && !e.shiftKey){
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+
+    async function sendChatMessage(){
+      const input = document.getElementById("chatTextInput");
+      const message = input.value.trim();
+
+      if(message.length > 144){
+        showStatus("maximal 144 Zeichen");
+        return;
+      }
+
+      if(!message && !selectedPhotoData){
+        return;
+      }
+
+      try{
+        // Nachricht speichern und gespeicherten Datensatz zurückbekommen
+        const savedMessage = await dbInsertChatMessage(message, selectedPhotoData);
+
+        // Sofort lokal anzeigen
+        renderChatMessage(savedMessage);
+        scrollChatBottom();
+
+        // Eingabe leeren
+        input.value = "";
+        document.getElementById("charCount").textContent = "0";
+
+        // Foto zurücksetzen
+        selectedPhotoData = null;
+        document.getElementById("photoInput").value = "";
+        document.getElementById("photoPreview").style.display = "none";
+        document.getElementById("photoPreviewImg").src = "";
+
+      }catch(err){
+        console.error(err);
+        showStatus("nachricht konnte nicht gesendet werden");
+      }
+    }
+
+    ctxMenuChat.addEventListener("pointerdown", async (e) => {
+      e.stopPropagation();
+
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxChatMessageId) return;
+
+      const id = ctxChatMessageId;
+      const action = item.dataset.action;
+
+      hideContextMenus();
+
+      if(action === "delete"){
+        if(!isAdmin){
+          showStatus("nur admin");
+          return;
+        }
+
+        try{
+          await dbDeleteChatMessage(id);
+          removeChatMessageFromView(id);
+          showStatus("nachricht gelöscht");
+        }catch(err){
+          console.error(err);
+          showStatus("löschen fehlgeschlagen");
+        }
+      }
+    });
+
+    document.getElementById("clearChatBtn").addEventListener("click", clearChat);
+
+    async function clearChat(){
+      if(!isAdmin){
+        showStatus("nur admin");
+        return;
+      }
+
+      const ok = confirm("Chat wirklich leeren?");
+      if(!ok) return;
+
+      try{
+        await dbClearChat();
+
+        renderedChatMessages.clear();
+        document.getElementById("chatMessages").innerHTML = "";
+
+        showStatus("chat geleert");
+      }catch(err){
+        console.error(err);
+        showStatus("chat konnte nicht geleert werden");
+      }
+    }
+
+    /***********************
+     * Supabase Realtime: Marker
+     ***********************/
+    sb.channel("markers-realtime")
+      .on("postgres_changes", {
+        event:"*",
+        schema:"public",
+        table:"markers"
+      }, payload => {
+        if(payload.eventType === "INSERT" || payload.eventType === "UPDATE"){
+          const row = payload.new;
+
+          if(row.type === "bike" || row.type === "note"){
+            addOrUpdateMarker(row);
+          }
+        }
+
+        if(payload.eventType === "DELETE"){
+          const oldRow = payload.old;
+          const entry = findEntryById(oldRow.id);
+
+          if(entry){
+            map.removeLayer(entry.marker);
+            markers.delete(entry.id);
+          }
+        }
+      })
+      .subscribe();
+
+    /***********************
+     * Supabase Realtime: Chat
+     ***********************/
+    sb.channel("chat-realtime")
+      .on("postgres_changes", {
+        event:"*",
+        schema:"public",
+        table:"chat_messages"
+      }, payload => {
+        if(payload.eventType === "INSERT"){
+          renderChatMessage(payload.new);
+          scrollChatBottom();
+        }
+
+        if(payload.eventType === "DELETE"){
+          removeChatMessageFromView(payload.old.id);
+        }
+      })
+      .subscribe();
+
+    updateAdminUI();
+  </script>
+</body>
+</html>
