@@ -660,15 +660,6 @@
 
     function updateAdminUI(){
       adminBtn.classList.toggle('isAdmin', isAdmin);
-      
-      // Admin Button und Menu sichtbar machen wenn eingeloggt
-      if (isAdmin) {
-        adminBtn.style.display = 'block';
-        document.querySelector('.menu-container').style.display = 'inline-block';
-      } else {
-        adminBtn.style.display = 'none';
-        document.querySelector('.menu-container').style.display = 'none';
-      }
     }
     function openAdminModal(){
       adminMsg.style.display = 'none';
@@ -1057,7 +1048,7 @@
       if(!ok) showStatus('standort nicht verfügbar – kassel');
 
       startLocationUpdates();
-      updateAdminUI(); // Hier wird jetzt auch die Sichtbarkeit aktualisiert
+      updateAdminUI();
 
       const rows = await dbLoadAll();
       rows.forEach((row)=>{ if(!findEntryByDbId(row.id)) addMarkerFromRow(row); });
