@@ -12,12 +12,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="natebike">
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
@@ -126,7 +122,7 @@
       background:#fff;
       border:var(--windowBorder) solid var(--blue);
       border-radius:8px;
-      min-width:240px;
+      min-width:250px;
       padding:6px;
       box-shadow:0 8px 22px rgba(0,0,0,.14);
       z-index:20000;
@@ -200,7 +196,7 @@
     }
 
     .panel{
-      width:min(520px,92%);
+      width:min(560px,92%);
       border:var(--windowBorder) solid var(--blue);
       border-radius:12px;
       padding:16px;
@@ -898,6 +894,10 @@
           <div>Wiederholung:</div>
           <input id="createPasswordRepeatInput" type="password" autocomplete="new-password" />
         </div>
+        <div class="formRow">
+          <div>Geheimcode:</div>
+          <input id="createSecretInput" type="password" autocomplete="off" />
+        </div>
         <div class="footer">
           <button class="btn secondary" id="backToLoginBtn" type="button">zurück</button>
           <button class="btn" id="createAccountBtn" type="button">account erstellen</button>
@@ -1043,19 +1043,20 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
 
     const ADMIN_PASSWORD = "eseldraht";
+    const CREATE_ACCOUNT_SECRET = "drahtesel";
     const KASSEL_CENTER = [51.3127, 9.4797];
     const DEFAULT_ZOOM = 13;
-    const ACCOUNT_KEY = "natebike_frontend_accounts_v1";
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let currentUserName = "";
+    let currentProfile = null;
     let isAdmin = false;
     let moveModeEntry = null;
     let selectedPhotoData = null;
     let ctxChatMessageId = null;
     let revealedBikeCodeId = null;
-    let ctxAccountName = null;
+    let ctxAccountId = null;
 
     const markers = new Map();
     const renderedChatMessages = new Set();
@@ -1104,47 +1105,27 @@
 
     map.on("locationerror", () => showStatus("standort nicht verfügbar"));
 
-    function getAccounts(){
-      try{
-        return JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "[]");
-      }catch{
-        return [];
-      }
-    }
-
-    function saveAccounts(accounts){
-      localStorage.setItem(ACCOUNT_KEY, JSON.stringify(accounts));
-    }
-
-    function normalizeName(name){
+    function usernameKey(name){
       return String(name || "").trim().toLowerCase();
     }
 
-    function findAccount(name){
-      const n = normalizeName(name);
-      return getAccounts().find(a => normalizeName(a.name) === n) || null;
+    function usernameToEmail(name){
+      const key = usernameKey(name);
+      const encoded = btoa(unescape(encodeURIComponent(key)))
+        .replaceAll("+","-")
+        .replaceAll("/","_")
+        .replaceAll("=","");
+      return `u_${encoded}@natebike.local`;
     }
 
-    function upsertAccount(account){
-      const accounts = getAccounts();
-      const idx = accounts.findIndex(a => normalizeName(a.name) === normalizeName(account.name));
-      if(idx >= 0) accounts[idx] = account;
-      else accounts.push(account);
-      saveAccounts(accounts);
-    }
-
-    function deleteAccount(name){
-      const accounts = getAccounts().filter(a => normalizeName(a.name) !== normalizeName(name));
-      saveAccounts(accounts);
-    }
-
-    function setAccountLocked(name, locked){
-      const accounts = getAccounts();
-      const account = accounts.find(a => normalizeName(a.name) === normalizeName(name));
-      if(account){
-        account.locked = locked;
-        saveAccounts(accounts);
-      }
+    async function loadProfile(userId){
+      const { data, error } = await sb
+        .from("user_profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+      if(error) throw error;
+      return data;
     }
 
     function showMsg(id, text, ok=false){
@@ -1259,14 +1240,14 @@
     }
 
     async function dbLoadAllMarkers(){
-      const { data, error } = await sb.from("markers").select("*").order("created_at", { ascending:true });
+      const { data, error } = await sb.from("markers").select("*").order("created_at", {ascending:true});
       if(error) throw error;
       return data || [];
     }
 
     async function dbInsertMarker(type, lat, lng){
       const payload = {
-        type, lat, lng,
+        type,lat,lng,
         bike_number:"",
         name:"natebike",
         color:"undefiniert",
@@ -1277,7 +1258,6 @@
         is_rented:false,
         photo_url:null
       };
-
       const { data, error } = await sb.from("markers").insert(payload).select().single();
       if(error) throw error;
       return data;
@@ -1321,14 +1301,14 @@
         entry = rowToEntry(row);
         const pane = entry.type === "bike" ? "bikePane" : "stationPane";
 
-        entry.marker = L.marker([entry.lat, entry.lng], {
+        entry.marker = L.marker([entry.lat,entry.lng], {
           icon:iconForEntry(entry),
           draggable:true,
           pane
         }).addTo(map);
 
         if(entry.marker.dragging) entry.marker.dragging.disable();
-        markers.set(entry.id, entry);
+        markers.set(entry.id,entry);
         wireMarker(entry);
       }else{
         const status = row.status ?? "verfügbar";
@@ -1343,11 +1323,9 @@
         entry.content = row.content ?? "";
         entry.status = status;
         entry.isRented = status !== "verfügbar" ? true : !!row.is_rented;
-
-        if(!entry.isMoving) entry.marker.setLatLng([entry.lat, entry.lng]);
+        if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
         entry.marker.setIcon(iconForEntry(entry));
       }
-
       return entry;
     }
 
@@ -1364,21 +1342,17 @@
 
     function wireMarker(entry){
       const marker = entry.marker;
-
       marker.on("click", e => {
         L.DomEvent.stop(e);
         if(moveModeEntry) return;
         entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
       });
-
       marker.on("contextmenu", e => {
         L.DomEvent.stop(e);
         if(entry.type === "note" && !isAdmin) return;
         openMarkerMenu(e.originalEvent, entry);
       });
-
       marker.on("dragstart", () => map.dragging.disable());
-
       marker.on("dragend", () => {
         map.dragging.enable();
         if(moveModeEntry !== entry) return;
@@ -1411,9 +1385,8 @@
       if(!moveModeEntry) return;
       const entry = moveModeEntry;
       const ll = entry.marker.getLatLng();
-
       try{
-        await dbUpdateMarker(entry.id, { lat:ll.lat, lng:ll.lng });
+        await dbUpdateMarker(entry.id,{lat:ll.lat,lng:ll.lng});
         entry.lat = ll.lat;
         entry.lng = ll.lng;
         entry.isMoving = false;
@@ -1427,23 +1400,22 @@
       }
     }
 
-    function getCurrentDeviceLatLng(timeoutMs = 6000){
+    function getCurrentDeviceLatLng(timeoutMs=6000){
       return new Promise(resolve => {
         let done = false;
         function finish(value){
           if(done) return;
           done = true;
-          map.off("locationfound", onFound);
-          map.off("locationerror", onError);
+          map.off("locationfound",onFound);
+          map.off("locationerror",onError);
           resolve(value);
         }
-        function onFound(e){ finish(e.latlng); }
-        function onError(){ finish(null); }
-
-        map.on("locationfound", onFound);
-        map.on("locationerror", onError);
+        function onFound(e){finish(e.latlng);}
+        function onError(){finish(null);}
+        map.on("locationfound",onFound);
+        map.on("locationerror",onError);
         map.locate({setView:false,enableHighAccuracy:true,timeout:timeoutMs,maximumAge:0});
-        setTimeout(() => finish(null), timeoutMs + 1000);
+        setTimeout(() => finish(null), timeoutMs+1000);
       });
     }
 
@@ -1452,8 +1424,8 @@
     }
 
     async function dbInsertSystemChatMessage(message){
-      const payload = { user_name:"system", message, photo_data:null };
-      const { data, error } = await sb.from("chat_messages").insert(payload).select().single();
+      const payload = {user_name:"system",message,photo_data:null};
+      const {data,error} = await sb.from("chat_messages").insert(payload).select().single();
       if(error) throw error;
       return data;
     }
@@ -1461,7 +1433,7 @@
     async function borrowBike(entry){
       const newStatus = borrowedStatusText();
       try{
-        await dbUpdateMarker(entry.id, {status:newStatus,is_rented:true});
+        await dbUpdateMarker(entry.id,{status:newStatus,is_rented:true});
         entry.status = newStatus;
         entry.isRented = true;
         entry.marker.setIcon(iconForEntry(entry));
@@ -1502,7 +1474,6 @@
 
       try{
         const patch = {status:"verfügbar",is_rented:false};
-
         if(choice === "auto"){
           const ll = await getCurrentDeviceLatLng();
           if(!ll){
@@ -1517,10 +1488,10 @@
           patch.lng = ll.lng;
           entry.lat = ll.lat;
           entry.lng = ll.lng;
-          entry.marker.setLatLng([ll.lat, ll.lng]);
+          entry.marker.setLatLng([ll.lat,ll.lng]);
         }
 
-        await dbUpdateMarker(entry.id, patch);
+        await dbUpdateMarker(entry.id,patch);
         entry.status = "verfügbar";
         entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
@@ -1533,7 +1504,6 @@
 
         if(choice === "auto") closeModal();
         if(choice === "manual") startMoveMode(entry);
-
         showStatus("natebike zurückgegeben");
       }catch(err){
         console.error(err);
@@ -1550,23 +1520,15 @@
         showStatus("nur admin");
         return;
       }
-
       const currentStatus = entry.status || "verfügbar";
       const nextStatus = currentStatus === "nicht verfügbar" ? "verfügbar" : "nicht verfügbar";
-
       try{
-        await dbUpdateMarker(entry.id, {
-          status:nextStatus,
-          is_rented:nextStatus !== "verfügbar"
-        });
-
+        await dbUpdateMarker(entry.id,{status:nextStatus,is_rented:nextStatus!=="verfügbar"});
         entry.status = nextStatus;
         entry.isRented = nextStatus !== "verfügbar";
         entry.marker.setIcon(iconForEntry(entry));
-
         closeModal();
         openBikeWindow(entry);
-
         showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
       }catch(err){
         console.error(err);
@@ -1583,21 +1545,21 @@
 
         function close(value){
           overlay.style.display = "none";
-          autoBtn.removeEventListener("click", onAuto);
-          manualBtn.removeEventListener("click", onManual);
-          cancelX.removeEventListener("click", onCancel);
-          overlay.removeEventListener("click", onOverlay);
+          autoBtn.removeEventListener("click",onAuto);
+          manualBtn.removeEventListener("click",onManual);
+          cancelX.removeEventListener("click",onCancel);
+          overlay.removeEventListener("click",onOverlay);
           resolve(value);
         }
-        function onAuto(){ close("auto"); }
-        function onManual(){ close("manual"); }
-        function onCancel(){ close("cancel"); }
-        function onOverlay(e){ if(e.target === overlay) close("cancel"); }
+        function onAuto(){close("auto");}
+        function onManual(){close("manual");}
+        function onCancel(){close("cancel");}
+        function onOverlay(e){if(e.target === overlay) close("cancel");}
 
-        autoBtn.addEventListener("click", onAuto);
-        manualBtn.addEventListener("click", onManual);
-        cancelX.addEventListener("click", onCancel);
-        overlay.addEventListener("click", onOverlay);
+        autoBtn.addEventListener("click",onAuto);
+        manualBtn.addEventListener("click",onManual);
+        cancelX.addEventListener("click",onCancel);
+        overlay.addEventListener("click",onOverlay);
         overlay.style.display = "flex";
       });
     }
@@ -1611,7 +1573,9 @@
     });
 
     document.addEventListener("click", e => {
-      if(!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) dropdownMenu.style.display = "none";
+      if(!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)){
+        dropdownMenu.style.display = "none";
+      }
     });
 
     document.querySelectorAll(".dropdown-item").forEach(item => {
@@ -1639,59 +1603,49 @@
       document.getElementById("listItems").appendChild(div);
     }
 
-    function addListRow(text, entry, extraClass = ""){
+    function addListRow(text,entry,extraClass=""){
       const row = document.createElement("div");
       row.className = extraClass ? `list-item ${extraClass}` : "list-item";
       row.textContent = text;
-      row.addEventListener("click", () => {
+      row.addEventListener("click",() => {
         document.getElementById("listOverlay").style.display = "none";
-        map.setView([entry.lat, entry.lng], 17);
+        map.setView([entry.lat,entry.lng],17);
         pulseEntry(entry);
       });
       document.getElementById("listItems").appendChild(row);
     }
 
     function showBikeList(){
-      const bikes = Array.from(markers.values())
-        .filter(entry => entry.type === "bike")
-        .sort(sortBikeEntries);
-
+      const bikes = Array.from(markers.values()).filter(e => e.type === "bike").sort(sortBikeEntries);
       openList("natebikes");
-
       if(bikes.length === 0){
         addEmptyListMessage("keine Fahrräder gefunden");
         return;
       }
-
       bikes.forEach(entry => {
         const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
-        addListRow(line || "(ohne Nummer/Name)", entry, statusClassForBike(entry));
+        addListRow(line || "(ohne Nummer/Name)",entry,statusClassForBike(entry));
       });
     }
 
     function showNoteList(){
-      const notes = Array.from(markers.values())
-        .filter(entry => entry.type === "note")
-        .sort((a,b) => Number(a.lng) - Number(b.lng));
-
+      const notes = Array.from(markers.values()).filter(e => e.type === "note").sort((a,b) => Number(a.lng)-Number(b.lng));
       openList("natebikestationen");
-
       if(notes.length === 0){
         addEmptyListMessage("keine Stationen gefunden");
         return;
       }
-
       notes.forEach(entry => {
         const line = String(entry.content || "").trim();
-        addListRow(line || "(ohne Inhalt)", entry);
+        addListRow(line || "(ohne Inhalt)",entry);
       });
     }
 
-    document.getElementById("listCloseBtn").addEventListener("click", () => {
+    document.getElementById("listCloseBtn").addEventListener("click",() => {
       document.getElementById("listOverlay").style.display = "none";
     });
 
-    document.getElementById("listOverlay").addEventListener("click", e => {
+    document.getElementById("listOverlay").addEventListener("click",e => {
       if(e.target.id === "listOverlay") document.getElementById("listOverlay").style.display = "none";
     });
 
@@ -1700,45 +1654,48 @@
     const mapFrame = document.getElementById("mapFrame");
     const headerActions = document.getElementById("headerActions");
 
-    function loginUser(){
+    async function loginUser(){
       const name = document.getElementById("loginNameInput").value.trim();
       const password = document.getElementById("loginPasswordInput").value;
-      const account = findAccount(name);
 
       if(!name || !password){
-        showMsg("loginMsg", "bitte Name und Passwort eingeben");
-        return;
-      }
-      if(!account){
-        showMsg("loginMsg", "account nicht gefunden");
-        return;
-      }
-      if(account.locked){
-        showMsg("loginMsg", "account gesperrt");
-        return;
-      }
-      if(account.password !== password){
-        showMsg("loginMsg", "falsches passwort");
+        showMsg("loginMsg","bitte Name und Passwort eingeben");
         return;
       }
 
-      hideMsg("loginMsg");
-      currentUserName = account.name;
-      loginFrame.style.display = "none";
-      accountCreateFrame.style.display = "none";
-      mapFrame.style.display = "block";
-      headerActions.style.display = "flex";
-      updateAdminUI();
+      const email = usernameToEmail(name);
 
-      setTimeout(() => {
-        map.invalidateSize();
-        map.locate({ setView:true, maxZoom:16, enableHighAccuracy:true });
-      }, 100);
+      try{
+        const { data,error } = await sb.auth.signInWithPassword({email,password});
+        if(error) throw error;
 
-      loadMarkersOnce().catch(err => {
+        const profile = await loadProfile(data.user.id);
+        if(profile.locked){
+          await sb.auth.signOut();
+          showMsg("loginMsg","account gesperrt");
+          return;
+        }
+
+        currentProfile = profile;
+        currentUserName = profile.display_name || profile.username;
+        hideMsg("loginMsg");
+
+        loginFrame.style.display = "none";
+        accountCreateFrame.style.display = "none";
+        mapFrame.style.display = "block";
+        headerActions.style.display = "flex";
+        updateAdminUI();
+
+        setTimeout(() => {
+          map.invalidateSize();
+          map.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
+        },100);
+
+        await loadMarkersOnce();
+      }catch(err){
         console.error(err);
-        showStatus("marker konnten nicht geladen werden");
-      });
+        showMsg("loginMsg","anmeldung fehlgeschlagen");
+      }
     }
 
     function showCreateAccount(){
@@ -1754,45 +1711,88 @@
       hideMsg("loginMsg");
     }
 
-    function createAccount(){
+    async function createAccount(){
       const name = document.getElementById("createNameInput").value.trim();
       const pw1 = document.getElementById("createPasswordInput").value;
       const pw2 = document.getElementById("createPasswordRepeatInput").value;
+      const secret = document.getElementById("createSecretInput").value.trim();
+
+      if(secret !== CREATE_ACCOUNT_SECRET){
+        showMsg("createAccountMsg","falscher geheimcode");
+        return;
+      }
 
       if(!name || !pw1 || !pw2){
-        showMsg("createAccountMsg", "bitte alle Felder ausfüllen");
+        showMsg("createAccountMsg","bitte alle Felder ausfüllen");
         return;
       }
 
       if(pw1 !== pw2){
-        showMsg("createAccountMsg", "passwörter stimmen nicht überein");
+        showMsg("createAccountMsg","passwörter stimmen nicht überein");
         return;
       }
 
-      if(findAccount(name)){
-        showMsg("createAccountMsg", "benutzername bereits vergeben");
-        return;
+      const username = usernameKey(name);
+      const email = usernameToEmail(name);
+
+      try{
+        const { data: existing } = await sb
+          .from("user_profiles")
+          .select("id")
+          .eq("username",username)
+          .maybeSingle();
+
+        if(existing){
+          showMsg("createAccountMsg","benutzername bereits vergeben");
+          return;
+        }
+
+        const { data,error } = await sb.auth.signUp({email,password:pw1});
+        if(error) throw error;
+
+        if(!data.user){
+          showMsg("createAccountMsg","account konnte nicht erstellt werden");
+          return;
+        }
+
+        const { error: profileError } = await sb.from("user_profiles").insert({
+          id:data.user.id,
+          username,
+          display_name:name,
+          locked:false
+        });
+
+        if(profileError) throw profileError;
+
+        await sb.auth.signOut();
+
+        document.getElementById("loginNameInput").value = name;
+        document.getElementById("loginPasswordInput").value = "";
+        document.getElementById("createNameInput").value = "";
+        document.getElementById("createPasswordInput").value = "";
+        document.getElementById("createPasswordRepeatInput").value = "";
+        document.getElementById("createSecretInput").value = "";
+
+        showMsg("createAccountMsg","account erstellt",true);
+        setTimeout(showLogin,900);
+      }catch(err){
+        console.error(err);
+        const msg = String(err.message || "").toLowerCase();
+        if(msg.includes("registered") || msg.includes("duplicate") || msg.includes("unique")){
+          showMsg("createAccountMsg","benutzername bereits vergeben");
+        }else{
+          showMsg("createAccountMsg","account konnte nicht erstellt werden");
+        }
       }
-
-      upsertAccount({ name, password:pw1, locked:false });
-
-      document.getElementById("loginNameInput").value = name;
-      document.getElementById("loginPasswordInput").value = "";
-      document.getElementById("createNameInput").value = "";
-      document.getElementById("createPasswordInput").value = "";
-      document.getElementById("createPasswordRepeatInput").value = "";
-
-      showMsg("createAccountMsg", "account erstellt", true);
-      setTimeout(showLogin, 900);
     }
 
-    document.getElementById("loginBtn").addEventListener("click", loginUser);
-    document.getElementById("loginPasswordInput").addEventListener("keydown", e => { if(e.key === "Enter") loginUser(); });
-    document.getElementById("loginNameInput").addEventListener("keydown", e => { if(e.key === "Enter") loginUser(); });
-    document.getElementById("openCreateAccountLink").addEventListener("click", showCreateAccount);
-    document.getElementById("backToLoginBtn").addEventListener("click", showLogin);
-    document.getElementById("createAccountBtn").addEventListener("click", createAccount);
-    document.getElementById("createPasswordRepeatInput").addEventListener("keydown", e => { if(e.key === "Enter") createAccount(); });
+    document.getElementById("loginBtn").addEventListener("click",loginUser);
+    document.getElementById("loginPasswordInput").addEventListener("keydown",e => {if(e.key === "Enter") loginUser();});
+    document.getElementById("loginNameInput").addEventListener("keydown",e => {if(e.key === "Enter") loginUser();});
+    document.getElementById("openCreateAccountLink").addEventListener("click",showCreateAccount);
+    document.getElementById("backToLoginBtn").addEventListener("click",showLogin);
+    document.getElementById("createAccountBtn").addEventListener("click",createAccount);
+    document.getElementById("createSecretInput").addEventListener("keydown",e => {if(e.key === "Enter") createAccount();});
 
     const adminBtn = document.getElementById("adminBtn");
     const adminOverlay = document.getElementById("adminOverlay");
@@ -1800,7 +1800,7 @@
     const adminMsg = document.getElementById("adminMsg");
 
     function updateAdminUI(){
-      adminBtn.classList.toggle("isAdmin", isAdmin);
+      adminBtn.classList.toggle("isAdmin",isAdmin);
       document.querySelectorAll(".adminOnly").forEach(el => {
         el.style.display = isAdmin ? "block" : "none";
       });
@@ -1831,7 +1831,7 @@
       showStatus("admin aktiv");
     }
 
-    adminBtn.addEventListener("click", () => {
+    adminBtn.addEventListener("click",() => {
       if(isAdmin){
         isAdmin = false;
         updateAdminUI();
@@ -1841,10 +1841,10 @@
       }
     });
 
-    document.getElementById("adminOkBtn").addEventListener("click", confirmAdmin);
-    adminPwInput.addEventListener("keydown", e => { if(e.key === "Enter") confirmAdmin(); });
-    document.getElementById("adminCloseBtn").addEventListener("click", closeAdminModal);
-    adminOverlay.addEventListener("click", e => { if(e.target === adminOverlay) closeAdminModal(); });
+    document.getElementById("adminOkBtn").addEventListener("click",confirmAdmin);
+    adminPwInput.addEventListener("keydown",e => {if(e.key === "Enter") confirmAdmin();});
+    document.getElementById("adminCloseBtn").addEventListener("click",closeAdminModal);
+    adminOverlay.addEventListener("click",e => {if(e.target === adminOverlay) closeAdminModal();});
 
     const accountOverlay = document.getElementById("accountOverlay");
     const accountTitle = document.getElementById("accountTitle");
@@ -1857,8 +1857,8 @@
       accountFooter.innerHTML = "";
     }
 
-    document.getElementById("accountCloseBtn").addEventListener("click", closeAccountOverlay);
-    accountOverlay.addEventListener("click", e => { if(e.target === accountOverlay) closeAccountOverlay(); });
+    document.getElementById("accountCloseBtn").addEventListener("click",closeAccountOverlay);
+    accountOverlay.addEventListener("click",e => {if(e.target === accountOverlay) closeAccountOverlay();});
 
     function openAccountManage(){
       accountTitle.textContent = "account verwalten";
@@ -1870,9 +1870,8 @@
       `;
       accountFooter.innerHTML = "";
       accountOverlay.style.display = "flex";
-
-      document.getElementById("changePasswordItem").addEventListener("click", openChangePassword);
-      document.getElementById("deleteOwnAccountItem").addEventListener("click", deleteOwnAccount);
+      document.getElementById("changePasswordItem").addEventListener("click",openChangePassword);
+      document.getElementById("deleteOwnAccountItem").addEventListener("click",deleteOwnAccount);
     }
 
     function openChangePassword(){
@@ -1892,125 +1891,131 @@
         <button class="btn secondary" id="backAccountBtn" type="button">zurück</button>
         <button class="btn" id="savePasswordBtn" type="button">speichern</button>
       `;
-
-      document.getElementById("backAccountBtn").addEventListener("click", openAccountManage);
-      document.getElementById("savePasswordBtn").addEventListener("click", saveChangedPassword);
+      document.getElementById("backAccountBtn").addEventListener("click",openAccountManage);
+      document.getElementById("savePasswordBtn").addEventListener("click",saveChangedPassword);
     }
 
-    function saveChangedPassword(){
+    async function saveChangedPassword(){
       const oldPw = document.getElementById("oldPasswordInput").value;
       const newPw = document.getElementById("newPasswordInput").value;
       const rep = document.getElementById("newPasswordRepeatInput").value;
-      const account = findAccount(currentUserName);
 
-      if(!account || account.password !== oldPw){
-        showMsg("changePasswordMsg", "altes Passwort falsch");
+      if(!currentProfile){
+        showMsg("changePasswordMsg","nicht angemeldet");
         return;
       }
 
       if(!newPw || newPw !== rep){
-        showMsg("changePasswordMsg", "neue Passwörter stimmen nicht überein");
+        showMsg("changePasswordMsg","neue Passwörter stimmen nicht überein");
         return;
       }
 
-      account.password = newPw;
-      upsertAccount(account);
-      showMsg("changePasswordMsg", "passwort geändert", true);
-      setTimeout(closeAccountOverlay, 800);
+      try{
+        const email = usernameToEmail(currentProfile.username);
+        const { error: signInError } = await sb.auth.signInWithPassword({email,password:oldPw});
+        if(signInError) throw signInError;
+        const { error } = await sb.auth.updateUser({password:newPw});
+        if(error) throw error;
+        showMsg("changePasswordMsg","passwort geändert",true);
+        setTimeout(closeAccountOverlay,800);
+      }catch(err){
+        console.error(err);
+        showMsg("changePasswordMsg","altes Passwort falsch");
+      }
     }
 
-    function deleteOwnAccount(){
+    async function deleteOwnAccount(){
       const ok = confirm("Account wirklich löschen?");
       if(!ok) return;
-
-      deleteAccount(currentUserName);
+      try{
+        if(currentProfile){
+          await sb.from("user_profiles").delete().eq("id",currentProfile.id);
+        }
+        await sb.auth.signOut();
+      }catch(err){
+        console.error(err);
+      }
+      currentProfile = null;
       currentUserName = "";
       isAdmin = false;
       updateAdminUI();
       closeAccountOverlay();
-
       headerActions.style.display = "none";
       mapFrame.style.display = "none";
       loginFrame.style.display = "grid";
       document.getElementById("loginNameInput").value = "";
       document.getElementById("loginPasswordInput").value = "";
-      showMsg("loginMsg", "account gelöscht", true);
+      showMsg("loginMsg","account gelöscht",true);
     }
 
-    function openAllAccountsManage(){
-      const accounts = getAccounts().sort((a,b) => a.name.localeCompare(b.name, "de", {sensitivity:"base"}));
+    async function openAllAccountsManage(){
       openList("alle accounts");
-
-      if(accounts.length === 0){
-        addEmptyListMessage("keine Accounts vorhanden");
-        return;
-      }
-
-      accounts.forEach(account => {
-        const row = document.createElement("div");
-        row.className = account.locked ? "list-item accountRow locked" : "list-item accountRow";
-        row.textContent = account.locked ? `${account.name} (gesperrt)` : account.name;
-        row.dataset.name = account.name;
-
-        row.addEventListener("contextmenu", e => {
-          if(!isAdmin) return;
-          e.preventDefault();
-          e.stopPropagation();
-          ctxAccountName = account.name;
-
-          const currentAccount = findAccount(account.name);
-          const lockToggleItem = document.getElementById("accountLockToggleItem");
-
-          if(currentAccount && currentAccount.locked){
-            lockToggleItem.textContent = "account entsperren";
-          }else{
-            lockToggleItem.textContent = "account sperren";
-          }
-
-          const menu = document.getElementById("ctxMenuAccount");
-          menu.style.left = `${e.clientX}px`;
-          menu.style.top = `${e.clientY}px`;
-          menu.style.display = "block";
-        });
-
-        document.getElementById("listItems").appendChild(row);
-      });
-    }
-
-    document.getElementById("ctxMenuAccount").addEventListener("pointerdown", e => {
-      e.stopPropagation();
-      const item = e.target.closest(".ctx-item");
-      if(!item || !ctxAccountName) return;
-
-      const action = item.dataset.action;
-      const name = ctxAccountName;
-      hideContextMenus();
-
-      if(action === "toggleLock"){
-        const account = findAccount(name);
-        if(!account){
-          showStatus("account nicht gefunden");
+      try{
+        const { data,error } = await sb.from("user_profiles").select("*").order("username",{ascending:true});
+        if(error) throw error;
+        const accounts = data || [];
+        if(accounts.length === 0){
+          addEmptyListMessage("keine Accounts vorhanden");
           return;
         }
-
-        const nextLockedState = !account.locked;
-        setAccountLocked(name, nextLockedState);
-
-        if(nextLockedState){
-          showStatus("account gesperrt");
-        }else{
-          showStatus("account entsperrt");
-        }
-
-        openAllAccountsManage();
+        accounts.forEach(account => {
+          const row = document.createElement("div");
+          row.className = account.locked ? "list-item accountRow locked" : "list-item accountRow";
+          row.textContent = account.locked ? `${account.display_name} (gesperrt)` : account.display_name;
+          row.dataset.id = account.id;
+          row.addEventListener("contextmenu",e => {
+            if(!isAdmin) return;
+            e.preventDefault();
+            e.stopPropagation();
+            ctxAccountId = account.id;
+            const lockToggleItem = document.getElementById("accountLockToggleItem");
+            lockToggleItem.textContent = account.locked ? "account entsperren" : "account sperren";
+            const menu = document.getElementById("ctxMenuAccount");
+            menu.style.left = `${e.clientX}px`;
+            menu.style.top = `${e.clientY}px`;
+            menu.style.display = "block";
+          });
+          document.getElementById("listItems").appendChild(row);
+        });
+      }catch(err){
+        console.error(err);
+        addEmptyListMessage("accounts konnten nicht geladen werden");
       }
+    }
 
+    document.getElementById("ctxMenuAccount").addEventListener("pointerdown",async e => {
+      e.stopPropagation();
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxAccountId) return;
+      const action = item.dataset.action;
+      const id = ctxAccountId;
+      hideContextMenus();
+      if(action === "toggleLock"){
+        try{
+          const {data:profile,error:loadErr} = await sb.from("user_profiles").select("*").eq("id",id).single();
+          if(loadErr) throw loadErr;
+          const nextLockedState = !profile.locked;
+          const {error} = await sb.from("user_profiles").update({locked:nextLockedState}).eq("id",id);
+          if(error) throw error;
+          showStatus(nextLockedState ? "account gesperrt" : "account entsperrt");
+          openAllAccountsManage();
+        }catch(err){
+          console.error(err);
+          showStatus("account konnte nicht geändert werden");
+        }
+      }
       if(action === "delete"){
-        const ok = confirm(`Account "${name}" wirklich dauerhaft löschen?`);
+        const ok = confirm("Account wirklich aus der Profilliste löschen?");
         if(!ok) return;
-        deleteAccount(name);
-        showStatus("account gelöscht");
-        openAllAccountsManage();
+        try{
+          const {error} = await sb.from("user_profiles").delete().eq("id",id);
+          if(error) throw error;
+          showStatus("account gelöscht");
+          openAllAccountsManage();
+        }catch(err){
+          console.error(err);
+          showStatus("account konnte nicht gelöscht werden");
+        }
       }
     });
 
@@ -2030,12 +2035,12 @@
       ctxMapLatLng = null;
       ctxMarkerEntry = null;
       ctxChatMessageId = null;
-      ctxAccountName = null;
+      ctxAccountId = null;
     }
 
-    map.getContainer().addEventListener("contextmenu", e => e.preventDefault());
+    map.getContainer().addEventListener("contextmenu",e => e.preventDefault());
 
-    map.on("contextmenu", e => {
+    map.on("contextmenu",e => {
       if(!isAdmin) return;
       hideContextMenus();
       ctxMapLatLng = e.latlng;
@@ -2044,7 +2049,7 @@
       ctxMenuMap.style.display = "block";
     });
 
-    map.on("click", async () => {
+    map.on("click",async() => {
       if(moveModeEntry){
         await finishMoveMode();
         return;
@@ -2052,9 +2057,9 @@
       hideContextMenus();
     });
 
-    map.on("movestart", hideContextMenus);
+    map.on("movestart",hideContextMenus);
 
-    document.addEventListener("pointerdown", e => {
+    document.addEventListener("pointerdown",e => {
       if(
         !ctxMenuMap.contains(e.target) &&
         !ctxMenuMarker.contains(e.target) &&
@@ -2065,24 +2070,21 @@
       }
     });
 
-    ctxMenuMap.addEventListener("pointerdown", async e => {
+    ctxMenuMap.addEventListener("pointerdown",async e => {
       e.stopPropagation();
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxMapLatLng) return;
-
       const action = item.dataset.action;
       const latlng = ctxMapLatLng;
       hideContextMenus();
-
       try{
         if(action === "bike"){
-          const row = await dbInsertMarker("bike", latlng.lat, latlng.lng);
+          const row = await dbInsertMarker("bike",latlng.lat,latlng.lng);
           addOrUpdateMarker(row);
           showStatus("rad hinzugefügt");
         }
-
         if(action === "note"){
-          const row = await dbInsertMarker("note", latlng.lat, latlng.lng);
+          const row = await dbInsertMarker("note",latlng.lat,latlng.lng);
           addOrUpdateMarker(row);
           showStatus("station hinzugefügt");
         }
@@ -2092,7 +2094,7 @@
       }
     });
 
-    function openMarkerMenu(mouseEvent, entry){
+    function openMarkerMenu(mouseEvent,entry){
       hideContextMenus();
       ctxMarkerEntry = entry;
       ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
@@ -2100,22 +2102,15 @@
       ctxMenuMarker.style.display = "block";
     }
 
-    ctxMenuMarker.addEventListener("pointerdown", e => {
+    ctxMenuMarker.addEventListener("pointerdown",e => {
       e.stopPropagation();
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxMarkerEntry) return;
-
       const action = item.dataset.action;
       const entry = ctxMarkerEntry;
       hideContextMenus();
-
-      if(action === "open"){
-        entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
-      }
-
-      if(action === "move"){
-        startMoveMode(entry);
-      }
+      if(action === "open") entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
+      if(action === "move") startMoveMode(entry);
     });
 
     const modalOverlay = document.getElementById("modalOverlay");
@@ -2135,11 +2130,8 @@
       revealedBikeCodeId = null;
     }
 
-    modalOverlay.addEventListener("click", e => {
-      if(e.target === modalOverlay) closeModal();
-    });
-
-    document.getElementById("modalCloseBtn").addEventListener("click", closeModal);
+    modalOverlay.addEventListener("click",e => {if(e.target === modalOverlay) closeModal();});
+    document.getElementById("modalCloseBtn").addEventListener("click",closeModal);
 
     function openBikeWindow(entry){
       modalTitle.textContent = "geparktes fahrrad";
@@ -2148,7 +2140,6 @@
       const isAvailable = statusText === "verfügbar";
       const isBorrowed = statusText.startsWith("von ") && statusText.includes("ausgeliehen");
       const isMaintenance = statusText === "nicht verfügbar";
-
       const codeIsVisible = revealedBikeCodeId === entry.id;
       const realCode = String(entry.bikeCode || "");
       const displayedCode = codeIsVisible ? realCode : "*".repeat(realCode.length);
@@ -2157,43 +2148,26 @@
       modalBody.innerHTML = `
         <div class="label">Nummer</div>
         <input type="text" id="bikeNumberInput" ${adminReadonly} value="${escapeHtml(entry.bikeNumber)}" />
-
         <div class="label">Name</div>
         <input type="text" id="bikeNameInput" ${adminReadonly} value="${escapeHtml(entry.bikeName)}" />
-
         <div class="label">Farbe</div>
         <input type="text" id="bikeColorInput" ${adminReadonly} value="${escapeHtml(entry.bikeColor)}" />
-
         <div class="label">Bemerkung</div>
         <input type="text" id="bikeRemarkInput" value="${escapeHtml(entry.bikeRemark)}" />
-
         <div class="label">Schlosscode</div>
         <input type="text" id="bikeCodeInput" ${codeReadonly} value="${escapeHtml(displayedCode)}" />
-
         <div class="label">Status</div>
-        <input
-          type="text"
-          id="bikeStatusInput"
-          class="${statusClassForBike(entry)}"
-          readonly
-          value="${escapeHtml(statusText)}"
-        />
+        <input type="text" id="bikeStatusInput" class="${statusClassForBike(entry)}" readonly value="${escapeHtml(statusText)}" />
       `;
 
       let loanButtonHtml = "";
-      if(isAvailable){
-        loanButtonHtml = `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`;
-      }
-      if(isBorrowed){
-        loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
-      }
+      if(isAvailable) loanButtonHtml = `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`;
+      if(isBorrowed) loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
 
       const maintenanceButtonHtml = isAdmin
-        ? (
-            isMaintenance
-              ? `<button class="btn maintenanceBtn release" id="bikeMaintenanceBtn" type="button">freigeben</button>`
-              : `<button class="btn maintenanceBtn" id="bikeMaintenanceBtn" type="button">wartung</button>`
-          )
+        ? (isMaintenance
+          ? `<button class="btn maintenanceBtn release" id="bikeMaintenanceBtn" type="button">freigeben</button>`
+          : `<button class="btn maintenanceBtn" id="bikeMaintenanceBtn" type="button">wartung</button>`)
         : "";
 
       if(isAdmin){
@@ -2204,36 +2178,31 @@
           <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
         `;
 
-        document.getElementById("bikeSaveBtn").addEventListener("click", async () => {
+        document.getElementById("bikeSaveBtn").addEventListener("click",async() => {
           const patch = {
             bike_number:document.getElementById("bikeNumberInput").value.trim(),
             name:document.getElementById("bikeNameInput").value.trim(),
             color:document.getElementById("bikeColorInput").value.trim(),
             remark:document.getElementById("bikeRemarkInput").value.trim()
           };
-
-          if(codeIsVisible){
-            patch.code = document.getElementById("bikeCodeInput").value.trim();
-          }
+          if(codeIsVisible) patch.code = document.getElementById("bikeCodeInput").value.trim();
 
           try{
-            await dbUpdateMarker(entry.id, patch);
+            await dbUpdateMarker(entry.id,patch);
             entry.bikeNumber = patch.bike_number;
             entry.bikeName = patch.name;
             entry.bikeColor = patch.color;
             entry.bikeRemark = patch.remark;
-            if(codeIsVisible){
-              entry.bikeCode = patch.code;
-            }
+            if(codeIsVisible) entry.bikeCode = patch.code;
             entry.marker.setIcon(iconForEntry(entry));
             closeModal();
           }catch(err){
             console.error(err);
             showStatus("speichern fehlgeschlagen");
           }
-        }, { once:true });
+        },{once:true});
 
-        document.getElementById("bikeDeleteBtn").addEventListener("click", async () => {
+        document.getElementById("bikeDeleteBtn").addEventListener("click",async() => {
           try{
             await dbDeleteMarker(entry.id);
             map.removeLayer(entry.marker);
@@ -2243,17 +2212,16 @@
             console.error(err);
             showStatus("löschen fehlgeschlagen");
           }
-        }, { once:true });
+        },{once:true});
       }else{
         modalFooter.innerHTML = `
           ${loanButtonHtml}
           <button class="btn" id="bikeRemarkSaveBtn" type="button">speichern</button>
         `;
-
-        document.getElementById("bikeRemarkSaveBtn").addEventListener("click", async () => {
+        document.getElementById("bikeRemarkSaveBtn").addEventListener("click",async() => {
           const newRemark = document.getElementById("bikeRemarkInput").value.trim();
           try{
-            await dbUpdateMarker(entry.id, { remark:newRemark });
+            await dbUpdateMarker(entry.id,{remark:newRemark});
             entry.bikeRemark = newRemark;
             closeModal();
             showStatus("bemerkung gespeichert");
@@ -2261,17 +2229,17 @@
             console.error(err);
             showStatus("speichern fehlgeschlagen");
           }
-        }, { once:true });
+        },{once:true});
       }
 
       const loanBtn = document.getElementById("bikeLoanBtn");
-      if(loanBtn) loanBtn.addEventListener("click", () => borrowBike(entry), { once:true });
+      if(loanBtn) loanBtn.addEventListener("click",() => borrowBike(entry),{once:true});
 
       const returnBtn = document.getElementById("bikeReturnBtn");
-      if(returnBtn) returnBtn.addEventListener("click", () => returnBike(entry), { once:true });
+      if(returnBtn) returnBtn.addEventListener("click",() => returnBike(entry),{once:true});
 
       const maintenanceBtn = document.getElementById("bikeMaintenanceBtn");
-      if(maintenanceBtn) maintenanceBtn.addEventListener("click", () => toggleMaintenanceBike(entry), { once:true });
+      if(maintenanceBtn) maintenanceBtn.addEventListener("click",() => toggleMaintenanceBike(entry),{once:true});
 
       openModal();
     }
@@ -2279,31 +2247,27 @@
     function openStationWindow(entry){
       modalTitle.textContent = "natebikestation";
       const readonly = isAdmin ? "" : "readonly";
-
       modalBody.innerHTML = `
         <div class="label">Inhalt</div>
         <textarea id="stationContentInput" ${readonly}>${escapeHtml(entry.content)}</textarea>
       `;
-
       if(isAdmin){
         modalFooter.innerHTML = `
           <button class="btn" id="stationSaveBtn" type="button">speichern</button>
           <button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>
         `;
-
-        document.getElementById("stationSaveBtn").addEventListener("click", async () => {
+        document.getElementById("stationSaveBtn").addEventListener("click",async() => {
           const content = document.getElementById("stationContentInput").value.trim();
           try{
-            await dbUpdateMarker(entry.id, { content });
+            await dbUpdateMarker(entry.id,{content});
             entry.content = content;
             closeModal();
           }catch(err){
             console.error(err);
             showStatus("speichern fehlgeschlagen");
           }
-        }, { once:true });
-
-        document.getElementById("stationDeleteBtn").addEventListener("click", async () => {
+        },{once:true});
+        document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
           try{
             await dbDeleteMarker(entry.id);
             map.removeLayer(entry.marker);
@@ -2313,36 +2277,31 @@
             console.error(err);
             showStatus("löschen fehlgeschlagen");
           }
-        }, { once:true });
+        },{once:true});
       }
-
       openModal();
     }
 
     async function dbLoadChatMessages(){
-      const { data, error } = await sb.from("chat_messages").select("*").order("created_at", { ascending:true }).limit(300);
+      const {data,error} = await sb.from("chat_messages").select("*").order("created_at",{ascending:true}).limit(300);
       if(error) throw error;
       return data || [];
     }
 
-    async function dbInsertChatMessage(message, photoData){
-      const payload = {
-        user_name:currentUserName,
-        message:message || "",
-        photo_data:photoData || null
-      };
-      const { data, error } = await sb.from("chat_messages").insert(payload).select().single();
+    async function dbInsertChatMessage(message,photoData){
+      const payload = {user_name:currentUserName,message:message || "",photo_data:photoData || null};
+      const {data,error} = await sb.from("chat_messages").insert(payload).select().single();
       if(error) throw error;
       return data;
     }
 
     async function dbDeleteChatMessage(id){
-      const { error } = await sb.from("chat_messages").delete().eq("id", id);
+      const {error} = await sb.from("chat_messages").delete().eq("id",id);
       if(error) throw error;
     }
 
     async function dbClearChat(){
-      const { error } = await sb.from("chat_messages").delete().gte("created_at", "1970-01-01T00:00:00Z");
+      const {error} = await sb.from("chat_messages").delete().gte("created_at","1970-01-01T00:00:00Z");
       if(error) throw error;
     }
 
@@ -2402,7 +2361,7 @@
         box.appendChild(img);
       }
 
-      box.addEventListener("contextmenu", e => {
+      box.addEventListener("contextmenu",e => {
         if(!isAdmin) return;
         e.preventDefault();
         e.stopPropagation();
@@ -2426,24 +2385,22 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    document.getElementById("chatCloseBtn").addEventListener("click", closeChat);
-    document.getElementById("chatOverlay").addEventListener("click", e => {
+    document.getElementById("chatCloseBtn").addEventListener("click",closeChat);
+    document.getElementById("chatOverlay").addEventListener("click",e => {
       if(e.target.id === "chatOverlay") closeChat();
     });
 
-    document.getElementById("chatTextInput").addEventListener("input", () => {
+    document.getElementById("chatTextInput").addEventListener("input",() => {
       document.getElementById("charCount").textContent = document.getElementById("chatTextInput").value.length;
     });
 
-    document.getElementById("photoBtn").addEventListener("click", () => {
-      document.getElementById("photoInput").click();
-    });
+    document.getElementById("photoBtn").addEventListener("click",() => document.getElementById("photoInput").click());
 
-    document.getElementById("photoInput").addEventListener("change", async e => {
+    document.getElementById("photoInput").addEventListener("change",async e => {
       const file = e.target.files && e.target.files[0];
       if(!file) return;
       try{
-        selectedPhotoData = await resizeImageToDataUrl(file, 200, 200);
+        selectedPhotoData = await resizeImageToDataUrl(file,200,200);
         document.getElementById("photoPreviewImg").src = selectedPhotoData;
         document.getElementById("photoPreview").style.display = "flex";
       }catch(err){
@@ -2452,15 +2409,15 @@
       }
     });
 
-    document.getElementById("removePhotoBtn").addEventListener("click", () => {
+    document.getElementById("removePhotoBtn").addEventListener("click",() => {
       selectedPhotoData = null;
       document.getElementById("photoInput").value = "";
       document.getElementById("photoPreview").style.display = "none";
       document.getElementById("photoPreviewImg").src = "";
     });
 
-    function resizeImageToDataUrl(file, maxWidth, maxHeight){
-      return new Promise((resolve, reject) => {
+    function resizeImageToDataUrl(file,maxWidth,maxHeight){
+      return new Promise((resolve,reject) => {
         const reader = new FileReader();
         reader.onerror = reject;
         reader.onload = () => {
@@ -2469,15 +2426,15 @@
           img.onload = () => {
             let width = img.width;
             let height = img.height;
-            const scale = Math.min(maxWidth / width, maxHeight / height, 1);
-            width = Math.round(width * scale);
-            height = Math.round(height * scale);
+            const scale = Math.min(maxWidth/width,maxHeight/height,1);
+            width = Math.round(width*scale);
+            height = Math.round(height*scale);
             const canvas = document.createElement("canvas");
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL("image/jpeg", .75));
+            ctx.drawImage(img,0,0,width,height);
+            resolve(canvas.toDataURL("image/jpeg",.75));
           };
           img.src = reader.result;
         };
@@ -2485,8 +2442,8 @@
       });
     }
 
-    document.getElementById("sendChatBtn").addEventListener("click", sendChatMessage);
-    document.getElementById("chatTextInput").addEventListener("keydown", e => {
+    document.getElementById("sendChatBtn").addEventListener("click",sendChatMessage);
+    document.getElementById("chatTextInput").addEventListener("keydown",e => {
       if(e.key === "Enter" && !e.shiftKey){
         e.preventDefault();
         sendChatMessage();
@@ -2496,15 +2453,13 @@
     async function sendChatMessage(){
       const input = document.getElementById("chatTextInput");
       const message = input.value.trim();
-
       if(message.length > 144){
         showStatus("maximal 144 Zeichen");
         return;
       }
       if(!message && !selectedPhotoData) return;
-
       try{
-        const savedMessage = await dbInsertChatMessage(message, selectedPhotoData);
+        const savedMessage = await dbInsertChatMessage(message,selectedPhotoData);
         renderChatMessage(savedMessage);
         scrollChatBottom();
         input.value = "";
@@ -2519,14 +2474,13 @@
       }
     }
 
-    ctxMenuChat.addEventListener("pointerdown", async e => {
+    ctxMenuChat.addEventListener("pointerdown",async e => {
       e.stopPropagation();
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxChatMessageId) return;
       const id = ctxChatMessageId;
       const action = item.dataset.action;
       hideContextMenus();
-
       if(action === "delete"){
         if(!isAdmin){
           showStatus("nur admin");
@@ -2543,7 +2497,7 @@
       }
     });
 
-    document.getElementById("clearChatBtn").addEventListener("click", clearChat);
+    document.getElementById("clearChatBtn").addEventListener("click",clearChat);
 
     async function clearChat(){
       if(!isAdmin){
@@ -2564,7 +2518,7 @@
     }
 
     sb.channel("markers-realtime")
-      .on("postgres_changes", { event:"*", schema:"public", table:"markers" }, payload => {
+      .on("postgres_changes",{event:"*",schema:"public",table:"markers"},payload => {
         if(payload.eventType === "INSERT" || payload.eventType === "UPDATE"){
           const row = payload.new;
           if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row);
@@ -2581,7 +2535,7 @@
       .subscribe();
 
     sb.channel("chat-realtime")
-      .on("postgres_changes", { event:"*", schema:"public", table:"chat_messages" }, payload => {
+      .on("postgres_changes",{event:"*",schema:"public",table:"chat_messages"},payload => {
         if(payload.eventType === "INSERT"){
           renderChatMessage(payload.new);
           scrollChatBottom();
