@@ -155,6 +155,7 @@
       font-weight:800;
       cursor:pointer;
       text-transform:lowercase;
+      font-family:var(--font);
     }
 
     .adminBtn.isAdmin{
@@ -1065,6 +1066,8 @@
     let revealedBikeCodeId = null;
     let ctxAccountId = null;
     let forcedLogoutInProgress = false;
+    let markersLoaded = false;
+    let ignoreMapClickUntil = 0;
 
     const markers = new Map();
     const renderedChatMessages = new Set();
@@ -1097,13 +1100,20 @@
     map.addControl(new LocateControl());
 
     let locationMarker = null;
+
     map.on("locationfound", e => {
       if(!locationMarker){
-        locationMarker = L.circleMarker(e.latlng, {radius:10,color:"#ff0000",weight:3,fillOpacity:0}).addTo(map);
+        locationMarker = L.circleMarker(e.latlng, {
+          radius:10,
+          color:"#ff0000",
+          weight:3,
+          fillOpacity:0
+        }).addTo(map);
       }else{
         locationMarker.setLatLng(e.latlng);
       }
     });
+
     map.on("locationerror", () => showStatus("standort nicht verfügbar"));
 
     function usernameKey(name){
@@ -1144,6 +1154,7 @@
       isAdmin = false;
       moveModeEntry = null;
       revealedBikeCodeId = null;
+      markersLoaded = false;
 
       updateAdminUI();
       closeAllOverlays();
@@ -1233,18 +1244,34 @@
 
     function formatDateTime(value){
       const d = new Date(value);
-      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}).toLowerCase();
+      return d.toLocaleString("de-DE", {
+        day:"2-digit",
+        month:"2-digit",
+        year:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
+      }).toLowerCase();
     }
 
     function formatSystemMessageDateTime(){
       const d = new Date();
-      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+      return d.toLocaleString("de-DE", {
+        day:"2-digit",
+        month:"2-digit",
+        year:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
+      });
     }
 
     function bikeSortValue(value){
       const text = String(value ?? "").trim();
       const number = Number(text);
-      return { isNumber:text !== "" && Number.isFinite(number), number, text };
+      return {
+        isNumber:text !== "" && Number.isFinite(number),
+        number,
+        text
+      };
     }
 
     function sortBikeEntries(a,b){
@@ -1355,10 +1382,15 @@
 
     function addOrUpdateMarker(row){
       let entry = markers.get(row.id);
+
       if(!entry){
         entry = rowToEntry(row);
         const pane = entry.type === "bike" ? "bikePane" : "stationPane";
-        entry.marker = L.marker([entry.lat,entry.lng], {icon:iconForEntry(entry),draggable:true,pane}).addTo(map);
+        entry.marker = L.marker([entry.lat,entry.lng], {
+          icon:iconForEntry(entry),
+          draggable:true,
+          pane
+        }).addTo(map);
         if(entry.marker.dragging) entry.marker.dragging.disable();
         markers.set(entry.id,entry);
         wireMarker(entry);
@@ -1382,10 +1414,14 @@
     }
 
     async function loadMarkersOnce(){
+      if(markersLoaded) return;
       const rows = await dbLoadAllMarkers();
       rows.forEach(row => {
-        if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row);
+        if(row.type === "bike" || row.type === "note"){
+          addOrUpdateMarker(row);
+        }
       });
+      markersLoaded = true;
     }
 
     function findEntryById(id){
@@ -1430,6 +1466,12 @@
       entry.isMoving = true;
       entry.marker.setIcon(iconForEntry(entry));
       if(entry.marker.dragging) entry.marker.dragging.enable();
+
+      // wichtig für mobile geräte:
+      // der tap auf "verschieben" erzeugt oft direkt danach noch einen karten-click.
+      // dieser würde sonst den verschiebemodus sofort beenden.
+      ignoreMapClickUntil = Date.now() + 800;
+
       showStatus("marker verschieben, dann auf karte klicken");
     }
 
@@ -2109,6 +2151,10 @@
     });
 
     map.on("click",async() => {
+      if(Date.now() < ignoreMapClickUntil){
+        return;
+      }
+
       if(moveModeEntry){
         await finishMoveMode();
         return;
@@ -2445,9 +2491,7 @@
     }
 
     document.getElementById("chatCloseBtn").addEventListener("click",closeChat);
-    document.getElementById("chatOverlay").addEventListener("click",e => {
-      if(e.target.id === "chatOverlay") closeChat();
-    });
+    document.getElementById("chatOverlay").addEventListener("click",e => { if(e.target.id === "chatOverlay") closeChat(); });
 
     document.getElementById("chatTextInput").addEventListener("input",() => {
       document.getElementById("charCount").textContent = document.getElementById("chatTextInput").value.length;
