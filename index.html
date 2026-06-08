@@ -26,7 +26,6 @@
       --bikePurple:#6a00ff;
       --rentGrey:#8a8a8a;
       --danger:#7a0b0b;
-      --maintenanceRed:#d7191c;
       --adminGrey:#c9c9c9;
       --adminGreen:#9be39b;
       --text:#0b1a2a;
@@ -158,6 +157,7 @@
       font-size:14px;
       font-weight:800;
       cursor:pointer;
+      text-transform:lowercase;
     }
 
     .adminBtn.isAdmin{
@@ -210,7 +210,7 @@
 
     .formRow{
       display:grid;
-      grid-template-columns:120px 1fr;
+      grid-template-columns:125px 1fr;
       gap:12px;
       align-items:center;
       margin-bottom:10px;
@@ -302,14 +302,7 @@
 
     .btn.returnBikeBtn.isReturning{
       color:#fff;
-      background:linear-gradient(
-        90deg,
-        var(--bikePurple) 0%,
-        var(--danger) 25%,
-        var(--bikePurple) 50%,
-        var(--danger) 75%,
-        var(--bikePurple) 100%
-      );
+      background:linear-gradient(90deg,var(--bikePurple) 0%,var(--danger) 25%,var(--bikePurple) 50%,var(--danger) 75%,var(--bikePurple) 100%);
       background-size:200% 100%;
       animation:returnWave 1.1s linear infinite;
     }
@@ -868,7 +861,7 @@
           <div class="dropdown-item adminOnly" data-kind="accounts">alle accounts verwalten</div>
         </div>
       </div>
-      <button id="adminBtn" class="adminBtn" type="button">Admin</button>
+      <button id="adminBtn" class="adminBtn" type="button">admin</button>
     </div>
   </header>
 
@@ -902,7 +895,7 @@
           <input id="createPasswordInput" type="password" autocomplete="new-password" />
         </div>
         <div class="formRow">
-          <div>wiederholen:</div>
+          <div>Wiederholung:</div>
           <input id="createPasswordRepeatInput" type="password" autocomplete="new-password" />
         </div>
         <div class="footer">
@@ -934,7 +927,7 @@
   </div>
 
   <div id="ctxMenuAccount" class="ctx-menu">
-    <div class="ctx-item" data-action="lock">account sperren</div>
+    <div class="ctx-item" data-action="toggleLock" id="accountLockToggleItem">account sperren</div>
     <div class="ctx-item" data-action="delete">account löschen</div>
   </div>
 
@@ -1211,11 +1204,7 @@
     function bikeSortValue(value){
       const text = String(value ?? "").trim();
       const number = Number(text);
-      return {
-        isNumber:text !== "" && Number.isFinite(number),
-        number,
-        text
-      };
+      return { isNumber:text !== "" && Number.isFinite(number), number, text };
     }
 
     function sortBikeEntries(a,b){
@@ -1224,7 +1213,7 @@
       if(av.isNumber && bv.isNumber) return av.number - bv.number;
       if(av.isNumber && !bv.isNumber) return -1;
       if(!av.isNumber && bv.isNumber) return 1;
-      return av.text.localeCompare(bv.text, "de", { numeric:true, sensitivity:"base" });
+      return av.text.localeCompare(bv.text, "de", {numeric:true,sensitivity:"base"});
     }
 
     function statusClassForBike(entry){
@@ -1244,13 +1233,7 @@
 
       return L.divIcon({
         className:"",
-        html:`
-          <div class="bikeWrap">
-            <div class="${classes}">
-              <div class="bikeNum">${escapeHtml(entry.bikeNumber)}</div>
-            </div>
-          </div>
-        `,
+        html:`<div class="bikeWrap"><div class="${classes}"><div class="bikeNum">${escapeHtml(entry.bikeNumber)}</div></div></div>`,
         iconSize:[24,24],
         iconAnchor:[12,12]
       });
@@ -1265,11 +1248,7 @@
 
       return L.divIcon({
         className:"",
-        html:`
-          <div class="stationIconWrap">
-            <img class="${classes}" src="logo.png" alt="" />
-          </div>
-        `,
+        html:`<div class="stationIconWrap"><img class="${classes}" src="logo.png" alt="" /></div>`,
         iconSize:[33,33],
         iconAnchor:[16.5,16.5]
       });
@@ -1280,20 +1259,14 @@
     }
 
     async function dbLoadAllMarkers(){
-      const { data, error } = await sb
-        .from("markers")
-        .select("*")
-        .order("created_at", { ascending:true });
-
+      const { data, error } = await sb.from("markers").select("*").order("created_at", { ascending:true });
       if(error) throw error;
       return data || [];
     }
 
     async function dbInsertMarker(type, lat, lng){
       const payload = {
-        type,
-        lat,
-        lng,
+        type, lat, lng,
         bike_number:"",
         name:"natebike",
         color:"undefiniert",
@@ -1305,12 +1278,7 @@
         photo_url:null
       };
 
-      const { data, error } = await sb
-        .from("markers")
-        .insert(payload)
-        .select()
-        .single();
-
+      const { data, error } = await sb.from("markers").insert(payload).select().single();
       if(error) throw error;
       return data;
     }
@@ -1376,10 +1344,7 @@
         entry.status = status;
         entry.isRented = status !== "verfügbar" ? true : !!row.is_rented;
 
-        if(!entry.isMoving){
-          entry.marker.setLatLng([entry.lat, entry.lng]);
-        }
-
+        if(!entry.isMoving) entry.marker.setLatLng([entry.lat, entry.lng]);
         entry.marker.setIcon(iconForEntry(entry));
       }
 
@@ -1389,9 +1354,7 @@
     async function loadMarkersOnce(){
       const rows = await dbLoadAllMarkers();
       rows.forEach(row => {
-        if(row.type === "bike" || row.type === "note"){
-          addOrUpdateMarker(row);
-        }
+        if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row);
       });
     }
 
@@ -1467,7 +1430,6 @@
     function getCurrentDeviceLatLng(timeoutMs = 6000){
       return new Promise(resolve => {
         let done = false;
-
         function finish(value){
           if(done) return;
           done = true;
@@ -1475,20 +1437,12 @@
           map.off("locationerror", onError);
           resolve(value);
         }
-
         function onFound(e){ finish(e.latlng); }
         function onError(){ finish(null); }
 
         map.on("locationfound", onFound);
         map.on("locationerror", onError);
-
-        map.locate({
-          setView:false,
-          enableHighAccuracy:true,
-          timeout:timeoutMs,
-          maximumAge:0
-        });
-
+        map.locate({setView:false,enableHighAccuracy:true,timeout:timeoutMs,maximumAge:0});
         setTimeout(() => finish(null), timeoutMs + 1000);
       });
     }
@@ -1499,40 +1453,27 @@
 
     async function dbInsertSystemChatMessage(message){
       const payload = { user_name:"system", message, photo_data:null };
-
-      const { data, error } = await sb
-        .from("chat_messages")
-        .insert(payload)
-        .select()
-        .single();
-
+      const { data, error } = await sb.from("chat_messages").insert(payload).select().single();
       if(error) throw error;
       return data;
     }
 
     async function borrowBike(entry){
       const newStatus = borrowedStatusText();
-
       try{
-        await dbUpdateMarker(entry.id, {
-          status:newStatus,
-          is_rented:true
-        });
-
+        await dbUpdateMarker(entry.id, {status:newStatus,is_rented:true});
         entry.status = newStatus;
         entry.isRented = true;
         entry.marker.setIcon(iconForEntry(entry));
 
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
-
         const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
         renderChatMessage(savedSystemMessage);
         scrollChatBottom();
 
         revealedBikeCodeId = entry.id;
         openBikeWindow(entry);
-
         showStatus("natebike ausgeliehen");
       }catch(err){
         console.error(err);
@@ -1542,7 +1483,6 @@
 
     async function returnBike(entry){
       const returnBtn = document.getElementById("bikeReturnBtn");
-
       if(returnBtn){
         returnBtn.classList.add("isReturning");
         returnBtn.dataset.returning = "true";
@@ -1558,19 +1498,13 @@
         return;
       }
 
-      if(choice === "manual"){
-        closeModal();
-      }
+      if(choice === "manual") closeModal();
 
       try{
-        const patch = {
-          status:"verfügbar",
-          is_rented:false
-        };
+        const patch = {status:"verfügbar",is_rented:false};
 
         if(choice === "auto"){
           const ll = await getCurrentDeviceLatLng();
-
           if(!ll){
             showStatus("standort nicht verfügbar");
             if(returnBtn){
@@ -1579,7 +1513,6 @@
             }
             return;
           }
-
           patch.lat = ll.lat;
           patch.lng = ll.lng;
           entry.lat = ll.lat;
@@ -1588,25 +1521,18 @@
         }
 
         await dbUpdateMarker(entry.id, patch);
-
         entry.status = "verfügbar";
         entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
 
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
-
         const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
         renderChatMessage(savedSystemMessage);
         scrollChatBottom();
 
-        if(choice === "auto"){
-          closeModal();
-        }
-
-        if(choice === "manual"){
-          startMoveMode(entry);
-        }
+        if(choice === "auto") closeModal();
+        if(choice === "manual") startMoveMode(entry);
 
         showStatus("natebike zurückgegeben");
       }catch(err){
@@ -1626,9 +1552,7 @@
       }
 
       const currentStatus = entry.status || "verfügbar";
-      const nextStatus = currentStatus === "nicht verfügbar"
-        ? "verfügbar"
-        : "nicht verfügbar";
+      const nextStatus = currentStatus === "nicht verfügbar" ? "verfügbar" : "nicht verfügbar";
 
       try{
         await dbUpdateMarker(entry.id, {
@@ -1643,11 +1567,7 @@
         closeModal();
         openBikeWindow(entry);
 
-        if(nextStatus === "nicht verfügbar"){
-          showStatus("wartung aktiviert");
-        }else{
-          showStatus("natebike freigegeben");
-        }
+        showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
       }catch(err){
         console.error(err);
         showStatus("status konnte nicht geändert werden");
@@ -1669,14 +1589,10 @@
           overlay.removeEventListener("click", onOverlay);
           resolve(value);
         }
-
         function onAuto(){ close("auto"); }
         function onManual(){ close("manual"); }
         function onCancel(){ close("cancel"); }
-
-        function onOverlay(e){
-          if(e.target === overlay) close("cancel");
-        }
+        function onOverlay(e){ if(e.target === overlay) close("cancel"); }
 
         autoBtn.addEventListener("click", onAuto);
         manualBtn.addEventListener("click", onManual);
@@ -1695,9 +1611,7 @@
     });
 
     document.addEventListener("click", e => {
-      if(!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)){
-        dropdownMenu.style.display = "none";
-      }
+      if(!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) dropdownMenu.style.display = "none";
     });
 
     document.querySelectorAll(".dropdown-item").forEach(item => {
@@ -1778,9 +1692,7 @@
     });
 
     document.getElementById("listOverlay").addEventListener("click", e => {
-      if(e.target.id === "listOverlay"){
-        document.getElementById("listOverlay").style.display = "none";
-      }
+      if(e.target.id === "listOverlay") document.getElementById("listOverlay").style.display = "none";
     });
 
     const loginFrame = document.getElementById("loginFrame");
@@ -1791,24 +1703,20 @@
     function loginUser(){
       const name = document.getElementById("loginNameInput").value.trim();
       const password = document.getElementById("loginPasswordInput").value;
-
       const account = findAccount(name);
 
       if(!name || !password){
         showMsg("loginMsg", "bitte Name und Passwort eingeben");
         return;
       }
-
       if(!account){
         showMsg("loginMsg", "account nicht gefunden");
         return;
       }
-
       if(account.locked){
         showMsg("loginMsg", "account gesperrt");
         return;
       }
-
       if(account.password !== password){
         showMsg("loginMsg", "falsches passwort");
         return;
@@ -1816,12 +1724,10 @@
 
       hideMsg("loginMsg");
       currentUserName = account.name;
-
       loginFrame.style.display = "none";
       accountCreateFrame.style.display = "none";
       mapFrame.style.display = "block";
       headerActions.style.display = "flex";
-
       updateAdminUI();
 
       setTimeout(() => {
@@ -1868,11 +1774,7 @@
         return;
       }
 
-      upsertAccount({
-        name,
-        password:pw1,
-        locked:false
-      });
+      upsertAccount({ name, password:pw1, locked:false });
 
       document.getElementById("loginNameInput").value = name;
       document.getElementById("loginPasswordInput").value = "";
@@ -1881,23 +1783,16 @@
       document.getElementById("createPasswordRepeatInput").value = "";
 
       showMsg("createAccountMsg", "account erstellt", true);
-
       setTimeout(showLogin, 900);
     }
 
     document.getElementById("loginBtn").addEventListener("click", loginUser);
-    document.getElementById("loginPasswordInput").addEventListener("keydown", e => {
-      if(e.key === "Enter") loginUser();
-    });
-    document.getElementById("loginNameInput").addEventListener("keydown", e => {
-      if(e.key === "Enter") loginUser();
-    });
+    document.getElementById("loginPasswordInput").addEventListener("keydown", e => { if(e.key === "Enter") loginUser(); });
+    document.getElementById("loginNameInput").addEventListener("keydown", e => { if(e.key === "Enter") loginUser(); });
     document.getElementById("openCreateAccountLink").addEventListener("click", showCreateAccount);
     document.getElementById("backToLoginBtn").addEventListener("click", showLogin);
     document.getElementById("createAccountBtn").addEventListener("click", createAccount);
-    document.getElementById("createPasswordRepeatInput").addEventListener("keydown", e => {
-      if(e.key === "Enter") createAccount();
-    });
+    document.getElementById("createPasswordRepeatInput").addEventListener("keydown", e => { if(e.key === "Enter") createAccount(); });
 
     const adminBtn = document.getElementById("adminBtn");
     const adminOverlay = document.getElementById("adminOverlay");
@@ -1926,12 +1821,10 @@
 
     function confirmAdmin(){
       const value = (adminPwInput.value || "").trim();
-
       if(value !== ADMIN_PASSWORD){
         adminMsg.style.display = "block";
         return;
       }
-
       isAdmin = true;
       updateAdminUI();
       closeAdminModal();
@@ -1949,14 +1842,9 @@
     });
 
     document.getElementById("adminOkBtn").addEventListener("click", confirmAdmin);
-    adminPwInput.addEventListener("keydown", e => {
-      if(e.key === "Enter") confirmAdmin();
-    });
-
+    adminPwInput.addEventListener("keydown", e => { if(e.key === "Enter") confirmAdmin(); });
     document.getElementById("adminCloseBtn").addEventListener("click", closeAdminModal);
-    adminOverlay.addEventListener("click", e => {
-      if(e.target === adminOverlay) closeAdminModal();
-    });
+    adminOverlay.addEventListener("click", e => { if(e.target === adminOverlay) closeAdminModal(); });
 
     const accountOverlay = document.getElementById("accountOverlay");
     const accountTitle = document.getElementById("accountTitle");
@@ -1970,9 +1858,7 @@
     }
 
     document.getElementById("accountCloseBtn").addEventListener("click", closeAccountOverlay);
-    accountOverlay.addEventListener("click", e => {
-      if(e.target === accountOverlay) closeAccountOverlay();
-    });
+    accountOverlay.addEventListener("click", e => { if(e.target === accountOverlay) closeAccountOverlay(); });
 
     function openAccountManage(){
       accountTitle.textContent = "account verwalten";
@@ -1993,11 +1879,11 @@
       accountTitle.textContent = "passwort ändern";
       accountBody.innerHTML = `
         <div class="grid">
-          <div class="label">altes Passwort</div>
+          <div class="label">altes Passwort:</div>
           <input id="oldPasswordInput" type="password" />
-          <div class="label">neues Passwort</div>
+          <div class="label">neues Passwort:</div>
           <input id="newPasswordInput" type="password" />
-          <div class="label">wiederholen</div>
+          <div class="label">Wiederholung:</div>
           <input id="newPasswordRepeatInput" type="password" />
         </div>
         <div id="changePasswordMsg" class="msg">meldung</div>
@@ -2071,6 +1957,16 @@
           e.preventDefault();
           e.stopPropagation();
           ctxAccountName = account.name;
+
+          const currentAccount = findAccount(account.name);
+          const lockToggleItem = document.getElementById("accountLockToggleItem");
+
+          if(currentAccount && currentAccount.locked){
+            lockToggleItem.textContent = "account entsperren";
+          }else{
+            lockToggleItem.textContent = "account sperren";
+          }
+
           const menu = document.getElementById("ctxMenuAccount");
           menu.style.left = `${e.clientX}px`;
           menu.style.top = `${e.clientY}px`;
@@ -2090,9 +1986,22 @@
       const name = ctxAccountName;
       hideContextMenus();
 
-      if(action === "lock"){
-        setAccountLocked(name, true);
-        showStatus("account gesperrt");
+      if(action === "toggleLock"){
+        const account = findAccount(name);
+        if(!account){
+          showStatus("account nicht gefunden");
+          return;
+        }
+
+        const nextLockedState = !account.locked;
+        setAccountLocked(name, nextLockedState);
+
+        if(nextLockedState){
+          showStatus("account gesperrt");
+        }else{
+          showStatus("account entsperrt");
+        }
+
         openAllAccountsManage();
       }
 
@@ -2272,11 +2181,9 @@
       `;
 
       let loanButtonHtml = "";
-
       if(isAvailable){
         loanButtonHtml = `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`;
       }
-
       if(isBorrowed){
         loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
       }
@@ -2311,16 +2218,13 @@
 
           try{
             await dbUpdateMarker(entry.id, patch);
-
             entry.bikeNumber = patch.bike_number;
             entry.bikeName = patch.name;
             entry.bikeColor = patch.color;
             entry.bikeRemark = patch.remark;
-
             if(codeIsVisible){
               entry.bikeCode = patch.code;
             }
-
             entry.marker.setIcon(iconForEntry(entry));
             closeModal();
           }catch(err){
@@ -2348,7 +2252,6 @@
 
         document.getElementById("bikeRemarkSaveBtn").addEventListener("click", async () => {
           const newRemark = document.getElementById("bikeRemarkInput").value.trim();
-
           try{
             await dbUpdateMarker(entry.id, { remark:newRemark });
             entry.bikeRemark = newRemark;
@@ -2362,19 +2265,13 @@
       }
 
       const loanBtn = document.getElementById("bikeLoanBtn");
-      if(loanBtn){
-        loanBtn.addEventListener("click", () => borrowBike(entry), { once:true });
-      }
+      if(loanBtn) loanBtn.addEventListener("click", () => borrowBike(entry), { once:true });
 
       const returnBtn = document.getElementById("bikeReturnBtn");
-      if(returnBtn){
-        returnBtn.addEventListener("click", () => returnBike(entry), { once:true });
-      }
+      if(returnBtn) returnBtn.addEventListener("click", () => returnBike(entry), { once:true });
 
       const maintenanceBtn = document.getElementById("bikeMaintenanceBtn");
-      if(maintenanceBtn){
-        maintenanceBtn.addEventListener("click", () => toggleMaintenanceBike(entry), { once:true });
-      }
+      if(maintenanceBtn) maintenanceBtn.addEventListener("click", () => toggleMaintenanceBike(entry), { once:true });
 
       openModal();
     }
@@ -2434,7 +2331,6 @@
         message:message || "",
         photo_data:photoData || null
       };
-
       const { data, error } = await sb.from("chat_messages").insert(payload).select().single();
       if(error) throw error;
       return data;
@@ -2546,7 +2442,6 @@
     document.getElementById("photoInput").addEventListener("change", async e => {
       const file = e.target.files && e.target.files[0];
       if(!file) return;
-
       try{
         selectedPhotoData = await resizeImageToDataUrl(file, 200, 200);
         document.getElementById("photoPreviewImg").src = selectedPhotoData;
@@ -2606,7 +2501,6 @@
         showStatus("maximal 144 Zeichen");
         return;
       }
-
       if(!message && !selectedPhotoData) return;
 
       try{
@@ -2638,7 +2532,6 @@
           showStatus("nur admin");
           return;
         }
-
         try{
           await dbDeleteChatMessage(id);
           removeChatMessageFromView(id);
@@ -2657,10 +2550,8 @@
         showStatus("nur admin");
         return;
       }
-
       const ok = confirm("Chat wirklich leeren?");
       if(!ok) return;
-
       try{
         await dbClearChat();
         renderedChatMessages.clear();
@@ -2678,7 +2569,6 @@
           const row = payload.new;
           if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row);
         }
-
         if(payload.eventType === "DELETE"){
           const oldRow = payload.old;
           const entry = findEntryById(oldRow.id);
@@ -2696,7 +2586,6 @@
           renderChatMessage(payload.new);
           scrollChatBottom();
         }
-
         if(payload.eventType === "DELETE"){
           removeChatMessageFromView(payload.old.id);
         }
