@@ -2248,8 +2248,8 @@
       modalTitle.textContent = "natebikestation";
       const readonly = isAdmin ? "" : "readonly";
       modalBody.innerHTML = `
-        <div class="label">Inhalt</div>
-        <textarea id="stationContentInput" ${readonly}>${escapeHtml(entry.content)}</textarea>
+        
+        <textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>
       `;
       if(isAdmin){
         modalFooter.innerHTML = `
