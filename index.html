@@ -294,14 +294,21 @@
       100%{background-position:200% 50%;}
     }
 
+    /* Wartung-Button: wie Ausleihen, aber mit rotem Rahmen */
     .btn.maintenanceBtn{
-      background:var(--danger);
-      color:#fff;
+      background:#e8f0ff;
+      color:var(--blue);
+      border:1px solid var(--danger);
+    }
+
+    .btn.maintenanceBtn:hover{
+      background:rgba(0,74,149,.06);
     }
 
     .btn.maintenanceBtn.release{
       background:var(--adminGreen);
       color:#0b2a0b;
+      border:none;
     }
 
     .statusBar{
@@ -691,18 +698,6 @@
     .bikeDot.rented{
       background:var(--rentGrey);
     }
-
-  .bikeDot.maintenance{
-  background:repeating-linear-gradient(
-    45deg,
-    var(--rentGrey) 0px,
-    var(--rentGrey) 2px,
-    var(--maintenanceRed) 2px,
-    var(--maintenanceRed) 2.75px,
-    var(--rentGrey) 2.75px,
-    var(--rentGrey) 4.75px
-  );
-}
 
     .bikeNum{
       font-size:12px;
@@ -1126,12 +1121,9 @@
     }
 
     function bikeIcon(entry){
-      const maintenance = isMaintenanceStatus(entry.status);
-
       const classes = [
         "bikeDot",
         entry.isRented ? "rented" : "",
-        maintenance ? "maintenance" : "",
         entry.isMoving ? "moving" : "",
         entry.isPulsing ? "selectedPulse" : ""
       ].filter(Boolean).join(" ");
@@ -1392,11 +1384,7 @@
     }
 
     async function dbInsertSystemChatMessage(message){
-      const payload = {
-        user_name:"system",
-        message,
-        photo_data:null
-      };
+      const payload = { user_name:"system", message, photo_data:null };
 
       const { data, error } = await sb
         .from("chat_messages")
@@ -1912,7 +1900,6 @@
 
     function openBikeWindow(entry){
       modalTitle.textContent = "geparktes fahrrad";
-
       const adminReadonly = isAdmin ? "" : "readonly";
       const statusText = entry.status || "verfügbar";
       const isAvailable = statusText === "verfügbar";
