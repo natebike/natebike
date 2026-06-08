@@ -825,8 +825,15 @@
       transform:translate(-50%,-50%);
     }
 
-    .crosshair::before{width:2px;height:22px;}
-    .crosshair::after{width:22px;height:2px;}
+    .crosshair::before{
+      width:2px;
+      height:22px;
+    }
+
+    .crosshair::after{
+      width:22px;
+      height:2px;
+    }
   </style>
 </head>
 
@@ -1099,7 +1106,11 @@
     }
 
     async function loadProfile(userId){
-      const { data, error } = await sb.from("user_profiles").select("*").eq("id", userId).single();
+      const { data, error } = await sb
+        .from("user_profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
       if(error) throw error;
       return data;
     }
@@ -1260,7 +1271,6 @@
 
     function addOrUpdateMarker(row){
       let entry = markers.get(row.id);
-
       if(!entry){
         entry = rowToEntry(row);
         const pane = entry.type === "bike" ? "bikePane" : "stationPane";
@@ -1373,7 +1383,7 @@
         map.on("locationfound", onFound);
         map.on("locationerror", onError);
         map.locate({setView:false,enableHighAccuracy:true,timeout:timeoutMs,maximumAge:0});
-        setTimeout(() => finish(null), timeoutMs + 1000);
+        setTimeout(() => finish(null), timeoutMs+1000);
       });
     }
 
@@ -1417,9 +1427,7 @@
         returnBtn.classList.add("isReturning");
         returnBtn.dataset.returning = "true";
       }
-
       const choice = await openReturnChoiceDialog();
-
       if(choice === "cancel"){
         if(returnBtn){
           returnBtn.classList.remove("isReturning");
@@ -1427,9 +1435,7 @@
         }
         return;
       }
-
       if(choice === "manual") closeModal();
-
       try{
         const patch = {status:"verfügbar",is_rented:false};
         if(choice === "auto"){
@@ -1448,8 +1454,7 @@
           entry.lng = ll.lng;
           entry.marker.setLatLng([ll.lat,ll.lng]);
         }
-
-        await dbUpdateMarker(entry.id, patch);
+        await dbUpdateMarker(entry.id,patch);
         entry.status = "verfügbar";
         entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
@@ -1500,7 +1505,6 @@
         const autoBtn = document.getElementById("returnAutoBtn");
         const manualBtn = document.getElementById("returnManualBtn");
         const cancelX = document.getElementById("returnCancelX");
-
         function close(value){
           overlay.style.display = "none";
           autoBtn.removeEventListener("click", onAuto);
@@ -1513,7 +1517,6 @@
         function onManual(){ close("manual"); }
         function onCancel(){ close("cancel"); }
         function onOverlay(e){ if(e.target === overlay) close("cancel"); }
-
         autoBtn.addEventListener("click", onAuto);
         manualBtn.addEventListener("click", onManual);
         cancelX.addEventListener("click", onCancel);
@@ -2091,12 +2094,8 @@
       const action = item.dataset.action;
       const entry = ctxMarkerEntry;
       hideContextMenus();
-      if(action === "open"){
-        entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
-      }
-      if(action === "move"){
-        startMoveMode(entry);
-      }
+      if(action === "open") entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
+      if(action === "move") startMoveMode(entry);
     });
 
     const modalOverlay = document.getElementById("modalOverlay");
@@ -2175,6 +2174,7 @@
             remark:document.getElementById("bikeRemarkInput").value.trim()
           };
           if(codeIsVisible) patch.code = document.getElementById("bikeCodeInput").value.trim();
+
           try{
             await dbUpdateMarker(entry.id,patch);
             entry.bikeNumber = patch.bike_number;
@@ -2206,7 +2206,6 @@
           ${loanButtonHtml}
           <button class="btn" id="bikeRemarkSaveBtn" type="button">speichern</button>
         `;
-
         document.getElementById("bikeRemarkSaveBtn").addEventListener("click",async() => {
           const newRemark = document.getElementById("bikeRemarkInput").value.trim();
           try{
@@ -2317,22 +2316,26 @@
       if(!row || !row.id) return;
       if(renderedChatMessages.has(row.id)) return;
       renderedChatMessages.add(row.id);
+
       const isSystemMessage = row.user_name === "system";
       const box = document.createElement("div");
       box.className = isSystemMessage ? "chatMessage systemMessage" : "chatMessage";
       box.dataset.id = row.id;
+
       if(!isSystemMessage){
         const meta = document.createElement("div");
         meta.className = "chatMeta";
         meta.textContent = `${row.user_name || "unbekannt"} • ${formatDateTime(row.created_at)}`;
         box.appendChild(meta);
       }
+
       if(row.message){
         const text = document.createElement("div");
         text.className = "chatText";
         text.textContent = row.message;
         box.appendChild(text);
       }
+
       if(row.photo_data){
         const img = document.createElement("img");
         img.className = "chatPhoto";
@@ -2340,6 +2343,7 @@
         img.alt = "foto";
         box.appendChild(img);
       }
+
       box.addEventListener("contextmenu",e => {
         if(!isAdmin) return;
         e.preventDefault();
@@ -2349,6 +2353,7 @@
         ctxMenuChat.style.top = `${e.clientY}px`;
         ctxMenuChat.style.display = "block";
       });
+
       document.getElementById("chatMessages").appendChild(box);
     }
 
@@ -2367,10 +2372,13 @@
     document.getElementById("chatOverlay").addEventListener("click",e => {
       if(e.target.id === "chatOverlay") closeChat();
     });
+
     document.getElementById("chatTextInput").addEventListener("input",() => {
       document.getElementById("charCount").textContent = document.getElementById("chatTextInput").value.length;
     });
+
     document.getElementById("photoBtn").addEventListener("click",() => document.getElementById("photoInput").click());
+
     document.getElementById("photoInput").addEventListener("change",async e => {
       const file = e.target.files && e.target.files[0];
       if(!file) return;
@@ -2383,6 +2391,7 @@
         showStatus("foto konnte nicht verarbeitet werden");
       }
     });
+
     document.getElementById("removePhotoBtn").addEventListener("click",() => {
       selectedPhotoData = null;
       document.getElementById("photoInput").value = "";
@@ -2400,7 +2409,7 @@
           img.onload = () => {
             let width = img.width;
             let height = img.height;
-            const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+            const scale = Math.min(maxWidth / width,maxHeight / height,1);
             width = Math.round(width * scale);
             height = Math.round(height * scale);
             const canvas = document.createElement("canvas");
