@@ -1051,6 +1051,7 @@
     let ctxChatMessageId = null;
     let revealedBikeCodeId = null;
     let ctxAccountId = null;
+    let forcedLogoutInProgress = false;
 
     const markers = new Map();
     const renderedChatMessages = new Set();
@@ -1114,6 +1115,77 @@
       if(error) throw error;
       return data;
     }
+
+    async function forceLogoutToLogin(message){
+      if(forcedLogoutInProgress) return;
+      forcedLogoutInProgress = true;
+
+      try{
+        await sb.auth.signOut();
+      }catch(err){
+        console.error(err);
+      }
+
+      currentUserName = "";
+      currentProfile = null;
+      isAdmin = false;
+      moveModeEntry = null;
+      revealedBikeCodeId = null;
+
+      updateAdminUI();
+      closeAllOverlays();
+      hideContextMenus();
+
+      document.getElementById("headerActions").style.display = "none";
+      document.getElementById("mapFrame").style.display = "none";
+      document.getElementById("accountCreateFrame").style.display = "none";
+      document.getElementById("loginFrame").style.display = "grid";
+
+      document.getElementById("loginNameInput").value = "";
+      document.getElementById("loginPasswordInput").value = "";
+
+      showMsg("loginMsg", message || "bitte erneut anmelden");
+      forcedLogoutInProgress = false;
+    }
+
+    function closeAllOverlays(){
+      document.querySelectorAll(".modal-overlay,.list-overlay").forEach(el => {
+        el.style.display = "none";
+      });
+    }
+
+    async function checkOwnProfileStillValid(){
+      if(!currentProfile || !currentProfile.id) return;
+
+      try{
+        const { data, error } = await sb
+          .from("user_profiles")
+          .select("id, locked")
+          .eq("id", currentProfile.id)
+          .maybeSingle();
+
+        if(error) throw error;
+
+        if(!data){
+          await forceLogoutToLogin("account gelöscht");
+          return;
+        }
+
+        if(data.locked){
+          await forceLogoutToLogin("account gesperrt");
+          return;
+        }
+      }catch(err){
+        console.error(err);
+      }
+    }
+
+    window.addEventListener("focus", checkOwnProfileStillValid);
+    document.addEventListener("visibilitychange", () => {
+      if(!document.hidden) checkOwnProfileStillValid();
+    });
+
+    setInterval(checkOwnProfileStillValid, 15000);
 
     function showMsg(id, text, ok=false){
       const el = document.getElementById(id);
@@ -1271,6 +1343,7 @@
 
     function addOrUpdateMarker(row){
       let entry = markers.get(row.id);
+
       if(!entry){
         entry = rowToEntry(row);
         const pane = entry.type === "bike" ? "bikePane" : "stationPane";
@@ -1405,13 +1478,11 @@
         entry.status = newStatus;
         entry.isRented = true;
         entry.marker.setIcon(iconForEntry(entry));
-
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
         const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
         renderChatMessage(savedSystemMessage);
         scrollChatBottom();
-
         revealedBikeCodeId = entry.id;
         openBikeWindow(entry);
         showStatus("natebike ausgeliehen");
@@ -1427,7 +1498,9 @@
         returnBtn.classList.add("isReturning");
         returnBtn.dataset.returning = "true";
       }
+
       const choice = await openReturnChoiceDialog();
+
       if(choice === "cancel"){
         if(returnBtn){
           returnBtn.classList.remove("isReturning");
@@ -1435,7 +1508,9 @@
         }
         return;
       }
+
       if(choice === "manual") closeModal();
+
       try{
         const patch = {status:"verfügbar",is_rented:false};
         if(choice === "auto"){
@@ -1454,6 +1529,7 @@
           entry.lng = ll.lng;
           entry.marker.setLatLng([ll.lat,ll.lng]);
         }
+
         await dbUpdateMarker(entry.id,patch);
         entry.status = "verfügbar";
         entry.isRented = false;
@@ -1564,11 +1640,11 @@
       document.getElementById("listItems").appendChild(div);
     }
 
-    function addListRow(text, entry, extraClass=""){
+    function addListRow(text,entry,extraClass=""){
       const row = document.createElement("div");
       row.className = extraClass ? `list-item ${extraClass}` : "list-item";
       row.textContent = text;
-      row.addEventListener("click", () => {
+      row.addEventListener("click",() => {
         document.getElementById("listOverlay").style.display = "none";
         map.setView([entry.lat,entry.lng],17);
         pulseEntry(entry);
@@ -1607,9 +1683,7 @@
     });
 
     document.getElementById("listOverlay").addEventListener("click", e => {
-      if(e.target.id === "listOverlay"){
-        document.getElementById("listOverlay").style.display = "none";
-      }
+      if(e.target.id === "listOverlay") document.getElementById("listOverlay").style.display = "none";
     });
 
     const loginFrame = document.getElementById("loginFrame");
@@ -1629,7 +1703,7 @@
       const email = usernameToEmail(name);
 
       try{
-        const { data, error } = await sb.auth.signInWithPassword({email,password});
+        const { data,error } = await sb.auth.signInWithPassword({email,password});
         if(error) throw error;
 
         const profile = await loadProfile(data.user.id);
@@ -1699,7 +1773,7 @@
       const email = usernameToEmail(name);
 
       try{
-        const { data, error } = await sb.auth.signUp({email,password:pw1});
+        const { data,error } = await sb.auth.signUp({email,password:pw1});
         if(error) throw error;
 
         if(!data.user){
@@ -1831,22 +1905,15 @@
     }
 
     async function logoutUser(){
-      try{
-        await sb.auth.signOut();
-      }catch(err){
-        console.error(err);
-      }
-
+      try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
       currentUserName = "";
       currentProfile = null;
       isAdmin = false;
       updateAdminUI();
       closeAccountOverlay();
-
       headerActions.style.display = "none";
       mapFrame.style.display = "none";
       loginFrame.style.display = "grid";
-
       document.getElementById("loginNameInput").value = "";
       document.getElementById("loginPasswordInput").value = "";
       showStatus("ausgeloggt");
@@ -1907,7 +1974,6 @@
     async function deleteOwnAccount(){
       const ok = confirm("Account wirklich löschen?");
       if(!ok) return;
-
       try{
         if(currentProfile){
           await sb.from("user_profiles").delete().eq("id",currentProfile.id);
@@ -1916,13 +1982,11 @@
       }catch(err){
         console.error(err);
       }
-
       currentProfile = null;
       currentUserName = "";
       isAdmin = false;
       updateAdminUI();
       closeAccountOverlay();
-
       headerActions.style.display = "none";
       mapFrame.style.display = "none";
       loginFrame.style.display = "grid";
@@ -2525,6 +2589,22 @@
         }
         if(payload.eventType === "DELETE"){
           removeChatMessageFromView(payload.old.id);
+        }
+      })
+      .subscribe();
+
+    sb.channel("profiles-realtime")
+      .on("postgres_changes",{event:"*",schema:"public",table:"user_profiles"},async payload => {
+        if(!currentProfile || !currentProfile.id) return;
+
+        if(payload.eventType === "UPDATE" && payload.new && payload.new.id === currentProfile.id){
+          if(payload.new.locked){
+            await forceLogoutToLogin("account gesperrt");
+          }
+        }
+
+        if(payload.eventType === "DELETE" && payload.old && payload.old.id === currentProfile.id){
+          await forceLogoutToLogin("account gelöscht");
         }
       })
       .subscribe();
