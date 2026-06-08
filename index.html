@@ -26,6 +26,7 @@
       --bikePurple:#6a00ff;
       --rentGrey:#8a8a8a;
       --danger:#7a0b0b;
+      --maintenanceRed:#d7191c;
       --adminGrey:#c9c9c9;
       --adminGreen:#9be39b;
       --text:#0b1a2a;
@@ -293,6 +294,16 @@
       100%{background-position:200% 50%;}
     }
 
+    .btn.maintenanceBtn{
+      background:var(--danger);
+      color:#fff;
+    }
+
+    .btn.maintenanceBtn.release{
+      background:var(--adminGreen);
+      color:#0b2a0b;
+    }
+
     .statusBar{
       position:absolute;
       left:10px;
@@ -415,6 +426,10 @@
 
     .statusBorrowed{
       border:2px solid var(--bikePurple)!important;
+    }
+
+    .statusMaintenance{
+      border:2px solid var(--danger)!important;
     }
 
     .list-overlay{
@@ -675,6 +690,18 @@
 
     .bikeDot.rented{
       background:var(--rentGrey);
+    }
+
+    .bikeDot.maintenance{
+      background:repeating-linear-gradient(
+        45deg,
+        var(--rentGrey) 0px,
+        var(--rentGrey) 4px,
+        var(--maintenanceRed) 4px,
+        var(--maintenanceRed) 5.5px,
+        var(--rentGrey) 5.5px,
+        var(--rentGrey) 9.5px
+      );
     }
 
     .bikeNum{
@@ -1087,10 +1114,24 @@
       return av.text.localeCompare(bv.text, "de", { numeric:true, sensitivity:"base" });
     }
 
+    function isMaintenanceStatus(status){
+      return String(status || "") === "nicht verfügbar";
+    }
+
+    function statusClassForBike(entry){
+      const status = entry.status || "verfügbar";
+      if(status === "verfügbar") return "statusAvailable";
+      if(status === "nicht verfügbar") return "statusMaintenance";
+      return "statusBorrowed";
+    }
+
     function bikeIcon(entry){
+      const maintenance = isMaintenanceStatus(entry.status);
+
       const classes = [
         "bikeDot",
         entry.isRented ? "rented" : "",
+        maintenance ? "maintenance" : "",
         entry.isMoving ? "moving" : "",
         entry.isPulsing ? "selectedPulse" : ""
       ].filter(Boolean).join(" ");
@@ -1351,7 +1392,11 @@
     }
 
     async function dbInsertSystemChatMessage(message){
-      const payload = { user_name:"system", message, photo_data:null };
+      const payload = {
+        user_name:"system",
+        message,
+        photo_data:null
+      };
 
       const { data, error } = await sb
         .from("chat_messages")
@@ -1469,6 +1514,41 @@
           returnBtn.classList.remove("isReturning");
           delete returnBtn.dataset.returning;
         }
+      }
+    }
+
+    async function toggleMaintenanceBike(entry){
+      if(!isAdmin){
+        showStatus("nur admin");
+        return;
+      }
+
+      const currentStatus = entry.status || "verfügbar";
+      const nextStatus = currentStatus === "nicht verfügbar"
+        ? "verfügbar"
+        : "nicht verfügbar";
+
+      try{
+        await dbUpdateMarker(entry.id, {
+          status:nextStatus,
+          is_rented:nextStatus !== "verfügbar"
+        });
+
+        entry.status = nextStatus;
+        entry.isRented = nextStatus !== "verfügbar";
+        entry.marker.setIcon(iconForEntry(entry));
+
+        closeModal();
+        openBikeWindow(entry);
+
+        if(nextStatus === "nicht verfügbar"){
+          showStatus("wartung aktiviert");
+        }else{
+          showStatus("natebike freigegeben");
+        }
+      }catch(err){
+        console.error(err);
+        showStatus("status konnte nicht geändert werden");
       }
     }
 
@@ -1836,6 +1916,8 @@
       const adminReadonly = isAdmin ? "" : "readonly";
       const statusText = entry.status || "verfügbar";
       const isAvailable = statusText === "verfügbar";
+      const isBorrowed = statusText.startsWith("von ") && statusText.includes("ausgeliehen");
+      const isMaintenance = statusText === "nicht verfügbar";
 
       const codeIsVisible = revealedBikeCodeId === entry.id;
       const realCode = String(entry.bikeCode || "");
@@ -1862,19 +1944,34 @@
         <input
           type="text"
           id="bikeStatusInput"
-          class="${isAvailable ? "statusAvailable" : "statusBorrowed"}"
+          class="${statusClassForBike(entry)}"
           readonly
           value="${escapeHtml(statusText)}"
         />
       `;
 
-      const loanButtonHtml = isAvailable
-        ? `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`
-        : `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
+      let loanButtonHtml = "";
+
+      if(isAvailable){
+        loanButtonHtml = `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`;
+      }
+
+      if(isBorrowed){
+        loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
+      }
+
+      const maintenanceButtonHtml = isAdmin
+        ? (
+            isMaintenance
+              ? `<button class="btn maintenanceBtn release" id="bikeMaintenanceBtn" type="button">freigeben</button>`
+              : `<button class="btn maintenanceBtn" id="bikeMaintenanceBtn" type="button">wartung</button>`
+          )
+        : "";
 
       if(isAdmin){
         modalFooter.innerHTML = `
           ${loanButtonHtml}
+          ${maintenanceButtonHtml}
           <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
           <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
         `;
@@ -1951,6 +2048,11 @@
       const returnBtn = document.getElementById("bikeReturnBtn");
       if(returnBtn){
         returnBtn.addEventListener("click", () => returnBike(entry), { once:true });
+      }
+
+      const maintenanceBtn = document.getElementById("bikeMaintenanceBtn");
+      if(maintenanceBtn){
+        maintenanceBtn.addEventListener("click", () => toggleMaintenanceBike(entry), { once:true });
       }
 
       openModal();
