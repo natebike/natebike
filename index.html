@@ -127,7 +127,7 @@
       background:#fff;
       border:var(--windowBorder) solid var(--blue);
       border-radius:8px;
-      min-width:220px;
+      min-width:240px;
       padding:6px;
       box-shadow:0 8px 22px rgba(0,0,0,.14);
       z-index:20000;
@@ -143,6 +143,10 @@
 
     .dropdown-item:hover{
       background:rgba(0,74,149,.08);
+    }
+
+    .adminOnly{
+      display:none;
     }
 
     .adminBtn{
@@ -177,8 +181,8 @@
       position:relative;
     }
 
-    #lockFrame,
-    #nameFrame{
+    #loginFrame,
+    #accountCreateFrame{
       height:100%;
       border:none;
       border-radius:0;
@@ -206,9 +210,10 @@
 
     .formRow{
       display:grid;
-      grid-template-columns:110px 1fr;
+      grid-template-columns:120px 1fr;
       gap:12px;
       align-items:center;
+      margin-bottom:10px;
     }
 
     input[type="password"],
@@ -233,10 +238,30 @@
       justify-content:flex-end;
       margin-top:14px;
       gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
     }
 
-    #pwMsg,
-    #nameMsg,
+    .smallLink{
+      color:var(--blue);
+      cursor:pointer;
+      text-decoration:underline;
+      font-size:13px;
+      margin-top:10px;
+      display:inline-block;
+    }
+
+    .msg{
+      margin-top:10px;
+      color:var(--danger);
+      font-size:13px;
+      display:none;
+    }
+
+    .msg.ok{
+      color:#0b6b0b;
+    }
+
     #adminMsg{
       margin-top:10px;
       color:var(--danger);
@@ -294,7 +319,6 @@
       100%{background-position:200% 50%;}
     }
 
-    /* Wartung-Button: wie Ausleihen, aber mit rotem Rahmen */
     .btn.maintenanceBtn{
       background:#e8f0ff;
       color:var(--blue);
@@ -497,6 +521,11 @@
       padding:16px;
       color:#666;
       font-style:italic;
+    }
+
+    .accountRow.locked{
+      opacity:.45;
+      background:#f4f4f4;
     }
 
     .chat-modal{
@@ -835,6 +864,8 @@
           <div class="dropdown-item" data-kind="notes">natebikestationen</div>
           <div class="dropdown-item" data-kind="bikes">natebikes</div>
           <div class="dropdown-item" data-kind="chat">chat</div>
+          <div class="dropdown-item" data-kind="account">account verwalten</div>
+          <div class="dropdown-item adminOnly" data-kind="accounts">alle accounts verwalten</div>
         </div>
       </div>
       <button id="adminBtn" class="adminBtn" type="button">Admin</button>
@@ -842,29 +873,43 @@
   </header>
 
   <div class="wrap">
-    <div id="lockFrame">
-      <div class="panel">
-        <div class="formRow">
-          <div>Passwort:</div>
-          <input id="pwInput" type="password" autocomplete="current-password" />
-        </div>
-        <div class="footer">
-          <button class="btn" id="pwBtn" type="button">bestätigen</button>
-        </div>
-        <div id="pwMsg">falsches Passwort</div>
-      </div>
-    </div>
-
-    <div id="nameFrame" style="display:none;">
+    <div id="loginFrame">
       <div class="panel">
         <div class="formRow">
           <div>Name:</div>
-          <input id="nameInput" type="text" maxlength="40" autocomplete="name" />
+          <input id="loginNameInput" type="text" maxlength="40" autocomplete="username" />
+        </div>
+        <div class="formRow">
+          <div>Passwort:</div>
+          <input id="loginPasswordInput" type="password" autocomplete="current-password" />
         </div>
         <div class="footer">
-          <button class="btn" id="nameBtn" type="button">weiter</button>
+          <button class="btn" id="loginBtn" type="button">anmelden</button>
         </div>
-        <div id="nameMsg">bitte Namen eingeben</div>
+        <div id="loginMsg" class="msg">anmeldung fehlgeschlagen</div>
+        <span id="openCreateAccountLink" class="smallLink">account erstellen</span>
+      </div>
+    </div>
+
+    <div id="accountCreateFrame" style="display:none;">
+      <div class="panel">
+        <div class="formRow">
+          <div>Name:</div>
+          <input id="createNameInput" type="text" maxlength="40" autocomplete="username" />
+        </div>
+        <div class="formRow">
+          <div>Passwort:</div>
+          <input id="createPasswordInput" type="password" autocomplete="new-password" />
+        </div>
+        <div class="formRow">
+          <div>wiederholen:</div>
+          <input id="createPasswordRepeatInput" type="password" autocomplete="new-password" />
+        </div>
+        <div class="footer">
+          <button class="btn secondary" id="backToLoginBtn" type="button">zurück</button>
+          <button class="btn" id="createAccountBtn" type="button">account erstellen</button>
+        </div>
+        <div id="createAccountMsg" class="msg">meldung</div>
       </div>
     </div>
 
@@ -886,6 +931,11 @@
 
   <div id="ctxMenuChat" class="ctx-menu">
     <div class="ctx-item" data-action="delete">nachricht löschen</div>
+  </div>
+
+  <div id="ctxMenuAccount" class="ctx-menu">
+    <div class="ctx-item" data-action="lock">account sperren</div>
+    <div class="ctx-item" data-action="delete">account löschen</div>
   </div>
 
   <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
@@ -913,6 +963,17 @@
       <div class="modal-footer">
         <button class="btn" id="adminOkBtn" type="button">bestätigen</button>
       </div>
+    </div>
+  </div>
+
+  <div id="accountOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <h2 id="accountTitle">account</h2>
+        <button id="accountCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
+      <div id="accountBody"></div>
+      <div id="accountFooter" class="modal-footer"></div>
     </div>
   </div>
 
@@ -988,10 +1049,10 @@
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
 
-    const APP_PASSWORD = "drahtesel";
     const ADMIN_PASSWORD = "eseldraht";
     const KASSEL_CENTER = [51.3127, 9.4797];
     const DEFAULT_ZOOM = 13;
+    const ACCOUNT_KEY = "natebike_frontend_accounts_v1";
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1001,6 +1062,7 @@
     let selectedPhotoData = null;
     let ctxChatMessageId = null;
     let revealedBikeCodeId = null;
+    let ctxAccountName = null;
 
     const markers = new Map();
     const renderedChatMessages = new Set();
@@ -1048,6 +1110,62 @@
     });
 
     map.on("locationerror", () => showStatus("standort nicht verfügbar"));
+
+    function getAccounts(){
+      try{
+        return JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "[]");
+      }catch{
+        return [];
+      }
+    }
+
+    function saveAccounts(accounts){
+      localStorage.setItem(ACCOUNT_KEY, JSON.stringify(accounts));
+    }
+
+    function normalizeName(name){
+      return String(name || "").trim().toLowerCase();
+    }
+
+    function findAccount(name){
+      const n = normalizeName(name);
+      return getAccounts().find(a => normalizeName(a.name) === n) || null;
+    }
+
+    function upsertAccount(account){
+      const accounts = getAccounts();
+      const idx = accounts.findIndex(a => normalizeName(a.name) === normalizeName(account.name));
+      if(idx >= 0) accounts[idx] = account;
+      else accounts.push(account);
+      saveAccounts(accounts);
+    }
+
+    function deleteAccount(name){
+      const accounts = getAccounts().filter(a => normalizeName(a.name) !== normalizeName(name));
+      saveAccounts(accounts);
+    }
+
+    function setAccountLocked(name, locked){
+      const accounts = getAccounts();
+      const account = accounts.find(a => normalizeName(a.name) === normalizeName(name));
+      if(account){
+        account.locked = locked;
+        saveAccounts(accounts);
+      }
+    }
+
+    function showMsg(id, text, ok=false){
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.classList.toggle("ok", ok);
+      el.style.display = "block";
+    }
+
+    function hideMsg(id){
+      const el = document.getElementById(id);
+      el.style.display = "none";
+      el.classList.remove("ok");
+    }
 
     function escapeHtml(value){
       return String(value ?? "")
@@ -1107,10 +1225,6 @@
       if(av.isNumber && !bv.isNumber) return -1;
       if(!av.isNumber && bv.isNumber) return 1;
       return av.text.localeCompare(bv.text, "de", { numeric:true, sensitivity:"base" });
-    }
-
-    function isMaintenanceStatus(status){
-      return String(status || "") === "nicht verfügbar";
     }
 
     function statusClassForBike(entry){
@@ -1593,6 +1707,8 @@
         if(kind === "bikes") showBikeList();
         if(kind === "notes") showNoteList();
         if(kind === "chat") openChat();
+        if(kind === "account") openAccountManage();
+        if(kind === "accounts") openAllAccountsManage();
       });
     });
 
@@ -1613,13 +1729,11 @@
       const row = document.createElement("div");
       row.className = extraClass ? `list-item ${extraClass}` : "list-item";
       row.textContent = text;
-
       row.addEventListener("click", () => {
         document.getElementById("listOverlay").style.display = "none";
         map.setView([entry.lat, entry.lng], 17);
         pulseEntry(entry);
       });
-
       document.getElementById("listItems").appendChild(row);
     }
 
@@ -1637,11 +1751,7 @@
 
       bikes.forEach(entry => {
         const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
-        addListRow(
-          line || "(ohne Nummer/Name)",
-          entry,
-          statusClassForBike(entry)
-        );
+        addListRow(line || "(ohne Nummer/Name)", entry, statusClassForBike(entry));
       });
     }
 
@@ -1673,60 +1783,120 @@
       }
     });
 
-    const lockFrame = document.getElementById("lockFrame");
-    const nameFrame = document.getElementById("nameFrame");
+    const loginFrame = document.getElementById("loginFrame");
+    const accountCreateFrame = document.getElementById("accountCreateFrame");
     const mapFrame = document.getElementById("mapFrame");
     const headerActions = document.getElementById("headerActions");
 
-    async function checkPassword(){
-      const value = (document.getElementById("pwInput").value || "").trim();
+    function loginUser(){
+      const name = document.getElementById("loginNameInput").value.trim();
+      const password = document.getElementById("loginPasswordInput").value;
 
-      if(value !== APP_PASSWORD){
-        document.getElementById("pwMsg").style.display = "block";
+      const account = findAccount(name);
+
+      if(!name || !password){
+        showMsg("loginMsg", "bitte Name und Passwort eingeben");
         return;
       }
 
-      document.getElementById("pwMsg").style.display = "none";
-      lockFrame.style.display = "none";
-      nameFrame.style.display = "grid";
-      document.getElementById("nameInput").focus();
-    }
-
-    async function finishNameLogin(){
-      const name = (document.getElementById("nameInput").value || "").trim();
-
-      if(!name){
-        document.getElementById("nameMsg").style.display = "block";
+      if(!account){
+        showMsg("loginMsg", "account nicht gefunden");
         return;
       }
 
-      currentUserName = name;
-      document.getElementById("nameMsg").style.display = "none";
-      nameFrame.style.display = "none";
+      if(account.locked){
+        showMsg("loginMsg", "account gesperrt");
+        return;
+      }
+
+      if(account.password !== password){
+        showMsg("loginMsg", "falsches passwort");
+        return;
+      }
+
+      hideMsg("loginMsg");
+      currentUserName = account.name;
+
+      loginFrame.style.display = "none";
+      accountCreateFrame.style.display = "none";
       mapFrame.style.display = "block";
       headerActions.style.display = "flex";
+
+      updateAdminUI();
 
       setTimeout(() => {
         map.invalidateSize();
         map.locate({ setView:true, maxZoom:16, enableHighAccuracy:true });
       }, 100);
 
-      try{
-        await loadMarkersOnce();
-      }catch(err){
+      loadMarkersOnce().catch(err => {
         console.error(err);
         showStatus("marker konnten nicht geladen werden");
-      }
+      });
     }
 
-    document.getElementById("pwBtn").addEventListener("click", checkPassword);
-    document.getElementById("pwInput").addEventListener("keydown", e => {
-      if(e.key === "Enter") checkPassword();
-    });
+    function showCreateAccount(){
+      loginFrame.style.display = "none";
+      accountCreateFrame.style.display = "grid";
+      hideMsg("createAccountMsg");
+      document.getElementById("createNameInput").focus();
+    }
 
-    document.getElementById("nameBtn").addEventListener("click", finishNameLogin);
-    document.getElementById("nameInput").addEventListener("keydown", e => {
-      if(e.key === "Enter") finishNameLogin();
+    function showLogin(){
+      accountCreateFrame.style.display = "none";
+      loginFrame.style.display = "grid";
+      hideMsg("loginMsg");
+    }
+
+    function createAccount(){
+      const name = document.getElementById("createNameInput").value.trim();
+      const pw1 = document.getElementById("createPasswordInput").value;
+      const pw2 = document.getElementById("createPasswordRepeatInput").value;
+
+      if(!name || !pw1 || !pw2){
+        showMsg("createAccountMsg", "bitte alle Felder ausfüllen");
+        return;
+      }
+
+      if(pw1 !== pw2){
+        showMsg("createAccountMsg", "passwörter stimmen nicht überein");
+        return;
+      }
+
+      if(findAccount(name)){
+        showMsg("createAccountMsg", "benutzername bereits vergeben");
+        return;
+      }
+
+      upsertAccount({
+        name,
+        password:pw1,
+        locked:false
+      });
+
+      document.getElementById("loginNameInput").value = name;
+      document.getElementById("loginPasswordInput").value = "";
+      document.getElementById("createNameInput").value = "";
+      document.getElementById("createPasswordInput").value = "";
+      document.getElementById("createPasswordRepeatInput").value = "";
+
+      showMsg("createAccountMsg", "account erstellt", true);
+
+      setTimeout(showLogin, 900);
+    }
+
+    document.getElementById("loginBtn").addEventListener("click", loginUser);
+    document.getElementById("loginPasswordInput").addEventListener("keydown", e => {
+      if(e.key === "Enter") loginUser();
+    });
+    document.getElementById("loginNameInput").addEventListener("keydown", e => {
+      if(e.key === "Enter") loginUser();
+    });
+    document.getElementById("openCreateAccountLink").addEventListener("click", showCreateAccount);
+    document.getElementById("backToLoginBtn").addEventListener("click", showLogin);
+    document.getElementById("createAccountBtn").addEventListener("click", createAccount);
+    document.getElementById("createPasswordRepeatInput").addEventListener("keydown", e => {
+      if(e.key === "Enter") createAccount();
     });
 
     const adminBtn = document.getElementById("adminBtn");
@@ -1736,6 +1906,9 @@
 
     function updateAdminUI(){
       adminBtn.classList.toggle("isAdmin", isAdmin);
+      document.querySelectorAll(".adminOnly").forEach(el => {
+        el.style.display = isAdmin ? "block" : "none";
+      });
       const clearChatBtn = document.getElementById("clearChatBtn");
       if(clearChatBtn) clearChatBtn.style.display = isAdmin ? "inline-block" : "none";
     }
@@ -1785,9 +1958,157 @@
       if(e.target === adminOverlay) closeAdminModal();
     });
 
+    const accountOverlay = document.getElementById("accountOverlay");
+    const accountTitle = document.getElementById("accountTitle");
+    const accountBody = document.getElementById("accountBody");
+    const accountFooter = document.getElementById("accountFooter");
+
+    function closeAccountOverlay(){
+      accountOverlay.style.display = "none";
+      accountBody.innerHTML = "";
+      accountFooter.innerHTML = "";
+    }
+
+    document.getElementById("accountCloseBtn").addEventListener("click", closeAccountOverlay);
+    accountOverlay.addEventListener("click", e => {
+      if(e.target === accountOverlay) closeAccountOverlay();
+    });
+
+    function openAccountManage(){
+      accountTitle.textContent = "account verwalten";
+      accountBody.innerHTML = `
+        <div class="list-items">
+          <div class="list-item" id="changePasswordItem">passwort ändern</div>
+          <div class="list-item" id="deleteOwnAccountItem">account löschen</div>
+        </div>
+      `;
+      accountFooter.innerHTML = "";
+      accountOverlay.style.display = "flex";
+
+      document.getElementById("changePasswordItem").addEventListener("click", openChangePassword);
+      document.getElementById("deleteOwnAccountItem").addEventListener("click", deleteOwnAccount);
+    }
+
+    function openChangePassword(){
+      accountTitle.textContent = "passwort ändern";
+      accountBody.innerHTML = `
+        <div class="grid">
+          <div class="label">altes Passwort</div>
+          <input id="oldPasswordInput" type="password" />
+          <div class="label">neues Passwort</div>
+          <input id="newPasswordInput" type="password" />
+          <div class="label">wiederholen</div>
+          <input id="newPasswordRepeatInput" type="password" />
+        </div>
+        <div id="changePasswordMsg" class="msg">meldung</div>
+      `;
+      accountFooter.innerHTML = `
+        <button class="btn secondary" id="backAccountBtn" type="button">zurück</button>
+        <button class="btn" id="savePasswordBtn" type="button">speichern</button>
+      `;
+
+      document.getElementById("backAccountBtn").addEventListener("click", openAccountManage);
+      document.getElementById("savePasswordBtn").addEventListener("click", saveChangedPassword);
+    }
+
+    function saveChangedPassword(){
+      const oldPw = document.getElementById("oldPasswordInput").value;
+      const newPw = document.getElementById("newPasswordInput").value;
+      const rep = document.getElementById("newPasswordRepeatInput").value;
+      const account = findAccount(currentUserName);
+
+      if(!account || account.password !== oldPw){
+        showMsg("changePasswordMsg", "altes Passwort falsch");
+        return;
+      }
+
+      if(!newPw || newPw !== rep){
+        showMsg("changePasswordMsg", "neue Passwörter stimmen nicht überein");
+        return;
+      }
+
+      account.password = newPw;
+      upsertAccount(account);
+      showMsg("changePasswordMsg", "passwort geändert", true);
+      setTimeout(closeAccountOverlay, 800);
+    }
+
+    function deleteOwnAccount(){
+      const ok = confirm("Account wirklich löschen?");
+      if(!ok) return;
+
+      deleteAccount(currentUserName);
+      currentUserName = "";
+      isAdmin = false;
+      updateAdminUI();
+      closeAccountOverlay();
+
+      headerActions.style.display = "none";
+      mapFrame.style.display = "none";
+      loginFrame.style.display = "grid";
+      document.getElementById("loginNameInput").value = "";
+      document.getElementById("loginPasswordInput").value = "";
+      showMsg("loginMsg", "account gelöscht", true);
+    }
+
+    function openAllAccountsManage(){
+      const accounts = getAccounts().sort((a,b) => a.name.localeCompare(b.name, "de", {sensitivity:"base"}));
+      openList("alle accounts");
+
+      if(accounts.length === 0){
+        addEmptyListMessage("keine Accounts vorhanden");
+        return;
+      }
+
+      accounts.forEach(account => {
+        const row = document.createElement("div");
+        row.className = account.locked ? "list-item accountRow locked" : "list-item accountRow";
+        row.textContent = account.locked ? `${account.name} (gesperrt)` : account.name;
+        row.dataset.name = account.name;
+
+        row.addEventListener("contextmenu", e => {
+          if(!isAdmin) return;
+          e.preventDefault();
+          e.stopPropagation();
+          ctxAccountName = account.name;
+          const menu = document.getElementById("ctxMenuAccount");
+          menu.style.left = `${e.clientX}px`;
+          menu.style.top = `${e.clientY}px`;
+          menu.style.display = "block";
+        });
+
+        document.getElementById("listItems").appendChild(row);
+      });
+    }
+
+    document.getElementById("ctxMenuAccount").addEventListener("pointerdown", e => {
+      e.stopPropagation();
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxAccountName) return;
+
+      const action = item.dataset.action;
+      const name = ctxAccountName;
+      hideContextMenus();
+
+      if(action === "lock"){
+        setAccountLocked(name, true);
+        showStatus("account gesperrt");
+        openAllAccountsManage();
+      }
+
+      if(action === "delete"){
+        const ok = confirm(`Account "${name}" wirklich dauerhaft löschen?`);
+        if(!ok) return;
+        deleteAccount(name);
+        showStatus("account gelöscht");
+        openAllAccountsManage();
+      }
+    });
+
     const ctxMenuMap = document.getElementById("ctxMenuMap");
     const ctxMenuMarker = document.getElementById("ctxMenuMarker");
     const ctxMenuChat = document.getElementById("ctxMenuChat");
+    const ctxMenuAccount = document.getElementById("ctxMenuAccount");
 
     let ctxMapLatLng = null;
     let ctxMarkerEntry = null;
@@ -1796,9 +2117,11 @@
       ctxMenuMap.style.display = "none";
       ctxMenuMarker.style.display = "none";
       ctxMenuChat.style.display = "none";
+      ctxMenuAccount.style.display = "none";
       ctxMapLatLng = null;
       ctxMarkerEntry = null;
       ctxChatMessageId = null;
+      ctxAccountName = null;
     }
 
     map.getContainer().addEventListener("contextmenu", e => e.preventDefault());
@@ -1823,7 +2146,12 @@
     map.on("movestart", hideContextMenus);
 
     document.addEventListener("pointerdown", e => {
-      if(!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target) && !ctxMenuChat.contains(e.target)){
+      if(
+        !ctxMenuMap.contains(e.target) &&
+        !ctxMenuMarker.contains(e.target) &&
+        !ctxMenuChat.contains(e.target) &&
+        !ctxMenuAccount.contains(e.target)
+      ){
         hideContextMenus();
       }
     });
