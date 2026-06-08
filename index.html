@@ -1609,15 +1609,17 @@
       document.getElementById("listItems").appendChild(div);
     }
 
-    function addListRow(text, entry){
+    function addListRow(text, entry, extraClass = ""){
       const row = document.createElement("div");
-      row.className = "list-item";
+      row.className = extraClass ? `list-item ${extraClass}` : "list-item";
       row.textContent = text;
+
       row.addEventListener("click", () => {
         document.getElementById("listOverlay").style.display = "none";
         map.setView([entry.lat, entry.lng], 17);
         pulseEntry(entry);
       });
+
       document.getElementById("listItems").appendChild(row);
     }
 
@@ -1635,7 +1637,11 @@
 
       bikes.forEach(entry => {
         const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
-        addListRow(line || "(ohne Nummer/Name)", entry);
+        addListRow(
+          line || "(ohne Nummer/Name)",
+          entry,
+          statusClassForBike(entry)
+        );
       });
     }
 
