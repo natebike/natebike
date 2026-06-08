@@ -846,7 +846,7 @@
 
     <div id="headerActions" class="headerActions">
       <div class="menu-container">
-        <button id="menuBtn" class="menu-btn" type="button" title="Menü">
+        <button id="menuBtn" class="menu-btn" type="button" title="menü">
           <div class="menu-lines"><span></span></div>
         </button>
         <div id="dropdownMenu" class="dropdown-menu">
@@ -865,11 +865,11 @@
     <div id="loginFrame">
       <div class="panel">
         <div class="formRow">
-          <div>Name:</div>
+          <div>name:</div>
           <input id="loginNameInput" type="text" maxlength="40" autocomplete="username" />
         </div>
         <div class="formRow">
-          <div>Passwort:</div>
+          <div>passwort:</div>
           <input id="loginPasswordInput" type="password" autocomplete="current-password" />
         </div>
         <div class="footer">
@@ -883,19 +883,19 @@
     <div id="accountCreateFrame" style="display:none;">
       <div class="panel">
         <div class="formRow">
-          <div>Name:</div>
+          <div>name:</div>
           <input id="createNameInput" type="text" maxlength="40" autocomplete="username" />
         </div>
         <div class="formRow">
-          <div>Passwort:</div>
+          <div>passwort:</div>
           <input id="createPasswordInput" type="password" autocomplete="new-password" />
         </div>
         <div class="formRow">
-          <div>Wiederholung:</div>
+          <div>wiederholung:</div>
           <input id="createPasswordRepeatInput" type="password" autocomplete="new-password" />
         </div>
         <div class="formRow">
-          <div>Geheimcode:</div>
+          <div>geheimcode:</div>
           <input id="createSecretInput" type="password" autocomplete="off" />
         </div>
         <div class="footer">
@@ -913,7 +913,7 @@
   </div>
 
   <div id="ctxMenuMap" class="ctx-menu">
-    <div class="ctx-item" data-action="bike">neues Rad hinzufügen</div>
+    <div class="ctx-item" data-action="bike">neues rad hinzufügen</div>
     <div class="ctx-item" data-action="note">natebikestation hinzufügen</div>
   </div>
 
@@ -949,10 +949,10 @@
         <button id="adminCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
       </div>
       <div class="grid">
-        <div class="label">Passwort</div>
+        <div class="label">passwort</div>
         <input id="adminPwInput" type="password" autocomplete="current-password" />
       </div>
-      <div id="adminMsg">falsches Passwort</div>
+      <div id="adminMsg">falsches passwort</div>
       <div class="modal-footer">
         <button class="btn" id="adminOkBtn" type="button">bestätigen</button>
       </div>
@@ -1024,7 +1024,7 @@
         <h2>rückgabe</h2>
         <button id="returnCancelX" class="modalCloseX" type="button" title="schließen">×</button>
       </div>
-      <div style="font-size:14px; margin-bottom:14px;">Standort automatisch übernehmen?</div>
+      <div style="font-size:14px; margin-bottom:14px;">standort automatisch übernehmen?</div>
       <div class="modal-footer">
         <button class="btn secondary" id="returnManualBtn" type="button">natebike manuell verschieben</button>
         <button class="btn" id="returnAutoBtn" type="button">ja</button>
@@ -1072,7 +1072,7 @@
       options:{ position:"bottomright" },
       onAdd:function(){
         const btn = L.DomUtil.create("div", "locateBtn");
-        btn.title = "Standort zentrieren";
+        btn.title = "standort zentrieren";
         btn.innerHTML = '<div class="crosshair"></div>';
         L.DomEvent.disableClickPropagation(btn);
         L.DomEvent.on(btn, "click", () => {
@@ -1184,7 +1184,6 @@
     document.addEventListener("visibilitychange", () => {
       if(!document.hidden) checkOwnProfileStillValid();
     });
-
     setInterval(checkOwnProfileStillValid, 15000);
 
     function showMsg(id, text, ok=false){
@@ -1221,12 +1220,24 @@
 
     function formatDateTime(value){
       const d = new Date(value);
-      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}).toLowerCase();
+      return d.toLocaleString("de-DE", {
+        day:"2-digit",
+        month:"2-digit",
+        year:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
+      }).toLowerCase();
     }
 
     function formatSystemMessageDateTime(){
       const d = new Date();
-      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+      return d.toLocaleString("de-DE", {
+        day:"2-digit",
+        month:"2-digit",
+        year:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
+      });
     }
 
     function bikeSortValue(value){
@@ -1498,9 +1509,7 @@
         returnBtn.classList.add("isReturning");
         returnBtn.dataset.returning = "true";
       }
-
       const choice = await openReturnChoiceDialog();
-
       if(choice === "cancel"){
         if(returnBtn){
           returnBtn.classList.remove("isReturning");
@@ -1508,7 +1517,6 @@
         }
         return;
       }
-
       if(choice === "manual") closeModal();
 
       try{
@@ -1529,18 +1537,15 @@
           entry.lng = ll.lng;
           entry.marker.setLatLng([ll.lat,ll.lng]);
         }
-
         await dbUpdateMarker(entry.id,patch);
         entry.status = "verfügbar";
         entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
-
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
         const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
         renderChatMessage(savedSystemMessage);
         scrollChatBottom();
-
         if(choice === "auto") closeModal();
         if(choice === "manual") startMoveMode(entry);
         showStatus("natebike zurückgegeben");
@@ -1640,11 +1645,11 @@
       document.getElementById("listItems").appendChild(div);
     }
 
-    function addListRow(text,entry,extraClass=""){
+    function addListRow(text, entry, extraClass=""){
       const row = document.createElement("div");
       row.className = extraClass ? `list-item ${extraClass}` : "list-item";
       row.textContent = text;
-      row.addEventListener("click",() => {
+      row.addEventListener("click", () => {
         document.getElementById("listOverlay").style.display = "none";
         map.setView([entry.lat,entry.lng],17);
         pulseEntry(entry);
@@ -1656,12 +1661,12 @@
       const bikes = Array.from(markers.values()).filter(e => e.type === "bike").sort(sortBikeEntries);
       openList("natebikes");
       if(bikes.length === 0){
-        addEmptyListMessage("keine Fahrräder gefunden");
+        addEmptyListMessage("keine fahrräder gefunden");
         return;
       }
       bikes.forEach(entry => {
         const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
-        addListRow(line || "(ohne Nummer/Name)", entry, statusClassForBike(entry));
+        addListRow(line || "(ohne nummer/name)", entry, statusClassForBike(entry));
       });
     }
 
@@ -1669,12 +1674,12 @@
       const notes = Array.from(markers.values()).filter(e => e.type === "note").sort((a,b) => Number(a.lng)-Number(b.lng));
       openList("natebikestationen");
       if(notes.length === 0){
-        addEmptyListMessage("keine Stationen gefunden");
+        addEmptyListMessage("keine stationen gefunden");
         return;
       }
       notes.forEach(entry => {
         const line = String(entry.content || "").trim();
-        addListRow(line || "(ohne Inhalt)", entry);
+        addListRow(line || "(ohne inhalt)", entry);
       });
     }
 
@@ -1683,7 +1688,9 @@
     });
 
     document.getElementById("listOverlay").addEventListener("click", e => {
-      if(e.target.id === "listOverlay") document.getElementById("listOverlay").style.display = "none";
+      if(e.target.id === "listOverlay"){
+        document.getElementById("listOverlay").style.display = "none";
+      }
     });
 
     const loginFrame = document.getElementById("loginFrame");
@@ -1696,14 +1703,14 @@
       const password = document.getElementById("loginPasswordInput").value;
 
       if(!name || !password){
-        showMsg("loginMsg","bitte Name und Passwort eingeben");
+        showMsg("loginMsg","bitte name und passwort eingeben");
         return;
       }
 
       const email = usernameToEmail(name);
 
       try{
-        const { data,error } = await sb.auth.signInWithPassword({email,password});
+        const { data, error } = await sb.auth.signInWithPassword({email,password});
         if(error) throw error;
 
         const profile = await loadProfile(data.user.id);
@@ -1760,7 +1767,7 @@
       }
 
       if(!name || !pw1 || !pw2){
-        showMsg("createAccountMsg","bitte alle Felder ausfüllen");
+        showMsg("createAccountMsg","bitte alle felder ausfüllen");
         return;
       }
 
@@ -1773,7 +1780,7 @@
       const email = usernameToEmail(name);
 
       try{
-        const { data,error } = await sb.auth.signUp({email,password:pw1});
+        const { data, error } = await sb.auth.signUp({email,password:pw1});
         if(error) throw error;
 
         if(!data.user){
@@ -1905,7 +1912,11 @@
     }
 
     async function logoutUser(){
-      try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
+      try{
+        await sb.auth.signOut();
+      }catch(err){
+        console.error(err);
+      }
       currentUserName = "";
       currentProfile = null;
       isAdmin = false;
@@ -1923,11 +1934,11 @@
       accountTitle.textContent = "passwort ändern";
       accountBody.innerHTML = `
         <div class="grid">
-          <div class="label">altes Passwort:</div>
+          <div class="label">altes passwort:</div>
           <input id="oldPasswordInput" type="password" />
-          <div class="label">neues Passwort:</div>
+          <div class="label">neues passwort:</div>
           <input id="newPasswordInput" type="password" />
-          <div class="label">Wiederholung:</div>
+          <div class="label">wiederholung:</div>
           <input id="newPasswordRepeatInput" type="password" />
         </div>
         <div id="changePasswordMsg" class="msg">meldung</div>
@@ -1951,7 +1962,7 @@
       }
 
       if(!newPw || newPw !== rep){
-        showMsg("changePasswordMsg","neue Passwörter stimmen nicht überein");
+        showMsg("changePasswordMsg","neue passwörter stimmen nicht überein");
         return;
       }
 
@@ -1967,12 +1978,12 @@
         setTimeout(closeAccountOverlay,800);
       }catch(err){
         console.error(err);
-        showMsg("changePasswordMsg","altes Passwort falsch");
+        showMsg("changePasswordMsg","altes passwort falsch");
       }
     }
 
     async function deleteOwnAccount(){
-      const ok = confirm("Account wirklich löschen?");
+      const ok = confirm("account wirklich löschen?");
       if(!ok) return;
       try{
         if(currentProfile){
@@ -2002,7 +2013,7 @@
         if(error) throw error;
         const accounts = data || [];
         if(accounts.length === 0){
-          addEmptyListMessage("keine Accounts vorhanden");
+          addEmptyListMessage("keine accounts vorhanden");
           return;
         }
         accounts.forEach(account => {
@@ -2054,7 +2065,7 @@
       }
 
       if(action === "delete"){
-        const ok = confirm("Account wirklich aus der Profilliste löschen?");
+        const ok = confirm("account wirklich aus der profilliste löschen?");
         if(!ok) return;
         try{
           const {error} = await sb.from("user_profiles").delete().eq("id",id);
@@ -2198,17 +2209,17 @@
       const codeReadonly = (isAdmin && codeIsVisible) ? "" : "readonly";
 
       modalBody.innerHTML = `
-        <div class="label">Nummer</div>
+        <div class="label">nummer</div>
         <input type="text" id="bikeNumberInput" ${adminReadonly} value="${escapeHtml(entry.bikeNumber)}" />
-        <div class="label">Name</div>
+        <div class="label">name</div>
         <input type="text" id="bikeNameInput" ${adminReadonly} value="${escapeHtml(entry.bikeName)}" />
-        <div class="label">Farbe</div>
+        <div class="label">farbe</div>
         <input type="text" id="bikeColorInput" ${adminReadonly} value="${escapeHtml(entry.bikeColor)}" />
-        <div class="label">Bemerkung</div>
+        <div class="label">bemerkung</div>
         <input type="text" id="bikeRemarkInput" value="${escapeHtml(entry.bikeRemark)}" />
-        <div class="label">Schlosscode</div>
+        <div class="label">schlosscode</div>
         <input type="text" id="bikeCodeInput" ${codeReadonly} value="${escapeHtml(displayedCode)}" />
-        <div class="label">Status</div>
+        <div class="label">status</div>
         <input type="text" id="bikeStatusInput" class="${statusClassForBike(entry)}" readonly value="${escapeHtml(statusText)}" />
       `;
 
@@ -2286,8 +2297,10 @@
 
       const loanBtn = document.getElementById("bikeLoanBtn");
       if(loanBtn) loanBtn.addEventListener("click",() => borrowBike(entry),{once:true});
+
       const returnBtn = document.getElementById("bikeReturnBtn");
       if(returnBtn) returnBtn.addEventListener("click",() => returnBike(entry),{once:true});
+
       const maintenanceBtn = document.getElementById("bikeMaintenanceBtn");
       if(maintenanceBtn) maintenanceBtn.addEventListener("click",() => toggleMaintenanceBike(entry),{once:true});
 
@@ -2501,7 +2514,7 @@
       const input = document.getElementById("chatTextInput");
       const message = input.value.trim();
       if(message.length > 144){
-        showStatus("maximal 144 Zeichen");
+        showStatus("maximal 144 zeichen");
         return;
       }
       if(!message && !selectedPhotoData) return;
@@ -2551,7 +2564,7 @@
         showStatus("nur admin");
         return;
       }
-      const ok = confirm("Chat wirklich leeren?");
+      const ok = confirm("chat wirklich leeren?");
       if(!ok) return;
       try{
         await dbClearChat();
@@ -2596,13 +2609,11 @@
     sb.channel("profiles-realtime")
       .on("postgres_changes",{event:"*",schema:"public",table:"user_profiles"},async payload => {
         if(!currentProfile || !currentProfile.id) return;
-
         if(payload.eventType === "UPDATE" && payload.new && payload.new.id === currentProfile.id){
           if(payload.new.locked){
             await forceLogoutToLogin("account gesperrt");
           }
         }
-
         if(payload.eventType === "DELETE" && payload.old && payload.old.id === currentProfile.id){
           await forceLogoutToLogin("account gelöscht");
         }
