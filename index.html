@@ -1006,11 +1006,8 @@
   </div>
 
   <script>
-    /************************************************************
-     * supabase und globale zustände
-     ************************************************************/
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
-    const SUPABASE_ANON_KEY = "DEIN_SUPABASE_ANON_KEY_HIER";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
 
     const ADMIN_PASSWORD = "eseldraht";
     const CREATE_ACCOUNT_SECRET = "drahtesel";
@@ -1034,14 +1031,10 @@
     const markers = new Map();
     const renderedChatMessages = new Set();
 
-    /************************************************************
-     * karte
-     ************************************************************/
     const map = L.map("map", { center:KASSEL_CENTER, zoom:DEFAULT_ZOOM });
 
     map.createPane("stationPane");
     map.getPane("stationPane").style.zIndex = 380;
-
     map.createPane("bikePane");
     map.getPane("bikePane").style.zIndex = 420;
 
@@ -1063,19 +1056,13 @@
         return btn;
       }
     });
-
     map.addControl(new LocateControl());
 
     let locationMarker = null;
 
     map.on("locationfound", e => {
       if(!locationMarker){
-        locationMarker = L.circleMarker(e.latlng, {
-          radius:10,
-          color:"#ff0000",
-          weight:3,
-          fillOpacity:0
-        }).addTo(map);
+        locationMarker = L.circleMarker(e.latlng, {radius:10,color:"#ff0000",weight:3,fillOpacity:0}).addTo(map);
       }else{
         locationMarker.setLatLng(e.latlng);
       }
@@ -1083,9 +1070,6 @@
 
     map.on("locationerror", () => showStatus("standort nicht verfügbar"));
 
-    /************************************************************
-     * account / auth
-     ************************************************************/
     function usernameKey(name){
       return String(name || "").trim().toLowerCase();
     }
@@ -1175,16 +1159,11 @@
     }
 
     window.addEventListener("focus", checkOwnProfileStillValid);
-
     document.addEventListener("visibilitychange", () => {
       if(!document.hidden) checkOwnProfileStillValid();
     });
-
     setInterval(checkOwnProfileStillValid, 15000);
 
-    /************************************************************
-     * hilfsfunktionen
-     ************************************************************/
     function showMsg(id, text, ok=false){
       const el = document.getElementById(id);
       el.textContent = text;
@@ -1219,77 +1198,18 @@
 
     function formatDateTime(value){
       const d = new Date(value);
-      return d.toLocaleString("de-DE", {
-        day:"2-digit",
-        month:"2-digit",
-        year:"2-digit",
-        hour:"2-digit",
-        minute:"2-digit"
-      }).toLowerCase();
+      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}).toLowerCase();
     }
 
     function formatSystemMessageDateTime(){
       const d = new Date();
-      return d.toLocaleString("de-DE", {
-        day:"2-digit",
-        month:"2-digit",
-        year:"2-digit",
-        hour:"2-digit",
-        minute:"2-digit"
-      });
+      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
     }
 
-    /************************************************************
-     * marker-datenbank
-     ************************************************************/
-    async function dbLoadAllMarkers(){
-      const { data, error } = await sb.from("markers").select("*").order("created_at", {ascending:true});
-      if(error) throw error;
-      return data || [];
-    }
-
-    async function dbInsertMarker(type, lat, lng){
-      const payload = {
-        type,
-        lat,
-        lng,
-        bike_number:"",
-        name:"natebike",
-        color:"undefiniert",
-        remark:"keine",
-        code:"",
-        content:" ",
-        status:"verfügbar",
-        is_rented:false,
-        photo_url:null
-      };
-
-      const { data, error } = await sb.from("markers").insert(payload).select().single();
-      if(error) throw error;
-      return data;
-    }
-
-    async function dbUpdateMarker(id, patch){
-      const { error } = await sb.from("markers").update(patch).eq("id", id);
-      if(error) throw error;
-    }
-
-    async function dbDeleteMarker(id){
-      const { error } = await sb.from("markers").delete().eq("id", id);
-      if(error) throw error;
-    }
-
-    /************************************************************
-     * marker-logik
-     ************************************************************/
     function bikeSortValue(value){
       const text = String(value ?? "").trim();
       const number = Number(text);
-      return {
-        isNumber:text !== "" && Number.isFinite(number),
-        number,
-        text
-      };
+      return { isNumber:text !== "" && Number.isFinite(number), number, text };
     }
 
     function sortBikeEntries(a,b){
@@ -1343,9 +1263,42 @@
       return entry.type === "bike" ? bikeIcon(entry) : stationIcon(entry);
     }
 
+    async function dbLoadAllMarkers(){
+      const { data, error } = await sb.from("markers").select("*").order("created_at", {ascending:true});
+      if(error) throw error;
+      return data || [];
+    }
+
+    async function dbInsertMarker(type, lat, lng){
+      const payload = {
+        type,lat,lng,
+        bike_number:"",
+        name:"natebike",
+        color:"undefiniert",
+        remark:"keine",
+        code:"",
+        content:" ",
+        status:"verfügbar",
+        is_rented:false,
+        photo_url:null
+      };
+      const { data, error } = await sb.from("markers").insert(payload).select().single();
+      if(error) throw error;
+      return data;
+    }
+
+    async function dbUpdateMarker(id, patch){
+      const { error } = await sb.from("markers").update(patch).eq("id", id);
+      if(error) throw error;
+    }
+
+    async function dbDeleteMarker(id){
+      const { error } = await sb.from("markers").delete().eq("id", id);
+      if(error) throw error;
+    }
+
     function rowToEntry(row){
       const status = row.status ?? "verfügbar";
-
       return {
         id:row.id,
         type:row.type,
@@ -1367,27 +1320,15 @@
 
     function addOrUpdateMarker(row){
       let entry = markers.get(row.id);
-
       if(!entry){
         entry = rowToEntry(row);
         const pane = entry.type === "bike" ? "bikePane" : "stationPane";
-
-        entry.marker = L.marker([entry.lat,entry.lng], {
-          icon:iconForEntry(entry),
-          draggable:true,
-          pane,
-          autoPan:true,
-          autoPanPadding:L.point(70,70),
-          autoPanSpeed:12
-        }).addTo(map);
-
+        entry.marker = L.marker([entry.lat,entry.lng], {icon:iconForEntry(entry),draggable:true,pane}).addTo(map);
         if(entry.marker.dragging) entry.marker.dragging.disable();
-
         markers.set(entry.id,entry);
         wireMarker(entry);
       }else{
         const status = row.status ?? "verfügbar";
-
         entry.type = row.type;
         entry.lat = row.lat;
         entry.lng = row.lng;
@@ -1399,28 +1340,20 @@
         entry.content = row.content ?? "";
         entry.status = status;
         entry.isRented = status !== "verfügbar" ? true : !!row.is_rented;
-
-        if(!entry.isMoving){
-          entry.marker.setLatLng([entry.lat,entry.lng]);
-        }
-
+        if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
         entry.marker.setIcon(iconForEntry(entry));
       }
-
       return entry;
     }
 
     async function loadMarkersOnce(){
       if(markersLoaded) return;
-
       const rows = await dbLoadAllMarkers();
-
       rows.forEach(row => {
         if(row.type === "bike" || row.type === "note"){
           addOrUpdateMarker(row);
         }
       });
-
       markersLoaded = true;
     }
 
@@ -1430,36 +1363,23 @@
 
     function wireMarker(entry){
       const marker = entry.marker;
-
       marker.on("click", e => {
         L.DomEvent.stop(e);
-
-        /* während des verschiebens keine markerfenster öffnen */
         if(moveModeEntry) return;
-
         entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
       });
-
       marker.on("contextmenu", e => {
         L.DomEvent.stop(e);
-
-        /* rechtsklickmenü auf marker nur im admin-modus */
-        if(!isAdmin) return;
-
+        if(entry.type === "note" && !isAdmin) return;
         openMarkerMenu(e.originalEvent, entry);
       });
-
       marker.on("dragstart", () => map.dragging.disable());
-
       marker.on("dragend", () => {
         map.dragging.enable();
-
         if(moveModeEntry !== entry) return;
-
         const ll = marker.getLatLng();
         entry.lat = ll.lat;
         entry.lng = ll.lng;
-
         showStatus("zum abschließen auf karte klicken");
       });
     }
@@ -1467,7 +1387,6 @@
     function pulseEntry(entry){
       entry.isPulsing = true;
       entry.marker.setIcon(iconForEntry(entry));
-
       setTimeout(() => {
         entry.isPulsing = false;
         entry.marker.setIcon(iconForEntry(entry));
@@ -1476,16 +1395,11 @@
 
     function startMoveMode(entry){
       if(!entry) return;
-
       moveModeEntry = entry;
       entry.isMoving = true;
       entry.marker.setIcon(iconForEntry(entry));
+      if(entry.marker.dragging) entry.marker.dragging.enable();
 
-      if(entry.marker.dragging){
-        entry.marker.dragging.enable();
-      }
-
-      /* verhindert sofortiges speichern auf mobilen geräten */
       ignoreMapClickUntil = Date.now() + 800;
 
       showStatus("marker verschieben, dann auf karte klicken");
@@ -1493,22 +1407,15 @@
 
     async function finishMoveMode(){
       if(!moveModeEntry) return;
-
       const entry = moveModeEntry;
       const ll = entry.marker.getLatLng();
-
       try{
         await dbUpdateMarker(entry.id, {lat:ll.lat,lng:ll.lng});
-
         entry.lat = ll.lat;
         entry.lng = ll.lng;
         entry.isMoving = false;
         moveModeEntry = null;
-
-        if(entry.marker.dragging){
-          entry.marker.dragging.disable();
-        }
-
+        if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.setIcon(iconForEntry(entry));
         showStatus("position gespeichert");
       }catch(err){
@@ -1520,7 +1427,6 @@
     function getCurrentDeviceLatLng(timeoutMs=6000){
       return new Promise(resolve => {
         let done = false;
-
         function finish(value){
           if(done) return;
           done = true;
@@ -1528,29 +1434,45 @@
           map.off("locationerror", onError);
           resolve(value);
         }
-
         function onFound(e){ finish(e.latlng); }
         function onError(){ finish(null); }
-
         map.on("locationfound", onFound);
         map.on("locationerror", onError);
-
-        map.locate({
-          setView:false,
-          enableHighAccuracy:true,
-          timeout:timeoutMs,
-          maximumAge:0
-        });
-
+        map.locate({setView:false,enableHighAccuracy:true,timeout:timeoutMs,maximumAge:0});
         setTimeout(() => finish(null), timeoutMs+1000);
       });
     }
 
-    /************************************************************
-     * ausleihen, zurückgeben, wartung
-     ************************************************************/
     function borrowedStatusText(){
       return `von ${currentUserName} ausgeliehen`;
+    }
+
+    async function dbInsertSystemChatMessage(message){
+      const payload = {user_name:"system",message,photo_data:null};
+      const { data, error } = await sb.from("chat_messages").insert(payload).select().single();
+      if(error) throw error;
+      return data;
+    }
+
+    async function borrowBike(entry){
+      const newStatus = borrowedStatusText();
+      try{
+        await dbUpdateMarker(entry.id,{status:newStatus,is_rented:true});
+        entry.status = newStatus;
+        entry.isRented = true;
+        entry.marker.setIcon(iconForEntry(entry));
+        const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
+        const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
+        const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
+        renderChatMessage(savedSystemMessage);
+        scrollChatBottom();
+        revealedBikeCodeId = entry.id;
+        openBikeWindow(entry);
+        showStatus("natebike ausgeliehen");
+      }catch(err){
+        console.error(err);
+        showStatus("ausleihen fehlgeschlagen");
+      }
     }
 
     function getBorrowerFromStatus(status){
@@ -1561,50 +1483,8 @@
 
     function currentUserMayReturnBike(entry){
       if(isAdmin) return true;
-      return getBorrowerFromStatus(entry.status) === currentUserName;
-    }
-
-    async function dbInsertSystemChatMessage(message){
-      const payload = {
-        user_name:"system",
-        message,
-        photo_data:null
-      };
-
-      const { data, error } = await sb.from("chat_messages").insert(payload).select().single();
-      if(error) throw error;
-
-      return data;
-    }
-
-    async function borrowBike(entry){
-      const newStatus = borrowedStatusText();
-
-      try{
-        await dbUpdateMarker(entry.id,{
-          status:newStatus,
-          is_rented:true
-        });
-
-        entry.status = newStatus;
-        entry.isRented = true;
-        entry.marker.setIcon(iconForEntry(entry));
-
-        const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
-        const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
-        const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
-
-        renderChatMessage(savedSystemMessage);
-        scrollChatBottom();
-
-        revealedBikeCodeId = entry.id;
-        openBikeWindow(entry);
-
-        showStatus("natebike ausgeliehen");
-      }catch(err){
-        console.error(err);
-        showStatus("ausleihen fehlgeschlagen");
-      }
+      const borrower = getBorrowerFromStatus(entry.status);
+      return borrower === currentUserName;
     }
 
     async function returnBike(entry){
@@ -1614,14 +1494,11 @@
       }
 
       const returnBtn = document.getElementById("bikeReturnBtn");
-
       if(returnBtn){
         returnBtn.classList.add("isReturning");
         returnBtn.dataset.returning = "true";
       }
-
       const choice = await openReturnChoiceDialog();
-
       if(choice === "cancel"){
         if(returnBtn){
           returnBtn.classList.remove("isReturning");
@@ -1629,58 +1506,40 @@
         }
         return;
       }
-
       if(choice === "manual") closeModal();
-
       try{
-        const patch = {
-          status:"verfügbar",
-          is_rented:false
-        };
-
+        const patch = {status:"verfügbar",is_rented:false};
         if(choice === "auto"){
           const ll = await getCurrentDeviceLatLng();
-
           if(!ll){
             showStatus("standort nicht verfügbar");
-
             if(returnBtn){
               returnBtn.classList.remove("isReturning");
               delete returnBtn.dataset.returning;
             }
-
             return;
           }
-
           patch.lat = ll.lat;
           patch.lng = ll.lng;
-
           entry.lat = ll.lat;
           entry.lng = ll.lng;
           entry.marker.setLatLng([ll.lat,ll.lng]);
         }
-
         await dbUpdateMarker(entry.id,patch);
-
         entry.status = "verfügbar";
         entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
-
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
         const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
-
         renderChatMessage(savedSystemMessage);
         scrollChatBottom();
-
         if(choice === "auto") closeModal();
         if(choice === "manual") startMoveMode(entry);
-
         showStatus("natebike zurückgegeben");
       }catch(err){
         console.error(err);
         showStatus("zurückgeben fehlgeschlagen");
-
         if(returnBtn){
           returnBtn.classList.remove("isReturning");
           delete returnBtn.dataset.returning;
@@ -1693,23 +1552,15 @@
         showStatus("nur admin");
         return;
       }
-
       const currentStatus = entry.status || "verfügbar";
       const nextStatus = currentStatus === "nicht verfügbar" ? "verfügbar" : "nicht verfügbar";
-
       try{
-        await dbUpdateMarker(entry.id,{
-          status:nextStatus,
-          is_rented:nextStatus !== "verfügbar"
-        });
-
+        await dbUpdateMarker(entry.id,{status:nextStatus,is_rented:nextStatus !== "verfügbar"});
         entry.status = nextStatus;
         entry.isRented = nextStatus !== "verfügbar";
         entry.marker.setIcon(iconForEntry(entry));
-
         closeModal();
         openBikeWindow(entry);
-
         showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
       }catch(err){
         console.error(err);
@@ -1723,7 +1574,6 @@
         const autoBtn = document.getElementById("returnAutoBtn");
         const manualBtn = document.getElementById("returnManualBtn");
         const cancelX = document.getElementById("returnCancelX");
-
         function close(value){
           overlay.style.display = "none";
           autoBtn.removeEventListener("click", onAuto);
@@ -1732,27 +1582,18 @@
           overlay.removeEventListener("click", onOverlay);
           resolve(value);
         }
-
         function onAuto(){ close("auto"); }
         function onManual(){ close("manual"); }
         function onCancel(){ close("cancel"); }
-
-        function onOverlay(e){
-          if(e.target === overlay) close("cancel");
-        }
-
+        function onOverlay(e){ if(e.target === overlay) close("cancel"); }
         autoBtn.addEventListener("click", onAuto);
         manualBtn.addEventListener("click", onManual);
         cancelX.addEventListener("click", onCancel);
         overlay.addEventListener("click", onOverlay);
-
         overlay.style.display = "flex";
       });
     }
 
-    /************************************************************
-     * menü und listen
-     ************************************************************/
     const menuBtn = document.getElementById("menuBtn");
     const dropdownMenu = document.getElementById("dropdownMenu");
 
@@ -1770,9 +1611,7 @@
     document.querySelectorAll(".dropdown-item").forEach(item => {
       item.addEventListener("click", () => {
         const kind = item.dataset.kind;
-
         dropdownMenu.style.display = "none";
-
         if(kind === "bikes") showBikeList();
         if(kind === "notes") showNoteList();
         if(kind === "chat") openChat();
@@ -1798,28 +1637,21 @@
       const row = document.createElement("div");
       row.className = extraClass ? `list-item ${extraClass}` : "list-item";
       row.textContent = text;
-
       row.addEventListener("click", () => {
         document.getElementById("listOverlay").style.display = "none";
         map.setView([entry.lat,entry.lng],17);
         pulseEntry(entry);
       });
-
       document.getElementById("listItems").appendChild(row);
     }
 
     function showBikeList(){
-      const bikes = Array.from(markers.values())
-        .filter(e => e.type === "bike")
-        .sort(sortBikeEntries);
-
+      const bikes = Array.from(markers.values()).filter(e => e.type === "bike").sort(sortBikeEntries);
       openList("natebikes");
-
       if(bikes.length === 0){
         addEmptyListMessage("keine fahrräder gefunden");
         return;
       }
-
       bikes.forEach(entry => {
         const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
         addListRow(line || "(ohne nummer/name)", entry, statusClassForBike(entry));
@@ -1827,17 +1659,12 @@
     }
 
     function showNoteList(){
-      const notes = Array.from(markers.values())
-        .filter(e => e.type === "note")
-        .sort((a,b) => Number(a.lng)-Number(b.lng));
-
+      const notes = Array.from(markers.values()).filter(e => e.type === "note").sort((a,b) => Number(a.lng)-Number(b.lng));
       openList("natebikestationen");
-
       if(notes.length === 0){
         addEmptyListMessage("keine stationen gefunden");
         return;
       }
-
       notes.forEach(entry => {
         const line = String(entry.content || "").trim();
         addListRow(line || "(ohne inhalt)", entry);
@@ -1854,9 +1681,6 @@
       }
     });
 
-    /************************************************************
-     * login und account-erstellung
-     ************************************************************/
     const loginFrame = document.getElementById("loginFrame");
     const accountCreateFrame = document.getElementById("accountCreateFrame");
     const mapFrame = document.getElementById("mapFrame");
@@ -1878,7 +1702,6 @@
         if(error) throw error;
 
         const profile = await loadProfile(data.user.id);
-
         if(profile.locked){
           await sb.auth.signOut();
           showMsg("loginMsg","account gesperrt");
@@ -1887,14 +1710,12 @@
 
         currentProfile = profile;
         currentUserName = profile.display_name || profile.username;
-
         hideMsg("loginMsg");
 
         loginFrame.style.display = "none";
         accountCreateFrame.style.display = "none";
         mapFrame.style.display = "block";
         headerActions.style.display = "flex";
-
         updateAdminUI();
 
         setTimeout(() => {
@@ -1978,7 +1799,6 @@
       }catch(err){
         console.error(err);
         const msg = String(err.message || "").toLowerCase();
-
         if(msg.includes("registered") || msg.includes("duplicate") || msg.includes("unique")){
           showMsg("createAccountMsg","benutzername bereits vergeben");
         }else{
@@ -1995,9 +1815,6 @@
     document.getElementById("createAccountBtn").addEventListener("click",createAccount);
     document.getElementById("createSecretInput").addEventListener("keydown",e => {if(e.key === "Enter") createAccount();});
 
-    /************************************************************
-     * admin
-     ************************************************************/
     const adminBtn = document.getElementById("adminBtn");
     const adminOverlay = document.getElementById("adminOverlay");
     const adminPwInput = document.getElementById("adminPwInput");
@@ -2005,11 +1822,9 @@
 
     function updateAdminUI(){
       adminBtn.classList.toggle("isAdmin",isAdmin);
-
       document.querySelectorAll(".adminOnly").forEach(el => {
         el.style.display = isAdmin ? "block" : "none";
       });
-
       const clearChatBtn = document.getElementById("clearChatBtn");
       if(clearChatBtn) clearChatBtn.style.display = isAdmin ? "inline-block" : "none";
     }
@@ -2027,12 +1842,10 @@
 
     function confirmAdmin(){
       const value = (adminPwInput.value || "").trim();
-
       if(value !== ADMIN_PASSWORD){
         adminMsg.style.display = "block";
         return;
       }
-
       isAdmin = true;
       updateAdminUI();
       closeAdminModal();
@@ -2054,9 +1867,6 @@
     document.getElementById("adminCloseBtn").addEventListener("click",closeAdminModal);
     adminOverlay.addEventListener("click",e => {if(e.target === adminOverlay) closeAdminModal();});
 
-    /************************************************************
-     * account verwalten
-     ************************************************************/
     const accountOverlay = document.getElementById("accountOverlay");
     const accountTitle = document.getElementById("accountTitle");
     const accountBody = document.getElementById("accountBody");
@@ -2103,14 +1913,11 @@
 
       updateAdminUI();
       closeAccountOverlay();
-
       headerActions.style.display = "none";
       mapFrame.style.display = "none";
       loginFrame.style.display = "grid";
-
       document.getElementById("loginNameInput").value = "";
       document.getElementById("loginPasswordInput").value = "";
-
       showStatus("ausgeloggt");
     }
 
@@ -2169,71 +1976,56 @@
     async function deleteOwnAccount(){
       const ok = confirm("account wirklich löschen?");
       if(!ok) return;
-
       try{
         if(currentProfile){
           await sb.from("user_profiles").delete().eq("id",currentProfile.id);
         }
-
         await sb.auth.signOut();
       }catch(err){
         console.error(err);
       }
-
       currentProfile = null;
       currentUserName = "";
       isAdmin = false;
+      markersLoaded = false;
 
       updateAdminUI();
       closeAccountOverlay();
-
       headerActions.style.display = "none";
       mapFrame.style.display = "none";
       loginFrame.style.display = "grid";
-
       document.getElementById("loginNameInput").value = "";
       document.getElementById("loginPasswordInput").value = "";
-
       showMsg("loginMsg","account gelöscht",true);
     }
 
     async function openAllAccountsManage(){
       openList("alle accounts");
-
       try{
         const { data,error } = await sb.from("user_profiles").select("*").order("username",{ascending:true});
         if(error) throw error;
-
         const accounts = data || [];
-
         if(accounts.length === 0){
           addEmptyListMessage("keine accounts vorhanden");
           return;
         }
-
         accounts.forEach(account => {
           const row = document.createElement("div");
           row.className = account.locked ? "list-item accountRow locked" : "list-item accountRow";
           row.textContent = account.locked ? `${account.display_name} (gesperrt)` : account.display_name;
           row.dataset.id = account.id;
-
           row.addEventListener("contextmenu",e => {
             if(!isAdmin) return;
-
             e.preventDefault();
             e.stopPropagation();
-
             ctxAccountId = account.id;
-
             const lockToggleItem = document.getElementById("accountLockToggleItem");
             lockToggleItem.textContent = account.locked ? "account entsperren" : "account sperren";
-
             const menu = document.getElementById("ctxMenuAccount");
             menu.style.left = `${e.clientX}px`;
             menu.style.top = `${e.clientY}px`;
             menu.style.display = "block";
           });
-
           document.getElementById("listItems").appendChild(row);
         });
       }catch(err){
@@ -2244,25 +2036,19 @@
 
     document.getElementById("ctxMenuAccount").addEventListener("pointerdown",async e => {
       e.stopPropagation();
-
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxAccountId) return;
-
       const action = item.dataset.action;
       const id = ctxAccountId;
-
       hideContextMenus();
 
       if(action === "toggleLock"){
         try{
           const {data:profile,error:loadErr} = await sb.from("user_profiles").select("*").eq("id",id).single();
           if(loadErr) throw loadErr;
-
           const nextLockedState = !profile.locked;
-
           const {error} = await sb.from("user_profiles").update({locked:nextLockedState}).eq("id",id);
           if(error) throw error;
-
           showStatus(nextLockedState ? "account gesperrt" : "account entsperrt");
           openAllAccountsManage();
         }catch(err){
@@ -2274,11 +2060,9 @@
       if(action === "delete"){
         const ok = confirm("account wirklich aus der profilliste löschen?");
         if(!ok) return;
-
         try{
           const {error} = await sb.from("user_profiles").delete().eq("id",id);
           if(error) throw error;
-
           showStatus("account gelöscht");
           openAllAccountsManage();
         }catch(err){
@@ -2288,9 +2072,6 @@
       }
     });
 
-    /************************************************************
-     * kontextmenüs
-     ************************************************************/
     const ctxMenuMap = document.getElementById("ctxMenuMap");
     const ctxMenuMarker = document.getElementById("ctxMenuMarker");
     const ctxMenuChat = document.getElementById("ctxMenuChat");
@@ -2314,9 +2095,7 @@
 
     map.on("contextmenu",e => {
       if(!isAdmin) return;
-
       hideContextMenus();
-
       ctxMapLatLng = e.latlng;
       ctxMenuMap.style.left = `${e.originalEvent.clientX}px`;
       ctxMenuMap.style.top = `${e.originalEvent.clientY}px`;
@@ -2330,16 +2109,7 @@
         await finishMoveMode();
         return;
       }
-
       hideContextMenus();
-    });
-
-    map.on("contextmenu",async() => {
-      if(Date.now() < ignoreMapClickUntil) return;
-
-      if(moveModeEntry){
-        await finishMoveMode();
-      }
     });
 
     map.on("movestart",hideContextMenus);
@@ -2357,22 +2127,17 @@
 
     ctxMenuMap.addEventListener("pointerdown",async e => {
       e.stopPropagation();
-
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxMapLatLng) return;
-
       const action = item.dataset.action;
       const latlng = ctxMapLatLng;
-
       hideContextMenus();
-
       try{
         if(action === "bike"){
           const row = await dbInsertMarker("bike",latlng.lat,latlng.lng);
           addOrUpdateMarker(row);
           showStatus("rad hinzugefügt");
         }
-
         if(action === "note"){
           const row = await dbInsertMarker("note",latlng.lat,latlng.lng);
           addOrUpdateMarker(row);
@@ -2386,9 +2151,7 @@
 
     function openMarkerMenu(mouseEvent,entry){
       hideContextMenus();
-
       ctxMarkerEntry = entry;
-
       ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
       ctxMenuMarker.style.top = `${mouseEvent.clientY}px`;
       ctxMenuMarker.style.display = "block";
@@ -2396,27 +2159,15 @@
 
     ctxMenuMarker.addEventListener("pointerdown",e => {
       e.stopPropagation();
-
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxMarkerEntry) return;
-
       const action = item.dataset.action;
       const entry = ctxMarkerEntry;
-
       hideContextMenus();
-
-      if(action === "open"){
-        entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
-      }
-
-      if(action === "move"){
-        startMoveMode(entry);
-      }
+      if(action === "open") entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
+      if(action === "move") startMoveMode(entry);
     });
 
-    /************************************************************
-     * modale markerfenster
-     ************************************************************/
     const modalOverlay = document.getElementById("modalOverlay");
     const modalTitle = document.getElementById("modalTitle");
     const modalBody = document.getElementById("modalBody");
@@ -2442,7 +2193,6 @@
 
     function openBikeWindow(entry){
       modalTitle.textContent = "geparktes fahrrad";
-
       const adminReadonly = isAdmin ? "" : "readonly";
       const statusText = entry.status || "verfügbar";
       const isAvailable = statusText === "verfügbar";
@@ -2469,9 +2219,7 @@
       `;
 
       let loanButtonHtml = "";
-
       if(isAvailable) loanButtonHtml = `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`;
-
       if(isBorrowed && currentUserMayReturnBike(entry)) {
         loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
       }
@@ -2497,19 +2245,15 @@
             color:document.getElementById("bikeColorInput").value.trim(),
             remark:document.getElementById("bikeRemarkInput").value.trim()
           };
-
           if(codeIsVisible) patch.code = document.getElementById("bikeCodeInput").value.trim();
 
           try{
             await dbUpdateMarker(entry.id,patch);
-
             entry.bikeNumber = patch.bike_number;
             entry.bikeName = patch.name;
             entry.bikeColor = patch.color;
             entry.bikeRemark = patch.remark;
-
             if(codeIsVisible) entry.bikeCode = patch.code;
-
             entry.marker.setIcon(iconForEntry(entry));
             closeModal();
           }catch(err){
@@ -2534,10 +2278,8 @@
           ${loanButtonHtml}
           <button class="btn" id="bikeRemarkSaveBtn" type="button">speichern</button>
         `;
-
         document.getElementById("bikeRemarkSaveBtn").addEventListener("click",async() => {
           const newRemark = document.getElementById("bikeRemarkInput").value.trim();
-
           try{
             await dbUpdateMarker(entry.id,{remark:newRemark});
             entry.bikeRemark = newRemark;
@@ -2570,26 +2312,21 @@
 
     function currentUserMayReturnBike(entry){
       if(isAdmin) return true;
-      return getBorrowerFromStatus(entry.status) === currentUserName;
+      const borrower = getBorrowerFromStatus(entry.status);
+      return borrower === currentUserName;
     }
 
     function openStationWindow(entry){
       modalTitle.textContent = "natebikestation";
       const readonly = isAdmin ? "" : "readonly";
-
-      modalBody.innerHTML = `
-        <textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>
-      `;
-
+      modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>`;
       if(isAdmin){
         modalFooter.innerHTML = `
           <button class="btn" id="stationSaveBtn" type="button">speichern</button>
           <button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>
         `;
-
         document.getElementById("stationSaveBtn").addEventListener("click",async() => {
           const content = document.getElementById("stationContentInput").value.trim();
-
           try{
             await dbUpdateMarker(entry.id,{content});
             entry.content = content;
@@ -2599,7 +2336,6 @@
             showStatus("speichern fehlgeschlagen");
           }
         },{once:true});
-
         document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
           try{
             await dbDeleteMarker(entry.id);
@@ -2612,31 +2348,17 @@
           }
         },{once:true});
       }
-
       openModal();
     }
 
-    /************************************************************
-     * chat
-     ************************************************************/
     async function dbLoadChatMessages(){
-      const {data,error} = await sb
-        .from("chat_messages")
-        .select("*")
-        .order("created_at",{ascending:true})
-        .limit(300);
-
+      const {data,error} = await sb.from("chat_messages").select("*").order("created_at",{ascending:true}).limit(300);
       if(error) throw error;
       return data || [];
     }
 
     async function dbInsertChatMessage(message,photoData){
-      const payload = {
-        user_name:currentUserName,
-        message:message || "",
-        photo_data:photoData || null
-      };
-
+      const payload = {user_name:currentUserName,message:message || "",photo_data:photoData || null};
       const {data,error} = await sb.from("chat_messages").insert(payload).select().single();
       if(error) throw error;
       return data;
@@ -2679,7 +2401,6 @@
     function renderChatMessage(row){
       if(!row || !row.id) return;
       if(renderedChatMessages.has(row.id)) return;
-
       renderedChatMessages.add(row.id);
 
       const isSystemMessage = row.user_name === "system";
@@ -2739,8 +2460,7 @@
     });
 
     document.getElementById("chatTextInput").addEventListener("input",() => {
-      document.getElementById("charCount").textContent =
-        document.getElementById("chatTextInput").value.length;
+      document.getElementById("charCount").textContent = document.getElementById("chatTextInput").value.length;
     });
 
     document.getElementById("photoBtn").addEventListener("click",() => document.getElementById("photoInput").click());
@@ -2748,7 +2468,6 @@
     document.getElementById("photoInput").addEventListener("change",async e => {
       const file = e.target.files && e.target.files[0];
       if(!file) return;
-
       try{
         selectedPhotoData = await resizeImageToDataUrl(file,200,200);
         document.getElementById("photoPreviewImg").src = selectedPhotoData;
@@ -2803,22 +2522,17 @@
     async function sendChatMessage(){
       const input = document.getElementById("chatTextInput");
       const message = input.value.trim();
-
       if(message.length > 144){
         showStatus("maximal 144 zeichen");
         return;
       }
-
       if(!message && !selectedPhotoData) return;
-
       try{
         const savedMessage = await dbInsertChatMessage(message,selectedPhotoData);
         renderChatMessage(savedMessage);
         scrollChatBottom();
-
         input.value = "";
         document.getElementById("charCount").textContent = "0";
-
         selectedPhotoData = null;
         document.getElementById("photoInput").value = "";
         document.getElementById("photoPreview").style.display = "none";
@@ -2833,18 +2547,14 @@
       e.stopPropagation();
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxChatMessageId) return;
-
       const id = ctxChatMessageId;
       const action = item.dataset.action;
-
       hideContextMenus();
-
       if(action === "delete"){
         if(!isAdmin){
           showStatus("nur admin");
           return;
         }
-
         try{
           await dbDeleteChatMessage(id);
           removeChatMessageFromView(id);
@@ -2863,10 +2573,8 @@
         showStatus("nur admin");
         return;
       }
-
       const ok = confirm("chat wirklich leeren?");
       if(!ok) return;
-
       try{
         await dbClearChat();
         renderedChatMessages.clear();
@@ -2878,16 +2586,12 @@
       }
     }
 
-    /************************************************************
-     * realtime
-     ************************************************************/
     sb.channel("markers-realtime")
       .on("postgres_changes",{event:"*",schema:"public",table:"markers"},payload => {
         if(payload.eventType === "INSERT" || payload.eventType === "UPDATE"){
           const row = payload.new;
           if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row);
         }
-
         if(payload.eventType === "DELETE"){
           const oldRow = payload.old;
           const entry = findEntryById(oldRow.id);
@@ -2905,7 +2609,6 @@
           renderChatMessage(payload.new);
           scrollChatBottom();
         }
-
         if(payload.eventType === "DELETE"){
           removeChatMessageFromView(payload.old.id);
         }
@@ -2915,13 +2618,11 @@
     sb.channel("profiles-realtime")
       .on("postgres_changes",{event:"*",schema:"public",table:"user_profiles"},async payload => {
         if(!currentProfile || !currentProfile.id) return;
-
         if(payload.eventType === "UPDATE" && payload.new && payload.new.id === currentProfile.id){
           if(payload.new.locked){
             await forceLogoutToLogin("account gesperrt");
           }
         }
-
         if(payload.eventType === "DELETE" && payload.old && payload.old.id === currentProfile.id){
           await forceLogoutToLogin("account gelöscht");
         }
