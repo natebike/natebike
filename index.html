@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>natebike</title>
 
-  <!-- app-/homescreen-icons -->
   <link rel="icon" href="logo.png" type="image/png">
   <link rel="apple-touch-icon" href="logo.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -13,17 +12,11 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="natebike">
 
-  <!-- leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-
-  <!-- supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
-    /************************************************************
-     * basis-design
-     ************************************************************/
     :root{
       --blue:#004a95;
       --bikePurple:#6a00ff;
@@ -84,9 +77,6 @@
       gap:8px;
     }
 
-    /************************************************************
-     * menü oben rechts
-     ************************************************************/
     .menu-container{
       position:relative;
       display:inline-block;
@@ -173,9 +163,6 @@
       color:#0b2a0b;
     }
 
-    /************************************************************
-     * layout
-     ************************************************************/
     .wrap{
       padding:8px 16px 16px;
       height:calc(100% - 70px);
@@ -288,9 +275,6 @@
       display:none;
     }
 
-    /************************************************************
-     * buttons
-     ************************************************************/
     .btn{
       background:var(--blue);
       color:#fff;
@@ -366,9 +350,6 @@
       max-width:70%;
     }
 
-    /************************************************************
-     * kontextmenüs
-     ************************************************************/
     .ctx-menu{
       position:fixed;
       z-index:50000;
@@ -393,9 +374,6 @@
       background:rgba(0,74,149,.08);
     }
 
-    /************************************************************
-     * modale fenster
-     ************************************************************/
     .modal-overlay{
       position:fixed;
       inset:0;
@@ -486,9 +464,6 @@
       border:2px solid var(--danger)!important;
     }
 
-    /************************************************************
-     * listen
-     ************************************************************/
     .list-overlay{
       position:fixed;
       inset:0;
@@ -554,9 +529,6 @@
       background:#f4f4f4;
     }
 
-    /************************************************************
-     * chat
-     ************************************************************/
     .chat-modal{
       width:min(720px,96vw);
       height:min(720px,88vh);
@@ -737,9 +709,6 @@
       border:1px solid var(--border);
     }
 
-    /************************************************************
-     * marker
-     ************************************************************/
     .bikeWrap{
       position:relative;
       width:24px;
@@ -805,9 +774,6 @@
       outline-offset:2px;
     }
 
-    /************************************************************
-     * leaflet controls
-     ************************************************************/
     .leaflet-control-zoom{
       border:none!important;
       box-shadow:0 8px 18px rgba(0,0,0,.14)!important;
@@ -897,7 +863,6 @@
         <button id="menuBtn" class="menu-btn" type="button" title="menü">
           <div class="menu-lines"><span></span></div>
         </button>
-
         <div id="dropdownMenu" class="dropdown-menu">
           <div class="dropdown-item" data-kind="notes">natebikestationen</div>
           <div class="dropdown-item" data-kind="bikes">natebikes</div>
@@ -906,7 +871,6 @@
           <div class="dropdown-item adminOnly" data-kind="accounts">alle accounts verwalten</div>
         </div>
       </div>
-
       <button id="adminBtn" class="adminBtn" type="button">admin</button>
     </div>
   </header>
@@ -1087,7 +1051,7 @@
      * supabase und globale zustände
      ************************************************************/
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
+    const SUPABASE_ANON_KEY = "DEIN_SUPABASE_ANON_KEY_HIER";
 
     const ADMIN_PASSWORD = "eseldraht";
     const CREATE_ACCOUNT_SECRET = "drahtesel";
@@ -1825,7 +1789,7 @@
     }
 
     /************************************************************
-     * menü, listen
+     * menü und listen
      ************************************************************/
     const menuBtn = document.getElementById("menuBtn");
     const dropdownMenu = document.getElementById("dropdownMenu");
@@ -2248,1040 +2212,6 @@
         if(currentProfile){
           await sb.from("user_profiles").delete().eq("id",currentProfile.id);
         }
-        await sb.auth.signOut();
-      }catch(err){
-        console.error(err);
-      }
-
-      currentProfile = null;
-      currentUserName = "";
-      isAdmin = false;
-      markersLoaded = false;
-
-      updateAdminUI();
-      closeAccountOverlay();
-
-      headerActions.style.display = "none";
-      mapFrame.style.display = "none";
-      loginFrame.style.display = "grid";
-
-      document.getElementById("loginNameInput").value = "";
-      document.getElementById("loginPasswordInput").value = "";
-
-      showMsg("loginMsg","account gelöscht",true);
-    }
-
-    async function openAllAccountsManage(){
-      openList("alle accounts");
-
-      try{
-        const { data,error } = await sb.from("user_profiles").select("*").order("username",{ascending:true});
-        if(error) throw error;
-
-        const accounts = data || [];
-
-        if(accounts.length === 0){
-          addEmptyListMessage("keine accounts vorhanden");
-          return;
-        }
-
-        accounts.forEach(account => {
-          const row = document.createElement("div");
-          row.className = account.locked ? "list-item accountRow locked" : "list-item accountRow";
-          row.textContent = account.locked ? `${account.display_name} (gesperrt)` : account.display_name;
-          row.dataset.id = account.id;
-
-          row.addEventListener("contextmenu",e => {
-            if(!isAdmin) return;
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            ctxAccountId = account.id;
-
-            const lockToggleItem = document.getElementById("accountLockToggleItem");
-            lockToggleItem.textContent = account.locked ? "account entsperren" : "account sperren";
-
-            const menu = document.getElementById("ctxMenuAccount");
-            menu.style.left = `${e.clientX}px`;
-            menu.style.top = `${e.clientY}px`;
-            menu.style.display = "block";
-          });
-
-          document.getElementById("listItems").appendChild(row);
-        });
-      }catch(err){
-        console.error(err);
-        addEmptyListMessage("accounts konnten nicht geladen werden");
-      }
-    }
-
-    document.getElementById("ctxMenuAccount").addEventListener("pointerdown",async e => {
-      e.stopPropagation();
-
-      const item = e.target.closest(".ctx-item");
-      if(!item || !ctxAccountId) return;
-
-      const action = item.dataset.action;
-      const id = ctxAccountId;
-
-      hideContextMenus();
-
-      if(action === "toggleLock"){
-        try{
-          const {data:profile,error:loadErr} = await sb.from("user_profiles").select("*").eq("id",id).single();
-          if(loadErr) throw loadErr;
-
-          const nextLockedState = !profile.locked;
-
-          const {error} = await sb.from("user_profiles").update({locked:nextLockedState}).eq("id",id);
-          if(error) throw error;
-
-          showStatus(nextLockedState ? "account gesperrt" : "account entsperrt");
-          openAllAccountsManage();
-        }catch(err){
-          console.error(err);
-          showStatus("account konnte nicht geändert werden");
-        }
-      }
-
-      if(action === "delete"){
-        const ok = confirm("account wirklich aus der profilliste löschen?");
-        if(!ok) return;
-
-        try{
-          const {error} = await sb.from("user_profiles").delete().eq("id",id);
-          if(error) throw error;
-
-          showStatus("account gelöscht");
-          openAllAccountsManage();
-        }catch(err){
-          console.error(err);
-          showStatus("account konnte nicht gelöscht werden");
-        }
-      }
-    });
-
-    /************************************************************
-     * kontextmenüs karte / marker / chat / accounts
-     ************************************************************/
-    const ctxMenuMap = document.getElementById("ctxMenuMap");
-    const ctxMenuMarker = document.getElementById("ctxMenuMarker");
-    const ctxMenuChat = document.getElementById("ctxMenuChat");
-    const ctxMenuAccount = document.getElementById("ctxMenuAccount");
-
-    let ctxMapLatLng = null;
-    let ctxMarkerEntry = null;
-
-    function hideContextMenus(){
-      ctxMenuMap.style.display = "none";
-      ctxMenuMarker.style.display = "none";
-      ctxMenuChat.style.display = "none";
-      ctxMenuAccount.style.display = "none";
-      ctxMapLatLng = null;
-      ctxMarkerEntry = null;
-      ctxChatMessageId = null;
-      ctxAccountId = null;
-    }
-
-    map.getContainer().addEventListener("contextmenu",e => e.preventDefault());
-
-    map.on("contextmenu",e => {
-      if(!isAdmin) return;
-
-      hideContextMenus();
-
-      ctxMapLatLng = e.latlng;
-      ctxMenuMap.style.left = `${e.originalEvent.clientX}px`;
-      ctxMenuMap.style.top = `${e.originalEvent.clientY}px`;
-      ctxMenuMap.style.display = "block";
-    });
-
-    map.on("click",async() => {
-      if(Date.now() < ignoreMapClickUntil) return;
-
-      if(moveModeEntry){
-        await finishMoveMode();
-        return;
-      }
-
-      hideContextMenus();
-    });
-
-    map.on("contextmenu",async() => {
-      if(Date.now() < ignoreMapClickUntil) return;
-
-      if(moveModeEntry){
-        await finishMoveMode();
-      }
-    });
-
-    map.on("movestart",hideContextMenus);
-
-    document.addEventListener("pointerdown",e => {
-      if(
-        !ctxMenuMap.contains(e.target) &&
-        !ctxMenuMarker.contains(e.target) &&
-        !ctxMenuChat.contains(e.target) &&
-        !ctxMenuAccount.contains(e.target)
-      ){
-        hideContextMenus();
-      }
-    });
-
-    ctxMenuMap.addEventListener("pointerdown",async e => {
-      e.stopPropagation();
-
-      const item = e.target.closest(".ctx-item");
-      if(!item || !ctxMapLatLng) return;
-
-      const action = item.dataset.action;
-      const latlng = ctxMapLatLng;
-
-      hideContextMenus();
-
-      try{
-        if(action === "bike"){
-          const row = await dbInsertMarker("bike",latlng.lat,latlng.lng);
-          addOrUpdateMarker(row);
-          showStatus("rad hinzugefügt");
-        }
-
-        if(action === "note"){
-          const row = await dbInsertMarker("note",latlng.lat,latlng.lng);
-          addOrUpdateMarker(row);
-          showStatus("station hinzugefügt");
-        }
-      }catch(err){
-        console.error(err);
-        showStatus("konnte nicht gespeichert werden");
-      }
-    });
-
-    function openMarkerMenu(mouseEvent,entry){
-      hideContextMenus();
-
-      ctxMarkerEntry = entry;
-
-      ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
-      ctxMenuMarker.style.top = `${mouseEvent.clientY}px`;
-      ctxMenuMarker.style.display = "block";
-    }
-
-    ctxMenuMarker.addEventListener("pointerdown",e => {
-      e.stopPropagation();
-
-      const item = e.target.closest(".ctx-item");
-      if(!item || !ctxMarkerEntry) return;
-
-      const action = item.dataset.action;
-      const entry = ctxMarkerEntry;
-
-      hideContextMenus();
-
-      if(action === "open"){
-        entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
-      }
-
-      if(action === "move"){
-        startMoveMode(entry);
-      }
-    });
-
-    /************************************************************
-     * allgemeines detail-modal
-     ************************************************************/
-    const modalOverlay = document.getElementById("modalOverlay");
-    const modalTitle = document.getElementById("modalTitle");
-    const modalBody = document.getElementById("modalBody");
-    const modalFooter = document.getElementById("modalFooter");
-
-    function openModal(){
-      modalOverlay.style.display = "flex";
-    }
-
-    function closeModal(){
-      modalOverlay.style.display = "none";
-      modalTitle.textContent = "details";
-      modalBody.innerHTML = "";
-      modalFooter.innerHTML = "";
-      revealedBikeCodeId = null;
-    }
-
-    modalOverlay.addEventListener("click",e => {
-      if(e.target === modalOverlay) closeModal();
-    });
-
-    document.getElementById("modalCloseBtn").addEventListener("click",closeModal);
-
-    /************************************************************
-     * bike-fenster
-     ************************************************************/
-    function openBikeWindow(entry){
-      modalTitle.textContent = "geparktes fahrrad";
-
-      const adminReadonly = isAdmin ? "" : "readonly";
-      const statusText = entry.status || "verfügbar";
-      const isAvailable = statusText === "verfügbar";
-      const isBorrowed = statusText.startsWith("von ") && statusText.includes("ausgeliehen");
-      const isMaintenance = statusText === "nicht verfügbar";
-      const codeIsVisible = revealedBikeCodeId === entry.id;
-      const realCode = String(entry.bikeCode || "");
-      const displayedCode = codeIsVisible ? realCode : "*".repeat(realCode.length);
-      const codeReadonly = (isAdmin && codeIsVisible) ? "" : "readonly";
-
-      modalBody.innerHTML = `
-        <div class="label">nummer</div>
-        <input type="text" id="bikeNumberInput" ${adminReadonly} value="${escapeHtml(entry.bikeNumber)}" />
-        <div class="label">name</div>
-        <input type="text" id="bikeNameInput" ${adminReadonly} value="${escapeHtml(entry.bikeName)}" />
-        <div class="label">farbe</div>
-        <input type="text" id="bikeColorInput" ${adminReadonly} value="${escapeHtml(entry.bikeColor)}" />
-        <div class="label">bemerkung</div>
-        <input type="text" id="bikeRemarkInput" value="${escapeHtml(entry.bikeRemark)}" />
-        <div class="label">schlosscode</div>
-        <input type="text" id="bikeCodeInput" ${codeReadonly} value="${escapeHtml(displayedCode)}" />
-        <div class="label">status</div>
-        <input type="text" id="bikeStatusInput" class="${statusClassForBike(entry)}" readonly value="${escapeHtml(statusText)}" />
-      `;
-
-      let loanButtonHtml = "";
-
-      if(isAvailable){
-        loanButtonHtml = `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`;
-      }
-
-      if(isBorrowed && currentUserMayReturnBike(entry)){
-        loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
-      }
-
-      const maintenanceButtonHtml = isAdmin
-        ? (isMaintenance
-          ? `<button class="btn maintenanceBtn release" id="bikeMaintenanceBtn" type="button">freigeben</button>`
-          : `<button class="btn maintenanceBtn" id="bikeMaintenanceBtn" type="button">wartung</button>`)
-        : "";
-
-      if(isAdmin){
-        modalFooter.innerHTML = `
-          ${loanButtonHtml}
-          ${maintenanceButtonHtml}
-          <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
-          <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
-        `;
-
-        document.getElementById("bikeSaveBtn").addEventListener("click",async() => {
-          const patch = {
-            bike_number:document.getElementById("bikeNumberInput").value.trim(),
-            name:document.getElementById("bikeNameInput").value.trim(),
-            color:document.getElementById("bikeColorInput").value.trim(),
-            remark:document.getElementById("bikeRemarkInput").value.trim()
-          };
-
-          if(codeIsVisible){
-            patch.code = document.getElementById("bikeCodeInput").value.trim();
-          }
-
-          try{
-            await dbUpdateMarker(entry.id,patch);
-
-            entry.bikeNumber = patch.bike_number;
-            entry.bikeName = patch.name;
-            entry.bikeColor = patch.color;
-            entry.bikeRemark = patch.remark;
-
-            if(codeIsVisible){
-              entry.bikeCode = patch.code;
-            }
-
-            entry.marker.setIcon(iconForEntry(entry));
-            closeModal();
-          }catch(err){
-            console.error(err);
-            showStatus("speichern fehlgeschlagen");
-          }
-        },{once:true});
-
-        document.getElementById("bikeDeleteBtn").addEventListener("click",async() => {
-          try{
-            await dbDeleteMarker(entry.id);
-            map.removeLayer(entry.marker);
-            markers.delete(entry.id);
-            closeModal();
-          }catch(err){
-            console.error(err);
-            showStatus("löschen fehlgeschlagen");
-          }
-        },{once:true});
-      }else{
-        modalFooter.innerHTML = `
-          ${loanButtonHtml}
-          <button class="btn" id="bikeRemarkSaveBtn" type="button">speichern</button>
-        `;
-
-        document.getElementById("bikeRemarkSaveBtn").addEventListener("click",async() => {
-          const newRemark = document.getElementById("bikeRemarkInput").value.trim();
-
-          try{
-            await dbUpdateMarker(entry.id,{remark:newRemark});
-            entry.bikeRemark = newRemark;
-            closeModal();
-            showStatus("bemerkung gespeichert");
-          }catch(err){
-            console.error(err);
-            showStatus("speichern fehlgeschlagen");
-          }
-        },{once:true});
-      }
-
-      const loanBtn = document.getElementById("bikeLoanBtn");
-      if(loanBtn) loanBtn.addEventListener("click",() => borrowBike(entry),{once:true});
-
-      const returnBtn = document.getElementById("bikeReturnBtn");
-      if(returnBtn) returnBtn.addEventListener("click",() => returnBike(entry),{once:true});
-
-      const maintenanceBtn = document.getElementById("bikeMaintenanceBtn");
-      if(maintenanceBtn) maintenanceBtn.addEventListener("click",() => toggleMaintenanceBike(entry),{once:true});
-
-      openModal();
-    }
-
-    function getBorrowerFromStatus(status){
-      const text = String(status || "");
-      if(!text.startsWith("von ") || !text.endsWith(" ausgeliehen")) return "";
-      return text.replace(/^von /,"").replace(/ ausgeliehen$/,"").trim();
-    }
-
-    function currentUserMayReturnBike(entry){
-      if(isAdmin) return true;
-      return getBorrowerFromStatus(entry.status) === currentUserName;
-    }
-
-    /************************************************************
-     * station-fenster
-     ************************************************************/
-    function openStationWindow(entry){
-      modalTitle.textContent = "natebikestation";
-      const readonly = isAdmin ? "" : "readonly";
-
-      modalBody.innerHTML = `
-        <textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>
-      `;
-
-      if(isAdmin){
-        modalFooter.innerHTML = `
-          <button class="btn" id="stationSaveBtn" type="button">speichern</button>
-          <button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>
-        `;
-
-        document.getElementById("stationSaveBtn").addEventListener("click",async() => {
-          const content = document.getElementById("stationContentInput").value.trim();
-
-          try{
-            await dbUpdateMarker(entry.id,{content});
-            entry.content = content;
-            closeModal();
-          }catch(err){
-            console.error(err);
-            showStatus("speichern fehlgeschlagen");
-          }
-        },{once:true});
-
-        document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
-          try{
-            await dbDeleteMarker(entry.id);
-            map.removeLayer(entry.marker);
-            markers.delete(entry.id);
-            closeModal();
-          }catch(err){
-            console.error(err);
-            showStatus("löschen fehlgeschlagen");
-          }
-        },{once:true});
-      }
-
-      openModal();
-    }
-
-    /************************************************************
-     * chat
-     ************************************************************/
-    async function dbLoadChatMessages(){
-      const {data,error} = await sb
-        .from("chat_messages")
-        .select("*")
-        .order("created_at",{ascending:true})
-        .limit(300);
-      if(error) throw error;
-      return data || [];
-    }
-
-    async function dbInsertChatMessage(message,photoData){
-      const payload = {
-        user_name:currentUserName,
-        message:message || "",
-        photo_data:photoData || null
-      };
-      const {data,error} = await sb.from("chat_messages").insert(payload).select().single();
-      if(error) throw error;
-      return data;
-    }
-
-    async function dbDeleteChatMessage(id){
-      const {error} = await sb.from("chat_messages").delete().eq("id",id);
-      if(error) throw error;
-    }
-
-    async function dbClearChat(){
-      const {error} = await sb.from("chat_messages").delete().gte("created_at","1970-01-01T00:00:00Z");
-      if(error) throw error;
-    }
-
-    function openChat(){
-      document.getElementById("chatOverlay").style.display = "flex";
-      updateAdminUI();
-      loadChatMessages();
-    }
-
-    function closeChat(){
-      document.getElementById("chatOverlay").style.display = "none";
-      hideContextMenus();
-    }
-
-    async function loadChatMessages(){
-      try{
-        const rows = await dbLoadChatMessages();
-        document.getElementById("chatMessages").innerHTML = "";
-        renderedChatMessages.clear();
-        rows.forEach(renderChatMessage);
-        scrollChatBottom();
-      }catch(err){
-        console.error(err);
-        showStatus("chat konnte nicht geladen werden");
-      }
-    }
-
-    function renderChatMessage(row){
-      if(!row || !row.id) return;
-      if(renderedChatMessages.has(row.id)) return;
-
-      renderedChatMessages.add(row.id);
-
-      const isSystemMessage = row.user_name === "system";
-      const box = document.createElement("div");
-      box.className = isSystemMessage ? "chatMessage systemMessage" : "chatMessage";
-      box.dataset.id = row.id;
-
-      if(!isSystemMessage){
-        const meta = document.createElement("div");
-        meta.className = "chatMeta";
-        meta.textContent = `${row.user_name || "unbekannt"} • ${formatDateTime(row.created_at)}`;
-        box.appendChild(meta);
-      }
-
-      if(row.message){
-        const text = document.createElement("div");
-        text.className = "chatText";
-        text.textContent = row.message;
-        box.appendChild(text);
-      }
-
-      if(row.photo_data){
-        const img = document.createElement("img");
-        img.className = "chatPhoto";
-        img.src = row.photo_data;
-        img.alt = "foto";
-        box.appendChild(img);
-      }
-
-      box.addEventListener("contextmenu",e => {
-        if(!isAdmin) return;
-        e.preventDefault();
-        e.stopPropagation();
-        ctxChatMessageId = row.id;
-        ctxMenuChat.style.left = `${e.clientX}px`;
-        ctxMenuChat.style.top = `${e.clientY}px`;
-        ctxMenuChat.style.display = "block";
-      });
-
-      document.getElementById("chatMessages").appendChild(box);
-    }
-
-    function removeChatMessageFromView(id){
-      renderedChatMessages.delete(id);
-      const el = document.querySelector(`.chatMessage[data-id="${CSS.escape(String(id))}"]`);
-      if(el) el.remove();
-    }
-
-    function scrollChatBottom(){
-      const chatMessages = document.getElementById("chatMessages");
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    document.getElementById("chatCloseBtn").addEventListener("click",closeChat);
-    document.getElementById("chatOverlay").addEventListener("click",e => {
-      if(e.target.id === "chatOverlay") closeChat();
-    });
-
-    document.getElementById("chatTextInput").addEventListener("input",() => {
-      document.getElementById("charCount").textContent =
-        document.getElementById("chatTextInput").value.length;
-    });
-
-    document.getElementById("photoBtn").addEventListener("click",() => document.getElementById("photoInput").click());
-
-    document.getElementById("photoInput").addEventListener("change",async e => {
-      const file = e.target.files && e.target.files[0];
-      if(!file) return;
-
-      try{
-        selectedPhotoData = await resizeImageToDataUrl(file,200,200);
-        document.getElementById("photoPreviewImg").src = selectedPhotoData;
-        document.getElementById("photoPreview").style.display = "flex";
-      }catch(err){
-        console.error(err);
-        showStatus("foto konnte nicht verarbeitet werden");
-      }
-    });
-
-    document.getElementById("removePhotoBtn").addEventListener("click",() => {
-      selectedPhotoData = null;
-      document.getElementById("photoInput").value = "";
-      document.getElementById("photoPreview").style.display = "none";
-      document.getElementById("photoPreviewImg").src = "";
-    });
-
-    function resizeImageToDataUrl(file,maxWidth,maxHeight){
-      return new Promise((resolve,reject) => {
-        const reader = new FileReader();
-        reader.onerror = reject;
-        reader.onload = () => {
-          const img = new Image();
-          img.onerror = reject;
-          img.onload = () => {
-            let width = img.width;
-            let height = img.height;
-            const scale = Math.min(maxWidth / width,maxHeight / height,1);
-            width = Math.round(width * scale);
-            height = Math.round(height * scale);
-            const canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img,0,0,width,height);
-            resolve(canvas.toDataURL("image/jpeg",.75));
-          };
-          img.src = reader.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-
-    document.getElementById("sendChatBtn").addEventListener("click",sendChatMessage);
-    document.getElementById("chatTextInput").addEventListener("keydown",e => {
-      if(e.key === "Enter" && !e.shiftKey){
-        e.preventDefault();
-        sendChatMessage();
-      }
-    });
-
-    async function sendChatMessage(){
-      const input = document.getElementById("chatTextInput");
-      const message = input.value.trim();
-
-      if(message.length > 144){
-        showStatus("maximal 144 zeichen");
-        return;
-      }
-
-      if(!message && !selectedPhotoData) return;
-
-      try{
-        const savedMessage = await dbInsertChatMessage(message,selectedPhotoData);
-        renderChatMessage(savedMessage);
-        scrollChatBottom();
-
-        input.value = "";
-        document.getElementById("charCount").textContent = "0";
-
-        selectedPhotoData = null;
-        document.getElementById("photoInput").value = "";
-        document.getElementById("photoPreview").style.display = "none";
-        document.getElementById("photoPreviewImg").src = "";
-      }catch(err){
-        console.error(err);
-        showStatus("nachricht konnte nicht gesendet werden");
-      }
-    }
-
-    ctxMenuChat.addEventListener("pointerdown",async e => {
-      e.stopPropagation();
-      const item = e.target.closest(".ctx-item");
-      if(!item || !ctxChatMessageId) return;
-
-      const id = ctxChatMessageId;
-      const action = item.dataset.action;
-
-      hideContextMenus();
-
-      if(action === "delete"){
-        if(!isAdmin){
-          showStatus("nur admin");
-          return;
-        }
-
-        try{
-          await dbDeleteChatMessage(id);
-          removeChatMessageFromView(id);
-          showStatus("nachricht gelöscht");
-        }catch(err){
-          console.error(err);
-          showStatus("löschen fehlgeschlagen");
-        }
-      }
-    });
-
-    document.getElementById("clearChatBtn").addEventListener("click",clearChat);
-
-    async function clearChat(){
-      if(!isAdmin){
-        showStatus("nur admin");
-        return;
-      }
-
-      const ok = confirm("chat wirklich leeren?");
-      if(!ok) return;
-
-      try{
-        await dbClearChat();
-        renderedChatMessages.clear();
-        document.getElementById("chatMessages").innerHTML = "";
-        showStatus("chat geleert");
-      }catch(err){
-        console.error(err);
-        showStatus("chat konnte nicht geleert werden");
-      }
-    }
-
-    /************************************************************
-     * auth ui
-     ************************************************************/
-    const loginFrame = document.getElementById("loginFrame");
-    const accountCreateFrame = document.getElementById("accountCreateFrame");
-    const mapFrame = document.getElementById("mapFrame");
-    const headerActions = document.getElementById("headerActions");
-
-    async function loginUser(){
-      const name = document.getElementById("loginNameInput").value.trim();
-      const password = document.getElementById("loginPasswordInput").value;
-
-      if(!name || !password){
-        showMsg("loginMsg","bitte name und passwort eingeben");
-        return;
-      }
-
-      const email = usernameToEmail(name);
-
-      try{
-        const { data, error } = await sb.auth.signInWithPassword({email,password});
-        if(error) throw error;
-
-        const profile = await loadProfile(data.user.id);
-
-        if(profile.locked){
-          await sb.auth.signOut();
-          showMsg("loginMsg","account gesperrt");
-          return;
-        }
-
-        currentProfile = profile;
-        currentUserName = profile.display_name || profile.username;
-
-        hideMsg("loginMsg");
-
-        loginFrame.style.display = "none";
-        accountCreateFrame.style.display = "none";
-        mapFrame.style.display = "block";
-        headerActions.style.display = "flex";
-
-        updateAdminUI();
-
-        setTimeout(() => {
-          map.invalidateSize();
-          map.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
-        },100);
-
-        await loadMarkersOnce();
-      }catch(err){
-        console.error(err);
-        showMsg("loginMsg","anmeldung fehlgeschlagen");
-      }
-    }
-
-    function showCreateAccount(){
-      loginFrame.style.display = "none";
-      accountCreateFrame.style.display = "grid";
-      hideMsg("createAccountMsg");
-      document.getElementById("createNameInput").focus();
-    }
-
-    function showLogin(){
-      accountCreateFrame.style.display = "none";
-      loginFrame.style.display = "grid";
-      hideMsg("loginMsg");
-    }
-
-    async function createAccount(){
-      const name = document.getElementById("createNameInput").value.trim();
-      const pw1 = document.getElementById("createPasswordInput").value;
-      const pw2 = document.getElementById("createPasswordRepeatInput").value;
-      const secret = document.getElementById("createSecretInput").value.trim();
-
-      if(secret !== CREATE_ACCOUNT_SECRET){
-        showMsg("createAccountMsg","falscher geheimcode");
-        return;
-      }
-
-      if(!name || !pw1 || !pw2){
-        showMsg("createAccountMsg","bitte alle felder ausfüllen");
-        return;
-      }
-
-      if(pw1 !== pw2){
-        showMsg("createAccountMsg","passwörter stimmen nicht überein");
-        return;
-      }
-
-      const username = usernameKey(name);
-      const email = usernameToEmail(name);
-
-      try{
-        const { data, error } = await sb.auth.signUp({email,password:pw1});
-        if(error) throw error;
-
-        if(!data.user){
-          showMsg("createAccountMsg","account konnte nicht erstellt werden");
-          return;
-        }
-
-        const { error: profileError } = await sb.from("user_profiles").insert({
-          id:data.user.id,
-          username,
-          display_name:name,
-          locked:false
-        });
-
-        if(profileError) throw profileError;
-
-        await sb.auth.signOut();
-
-        document.getElementById("loginNameInput").value = name;
-        document.getElementById("loginPasswordInput").value = "";
-        document.getElementById("createNameInput").value = "";
-        document.getElementById("createPasswordInput").value = "";
-        document.getElementById("createPasswordRepeatInput").value = "";
-        document.getElementById("createSecretInput").value = "";
-
-        showMsg("createAccountMsg","account erstellt",true);
-        setTimeout(showLogin,900);
-      }catch(err){
-        console.error(err);
-        const msg = String(err.message || "").toLowerCase();
-
-        if(msg.includes("registered") || msg.includes("duplicate") || msg.includes("unique")){
-          showMsg("createAccountMsg","benutzername bereits vergeben");
-        }else{
-          showMsg("createAccountMsg","account konnte nicht erstellt werden");
-        }
-      }
-    }
-
-    document.getElementById("loginBtn").addEventListener("click",loginUser);
-    document.getElementById("loginPasswordInput").addEventListener("keydown",e => {if(e.key === "Enter") loginUser();});
-    document.getElementById("loginNameInput").addEventListener("keydown",e => {if(e.key === "Enter") loginUser();});
-    document.getElementById("openCreateAccountLink").addEventListener("click",showCreateAccount);
-    document.getElementById("backToLoginBtn").addEventListener("click",showLogin);
-    document.getElementById("createAccountBtn").addEventListener("click",createAccount);
-    document.getElementById("createSecretInput").addEventListener("keydown",e => {if(e.key === "Enter") createAccount();});
-
-    /************************************************************
-     * admin
-     ************************************************************/
-    const adminBtn = document.getElementById("adminBtn");
-    const adminOverlay = document.getElementById("adminOverlay");
-    const adminPwInput = document.getElementById("adminPwInput");
-    const adminMsg = document.getElementById("adminMsg");
-
-    function updateAdminUI(){
-      adminBtn.classList.toggle("isAdmin",isAdmin);
-
-      document.querySelectorAll(".adminOnly").forEach(el => {
-        el.style.display = isAdmin ? "block" : "none";
-      });
-
-      const clearChatBtn = document.getElementById("clearChatBtn");
-      if(clearChatBtn) clearChatBtn.style.display = isAdmin ? "inline-block" : "none";
-    }
-
-    function openAdminModal(){
-      adminPwInput.value = "";
-      adminMsg.style.display = "none";
-      adminOverlay.style.display = "flex";
-      adminPwInput.focus();
-    }
-
-    function closeAdminModal(){
-      adminOverlay.style.display = "none";
-    }
-
-    function confirmAdmin(){
-      const value = (adminPwInput.value || "").trim();
-
-      if(value !== ADMIN_PASSWORD){
-        adminMsg.style.display = "block";
-        return;
-      }
-
-      isAdmin = true;
-      updateAdminUI();
-      closeAdminModal();
-      showStatus("admin aktiv");
-    }
-
-    adminBtn.addEventListener("click",() => {
-      if(isAdmin){
-        isAdmin = false;
-        updateAdminUI();
-        showStatus("admin abgemeldet");
-      }else{
-        openAdminModal();
-      }
-    });
-
-    document.getElementById("adminOkBtn").addEventListener("click",confirmAdmin);
-    adminPwInput.addEventListener("keydown",e => {if(e.key === "Enter") confirmAdmin();});
-    document.getElementById("adminCloseBtn").addEventListener("click",closeAdminModal);
-    adminOverlay.addEventListener("click",e => {if(e.target === adminOverlay) closeAdminModal();});
-
-    /************************************************************
-     * account verwalten
-     ************************************************************/
-    const accountOverlay = document.getElementById("accountOverlay");
-    const accountTitle = document.getElementById("accountTitle");
-    const accountBody = document.getElementById("accountBody");
-    const accountFooter = document.getElementById("accountFooter");
-
-    function closeAccountOverlay(){
-      accountOverlay.style.display = "none";
-      accountBody.innerHTML = "";
-      accountFooter.innerHTML = "";
-    }
-
-    document.getElementById("accountCloseBtn").addEventListener("click",closeAccountOverlay);
-    accountOverlay.addEventListener("click",e => {if(e.target === accountOverlay) closeAccountOverlay();});
-
-    function openAccountManage(){
-      accountTitle.textContent = "account verwalten";
-      accountBody.innerHTML = `
-        <div class="list-items">
-          <div class="list-item" id="changePasswordItem">passwort ändern</div>
-          <div class="list-item" id="deleteOwnAccountItem">account löschen</div>
-        </div>
-      `;
-      accountFooter.innerHTML = `
-        <button class="btn danger" id="logoutBtn" type="button">ausloggen</button>
-      `;
-      accountOverlay.style.display = "flex";
-
-      document.getElementById("changePasswordItem").addEventListener("click",openChangePassword);
-      document.getElementById("deleteOwnAccountItem").addEventListener("click",deleteOwnAccount);
-      document.getElementById("logoutBtn").addEventListener("click",logoutUser);
-    }
-
-    async function logoutUser(){
-      try{
-        await sb.auth.signOut();
-      }catch(err){
-        console.error(err);
-      }
-
-      currentUserName = "";
-      currentProfile = null;
-      isAdmin = false;
-      markersLoaded = false;
-
-      updateAdminUI();
-      closeAccountOverlay();
-
-      headerActions.style.display = "none";
-      mapFrame.style.display = "none";
-      loginFrame.style.display = "grid";
-
-      document.getElementById("loginNameInput").value = "";
-      document.getElementById("loginPasswordInput").value = "";
-
-      showStatus("ausgeloggt");
-    }
-
-    function openChangePassword(){
-      accountTitle.textContent = "passwort ändern";
-      accountBody.innerHTML = `
-        <div class="grid">
-          <div class="label">altes passwort:</div>
-          <input id="oldPasswordInput" type="password" />
-          <div class="label">neues passwort:</div>
-          <input id="newPasswordInput" type="password" />
-          <div class="label">wiederholung:</div>
-          <input id="newPasswordRepeatInput" type="password" />
-        </div>
-        <div id="changePasswordMsg" class="msg">meldung</div>
-      `;
-      accountFooter.innerHTML = `
-        <button class="btn secondary" id="backAccountBtn" type="button">zurück</button>
-        <button class="btn" id="savePasswordBtn" type="button">speichern</button>
-      `;
-      document.getElementById("backAccountBtn").addEventListener("click",openAccountManage);
-      document.getElementById("savePasswordBtn").addEventListener("click",saveChangedPassword);
-    }
-
-    async function saveChangedPassword(){
-      const oldPw = document.getElementById("oldPasswordInput").value;
-      const newPw = document.getElementById("newPasswordInput").value;
-      const rep = document.getElementById("newPasswordRepeatInput").value;
-
-      if(!currentProfile){
-        showMsg("changePasswordMsg","nicht angemeldet");
-        return;
-      }
-
-      if(!newPw || newPw !== rep){
-        showMsg("changePasswordMsg","neue passwörter stimmen nicht überein");
-        return;
-      }
-
-      try{
-        const email = usernameToEmail(currentProfile.username);
-        const { error: signInError } = await sb.auth.signInWithPassword({email,password:oldPw});
-        if(signInError) throw signInError;
-
-        const { error } = await sb.auth.updateUser({password:newPw});
-        if(error) throw error;
-
-        showMsg("changePasswordMsg","passwort geändert",true);
-        setTimeout(closeAccountOverlay,800);
-      }catch(err){
-        console.error(err);
-        showMsg("changePasswordMsg","altes passwort falsch");
-      }
-    }
-
-    async function deleteOwnAccount(){
-      const ok = confirm("account wirklich löschen?");
-      if(!ok) return;
-
-      try{
-        if(currentProfile){
-          await sb.from("user_profiles").delete().eq("id",currentProfile.id);
-        }
 
         await sb.auth.signOut();
       }catch(err){
@@ -3291,6 +2221,7 @@
       currentProfile = null;
       currentUserName = "";
       isAdmin = false;
+
       updateAdminUI();
       closeAccountOverlay();
 
@@ -3493,7 +2424,9 @@
 
     function openMarkerMenu(mouseEvent,entry){
       hideContextMenus();
+
       ctxMarkerEntry = entry;
+
       ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
       ctxMenuMarker.style.top = `${mouseEvent.clientY}px`;
       ctxMenuMarker.style.display = "block";
@@ -3941,10 +2874,8 @@
       e.stopPropagation();
       const item = e.target.closest(".ctx-item");
       if(!item || !ctxChatMessageId) return;
-
       const id = ctxChatMessageId;
       const action = item.dataset.action;
-
       hideContextMenus();
 
       if(action === "delete"){
