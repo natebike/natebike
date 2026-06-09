@@ -1368,10 +1368,21 @@
         if(moveModeEntry) return;
         entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
       });
-      marker.on("contextmenu", e => {
-        L.DomEvent.stop(e);
-        if(entry.type === "note" && !isAdmin) return;
-        openMarkerMenu(e.originalEvent, entry);
+     marker.on("contextmenu", e => {
+  L.DomEvent.stop(e);
+
+  // rechtsklickmenü auf marker nur im admin-modus
+  if(!isAdmin){
+    return;
+  }
+
+  openMarkerMenu(e.originalEvent, entry);
+});
+
+
+
+
+        
       });
       marker.on("dragstart", () => map.dragging.disable());
       marker.on("dragend", () => {
