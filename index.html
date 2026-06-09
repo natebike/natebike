@@ -141,9 +141,7 @@
       background:rgba(0,74,149,.08);
     }
 
-    .adminOnly{
-      display:none;
-    }
+    .adminOnly{display:none;}
 
     .adminBtn{
       background:var(--adminGrey);
@@ -264,9 +262,7 @@
       display:none;
     }
 
-    .msg.ok{
-      color:#0b6b0b;
-    }
+    .msg.ok{color:#0b6b0b;}
 
     #adminMsg{
       margin-top:10px;
@@ -294,18 +290,14 @@
       color:var(--blue);
     }
 
-    .btn.danger{
-      background:var(--danger);
-    }
+    .btn.danger{background:var(--danger);}
 
     .btn.returnBikeBtn{
       background:var(--bikePurple);
       color:#fff;
     }
 
-    .btn.returnBikeBtn:hover{
-      background:#5700d1;
-    }
+    .btn.returnBikeBtn:hover{background:#5700d1;}
 
     .btn.returnBikeBtn.isReturning{
       color:#fff;
@@ -325,9 +317,7 @@
       border:1px solid var(--danger);
     }
 
-    .btn.maintenanceBtn:hover{
-      background:rgba(0,74,149,.06);
-    }
+    .btn.maintenanceBtn:hover{background:rgba(0,74,149,.06);}
 
     .btn.maintenanceBtn.release{
       background:var(--adminGreen);
@@ -370,9 +360,7 @@
       font-size:14px;
     }
 
-    .ctx-item:hover{
-      background:rgba(0,74,149,.08);
-    }
+    .ctx-item:hover{background:rgba(0,74,149,.08);}
 
     .modal-overlay{
       position:fixed;
@@ -439,9 +427,7 @@
       align-items:center;
     }
 
-    .label{
-      font-size:14px;
-    }
+    .label{font-size:14px;}
 
     .modal-footer{
       display:flex;
@@ -452,17 +438,9 @@
       flex-wrap:wrap;
     }
 
-    .statusAvailable{
-      border:2px solid var(--adminGreen)!important;
-    }
-
-    .statusBorrowed{
-      border:2px solid var(--bikePurple)!important;
-    }
-
-    .statusMaintenance{
-      border:2px solid var(--danger)!important;
-    }
+    .statusAvailable{border:2px solid var(--adminGreen)!important;}
+    .statusBorrowed{border:2px solid var(--bikePurple)!important;}
+    .statusMaintenance{border:2px solid var(--danger)!important;}
 
     .list-overlay{
       position:fixed;
@@ -593,9 +571,7 @@
       cursor:default;
     }
 
-    .chatMessage:hover{
-      border-color:#b9c6f2;
-    }
+    .chatMessage:hover{border-color:#b9c6f2;}
 
     .chatMeta{
       font-size:11px;
@@ -626,9 +602,7 @@
       max-width:100%;
     }
 
-    .chatMessage.systemMessage .chatMeta{
-      display:none;
-    }
+    .chatMessage.systemMessage .chatMeta{display:none;}
 
     .chatMessage.systemMessage .chatText{
       font-size:11px;
@@ -669,9 +643,7 @@
       padding:0;
     }
 
-    .iconBtn:hover{
-      background:rgba(0,74,149,.06);
-    }
+    .iconBtn:hover{background:rgba(0,74,149,.06);}
 
     .iconBtn svg{
       width:24px;
@@ -688,9 +660,7 @@
       color:#fff;
     }
 
-    .sendIconBtn:hover{
-      background:#003d7a;
-    }
+    .sendIconBtn:hover{background:#003d7a;}
 
     .photoPreview{
       margin-top:8px;
@@ -726,9 +696,7 @@
       place-items:center;
     }
 
-    .bikeDot.rented{
-      background:var(--rentGrey);
-    }
+    .bikeDot.rented{background:var(--rentGrey);}
 
     .bikeNum{
       font-size:12px;
@@ -816,9 +784,7 @@
       box-shadow:0 8px 18px rgba(0,0,0,.18);
     }
 
-    .locateBtn:hover{
-      background:rgba(0,74,149,.06);
-    }
+    .locateBtn:hover{background:rgba(0,74,149,.06);}
 
     .crosshair{
       width:18px;
@@ -839,15 +805,8 @@
       transform:translate(-50%,-50%);
     }
 
-    .crosshair::before{
-      width:2px;
-      height:22px;
-    }
-
-    .crosshair::after{
-      width:22px;
-      height:2px;
-    }
+    .crosshair::before{width:2px;height:22px;}
+    .crosshair::after{width:22px;height:2px;}
   </style>
 </head>
 
@@ -1103,12 +1062,7 @@
 
     map.on("locationfound", e => {
       if(!locationMarker){
-        locationMarker = L.circleMarker(e.latlng, {
-          radius:10,
-          color:"#ff0000",
-          weight:3,
-          fillOpacity:0
-        }).addTo(map);
+        locationMarker = L.circleMarker(e.latlng, {radius:10,color:"#ff0000",weight:3,fillOpacity:0}).addTo(map);
       }else{
         locationMarker.setLatLng(e.latlng);
       }
@@ -1244,34 +1198,18 @@
 
     function formatDateTime(value){
       const d = new Date(value);
-      return d.toLocaleString("de-DE", {
-        day:"2-digit",
-        month:"2-digit",
-        year:"2-digit",
-        hour:"2-digit",
-        minute:"2-digit"
-      }).toLowerCase();
+      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}).toLowerCase();
     }
 
     function formatSystemMessageDateTime(){
       const d = new Date();
-      return d.toLocaleString("de-DE", {
-        day:"2-digit",
-        month:"2-digit",
-        year:"2-digit",
-        hour:"2-digit",
-        minute:"2-digit"
-      });
+      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
     }
 
     function bikeSortValue(value){
       const text = String(value ?? "").trim();
       const number = Number(text);
-      return {
-        isNumber:text !== "" && Number.isFinite(number),
-        number,
-        text
-      };
+      return { isNumber:text !== "" && Number.isFinite(number), number, text };
     }
 
     function sortBikeEntries(a,b){
@@ -1382,15 +1320,10 @@
 
     function addOrUpdateMarker(row){
       let entry = markers.get(row.id);
-
       if(!entry){
         entry = rowToEntry(row);
         const pane = entry.type === "bike" ? "bikePane" : "stationPane";
-        entry.marker = L.marker([entry.lat,entry.lng], {
-          icon:iconForEntry(entry),
-          draggable:true,
-          pane
-        }).addTo(map);
+        entry.marker = L.marker([entry.lat,entry.lng], {icon:iconForEntry(entry),draggable:true,pane}).addTo(map);
         if(entry.marker.dragging) entry.marker.dragging.disable();
         markers.set(entry.id,entry);
         wireMarker(entry);
@@ -1467,9 +1400,6 @@
       entry.marker.setIcon(iconForEntry(entry));
       if(entry.marker.dragging) entry.marker.dragging.enable();
 
-      // wichtig für mobile geräte:
-      // der tap auf "verschieben" erzeugt oft direkt danach noch einen karten-click.
-      // dieser würde sonst den verschiebemodus sofort beenden.
       ignoreMapClickUntil = Date.now() + 800;
 
       showStatus("marker verschieben, dann auf karte klicken");
@@ -1545,7 +1475,24 @@
       }
     }
 
+    function getBorrowerFromStatus(status){
+      const text = String(status || "");
+      if(!text.startsWith("von ") || !text.endsWith(" ausgeliehen")) return "";
+      return text.replace(/^von /,"").replace(/ ausgeliehen$/,"").trim();
+    }
+
+    function currentUserMayReturnBike(entry){
+      if(isAdmin) return true;
+      const borrower = getBorrowerFromStatus(entry.status);
+      return borrower === currentUserName;
+    }
+
     async function returnBike(entry){
+      if(!currentUserMayReturnBike(entry)){
+        showStatus("nur ausleihender nutzer oder admin");
+        return;
+      }
+
       const returnBtn = document.getElementById("bikeReturnBtn");
       if(returnBtn){
         returnBtn.classList.add("isReturning");
@@ -1958,9 +1905,12 @@
       }catch(err){
         console.error(err);
       }
+
       currentUserName = "";
       currentProfile = null;
       isAdmin = false;
+      markersLoaded = false;
+
       updateAdminUI();
       closeAccountOverlay();
       headerActions.style.display = "none";
@@ -2037,6 +1987,8 @@
       currentProfile = null;
       currentUserName = "";
       isAdmin = false;
+      markersLoaded = false;
+
       updateAdminUI();
       closeAccountOverlay();
       headerActions.style.display = "none";
@@ -2151,9 +2103,7 @@
     });
 
     map.on("click",async() => {
-      if(Date.now() < ignoreMapClickUntil){
-        return;
-      }
+      if(Date.now() < ignoreMapClickUntil) return;
 
       if(moveModeEntry){
         await finishMoveMode();
@@ -2270,7 +2220,9 @@
 
       let loanButtonHtml = "";
       if(isAvailable) loanButtonHtml = `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`;
-      if(isBorrowed) loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
+      if(isBorrowed && currentUserMayReturnBike(entry)) {
+        loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
+      }
 
       const maintenanceButtonHtml = isAdmin
         ? (isMaintenance
@@ -2350,6 +2302,18 @@
       if(maintenanceBtn) maintenanceBtn.addEventListener("click",() => toggleMaintenanceBike(entry),{once:true});
 
       openModal();
+    }
+
+    function getBorrowerFromStatus(status){
+      const text = String(status || "");
+      if(!text.startsWith("von ") || !text.endsWith(" ausgeliehen")) return "";
+      return text.replace(/^von /,"").replace(/ ausgeliehen$/,"").trim();
+    }
+
+    function currentUserMayReturnBike(entry){
+      if(isAdmin) return true;
+      const borrower = getBorrowerFromStatus(entry.status);
+      return borrower === currentUserName;
     }
 
     function openStationWindow(entry){
@@ -2491,7 +2455,9 @@
     }
 
     document.getElementById("chatCloseBtn").addEventListener("click",closeChat);
-    document.getElementById("chatOverlay").addEventListener("click",e => { if(e.target.id === "chatOverlay") closeChat(); });
+    document.getElementById("chatOverlay").addEventListener("click",e => {
+      if(e.target.id === "chatOverlay") closeChat();
+    });
 
     document.getElementById("chatTextInput").addEventListener("input",() => {
       document.getElementById("charCount").textContent = document.getElementById("chatTextInput").value.length;
