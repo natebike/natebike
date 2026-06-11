@@ -1980,11 +1980,11 @@
       accountBody.innerHTML = `
         <div class="list-items">
           <div class="list-item" id="changePasswordItem">passwort ändern</div>
-          <div class="list-item" id="deleteOwnAccountItem">account löschen</div>
+          <div class="list-item" id="deleteOwnAccountItem" style="border-color:var(--danger);">account löschen</div>
         </div>
       `;
       accountFooter.innerHTML = `
-        <button class="btn danger" id="logoutBtn" type="button">ausloggen</button>
+         <button class="btn secondary" id="logoutBtn" type="button">ausloggen</button>
       `;
       accountOverlay.style.display = "flex";
 
