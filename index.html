@@ -1027,6 +1027,7 @@
     let forcedLogoutInProgress = false;
     let markersLoaded = false;
     let ignoreMapClickUntil = 0;
+    let modalCleanup = null;
 
     // Auto-Pan state
     let autoPanAnimFrame = null;
@@ -1089,18 +1090,14 @@
         autoPanAnimFrame = null;
         return;
       }
-
       const container = map.getContainer();
       const rect = container.getBoundingClientRect();
       const entry = autoPanMarkerEntry;
       const markerPoint = map.latLngToContainerPoint(entry.marker.getLatLng());
-
       const EDGE = 60;
       const MAX_SPEED = 8;
-
       let dx = 0;
       let dy = 0;
-
       if(markerPoint.x < EDGE)
         dx = -Math.round(MAX_SPEED * (1 - markerPoint.x / EDGE));
       if(markerPoint.x > rect.width - EDGE)
@@ -1109,7 +1106,6 @@
         dy = -Math.round(MAX_SPEED * (1 - markerPoint.y / EDGE));
       if(markerPoint.y > rect.height - EDGE)
         dy = Math.round(MAX_SPEED * (1 - (rect.height - markerPoint.y) / EDGE));
-
       if(dx !== 0 || dy !== 0){
         map.panBy([dx,dy],{animate:false});
         const currentPoint = map.latLngToContainerPoint(entry.marker.getLatLng());
@@ -1120,7 +1116,6 @@
         entry.lat = newLatLng.lat;
         entry.lng = newLatLng.lng;
       }
-
       autoPanAnimFrame = requestAnimationFrame(runAutoPan);
     }
 
@@ -1152,33 +1147,23 @@
     async function forceLogoutToLogin(message){
       if(forcedLogoutInProgress) return;
       forcedLogoutInProgress = true;
-
-      try{
-        await sb.auth.signOut();
-      }catch(err){
-        console.error(err);
-      }
-
+      try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
       currentUserName = "";
       currentProfile = null;
       isAdmin = false;
       moveModeEntry = null;
       revealedBikeCodeId = null;
       markersLoaded = false;
-
       stopAutoPan();
       updateAdminUI();
       closeAllOverlays();
       hideContextMenus();
-
       document.getElementById("headerActions").style.display = "none";
       document.getElementById("mapFrame").style.display = "none";
       document.getElementById("accountCreateFrame").style.display = "none";
       document.getElementById("loginFrame").style.display = "grid";
-
       document.getElementById("loginNameInput").value = "";
       document.getElementById("loginPasswordInput").value = "";
-
       showMsg("loginMsg", message || "bitte erneut anmelden");
       forcedLogoutInProgress = false;
     }
@@ -1200,9 +1185,7 @@
         if(error) throw error;
         if(!data){ await forceLogoutToLogin("account gelöscht"); return; }
         if(data.locked){ await forceLogoutToLogin("account gesperrt"); return; }
-      }catch(err){
-        console.error(err);
-      }
+      }catch(err){ console.error(err); }
     }
 
     window.addEventListener("focus",checkOwnProfileStillValid);
@@ -1559,7 +1542,6 @@
         showStatus("nur ausleihender nutzer oder admin");
         return;
       }
-
       const returnBtn = document.getElementById("bikeReturnBtn");
       if(returnBtn){
         returnBtn.classList.add("isReturning");
@@ -2167,6 +2149,10 @@
     }
 
     function closeModal(){
+      if(modalCleanup){
+        modalCleanup();
+        modalCleanup = null;
+      }
       modalOverlay.style.display = "none";
       modalTitle.textContent = "details";
       modalBody.innerHTML = "";
@@ -2177,6 +2163,12 @@
     // ── Bike-Fenster ─────────────────────────────────────────────────────────────
 
     function openBikeWindow(entry){
+      // Altes cleanup zuerst ausführen
+      if(modalCleanup){
+        modalCleanup();
+        modalCleanup = null;
+      }
+
       modalTitle.textContent = "geparktes fahrrad";
       const adminReadonly = isAdmin ? "" : "readonly";
       const statusText = entry.status || "verfügbar";
@@ -2280,18 +2272,25 @@
         }
       }
 
-      document.getElementById("modalCloseBtn").addEventListener("click",async() => {
+      const closeBtnHandler = async() => {
         await saveOnClose();
         closeModal();
-      },{once:true});
+      };
 
-      modalOverlay.addEventListener("click",async function onOverlayClick(e){
+      const overlayHandler = async(e) => {
         if(e.target === modalOverlay){
-          modalOverlay.removeEventListener("click",onOverlayClick);
           await saveOnClose();
           closeModal();
         }
-      });
+      };
+
+      document.getElementById("modalCloseBtn").addEventListener("click",closeBtnHandler);
+      modalOverlay.addEventListener("click",overlayHandler);
+
+      modalCleanup = () => {
+        document.getElementById("modalCloseBtn").removeEventListener("click",closeBtnHandler);
+        modalOverlay.removeEventListener("click",overlayHandler);
+      };
 
       openModal();
     }
@@ -2299,6 +2298,12 @@
     // ── Station-Fenster ──────────────────────────────────────────────────────────
 
     function openStationWindow(entry){
+      // Altes cleanup zuerst ausführen
+      if(modalCleanup){
+        modalCleanup();
+        modalCleanup = null;
+      }
+
       modalTitle.textContent = "natebikestation";
       const readonly = isAdmin ? "" : "readonly";
       modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>`;
@@ -2334,18 +2339,25 @@
         }
       }
 
-      document.getElementById("modalCloseBtn").addEventListener("click",async() => {
+      const closeBtnHandler = async() => {
         await saveOnClose();
         closeModal();
-      },{once:true});
+      };
 
-      modalOverlay.addEventListener("click",async function onOverlayClick(e){
+      const overlayHandler = async(e) => {
         if(e.target === modalOverlay){
-          modalOverlay.removeEventListener("click",onOverlayClick);
           await saveOnClose();
           closeModal();
         }
-      });
+      };
+
+      document.getElementById("modalCloseBtn").addEventListener("click",closeBtnHandler);
+      modalOverlay.addEventListener("click",overlayHandler);
+
+      modalCleanup = () => {
+        document.getElementById("modalCloseBtn").removeEventListener("click",closeBtnHandler);
+        modalOverlay.removeEventListener("click",overlayHandler);
+      };
 
       openModal();
     }
