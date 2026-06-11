@@ -1050,11 +1050,11 @@
     const LocateControl = L.Control.extend({
       options:{ position:"bottomright" },
       onAdd:function(){
-        const btn = L.DomUtil.create("div", "locateBtn");
+        const btn = L.DomUtil.create("div","locateBtn");
         btn.title = "standort zentrieren";
         btn.innerHTML = '<div class="crosshair"></div>';
         L.DomEvent.disableClickPropagation(btn);
-        L.DomEvent.on(btn, "click", () => {
+        L.DomEvent.on(btn,"click",() => {
           map.locate({ setView:true, maxZoom:16, enableHighAccuracy:true });
         });
         return btn;
@@ -1066,15 +1066,15 @@
 
     map.on("locationfound", e => {
       if(!locationMarker){
-        locationMarker = L.circleMarker(e.latlng, {radius:10,color:"#ff0000",weight:3,fillOpacity:0}).addTo(map);
+        locationMarker = L.circleMarker(e.latlng,{radius:10,color:"#ff0000",weight:3,fillOpacity:0}).addTo(map);
       }else{
         locationMarker.setLatLng(e.latlng);
       }
     });
 
-    map.on("locationerror", () => showStatus("standort nicht verfügbar"));
+    map.on("locationerror",() => showStatus("standort nicht verfügbar"));
 
-    // ── Auto-Pan ────────────────────────────────────────────────────────────────
+    // ── Auto-Pan ─────────────────────────────────────────────────────────────────
 
     function stopAutoPan(){
       if(autoPanAnimFrame !== null){
@@ -1111,8 +1111,7 @@
         dy = Math.round(MAX_SPEED * (1 - (rect.height - markerPoint.y) / EDGE));
 
       if(dx !== 0 || dy !== 0){
-        map.panBy([dx, dy], {animate:false});
-        // Marker an seiner Bildschirmposition halten
+        map.panBy([dx,dy],{animate:false});
         const currentPoint = map.latLngToContainerPoint(entry.marker.getLatLng());
         const newLatLng = map.containerPointToLatLng(
           L.point(currentPoint.x + dx, currentPoint.y + dy)
@@ -1125,7 +1124,7 @@
       autoPanAnimFrame = requestAnimationFrame(runAutoPan);
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────────
 
     function usernameKey(name){
       return String(name || "").trim().toLowerCase();
@@ -1144,7 +1143,7 @@
       const { data, error } = await sb
         .from("user_profiles")
         .select("*")
-        .eq("id", userId)
+        .eq("id",userId)
         .single();
       if(error) throw error;
       return data;
@@ -1192,40 +1191,30 @@
 
     async function checkOwnProfileStillValid(){
       if(!currentProfile || !currentProfile.id) return;
-
       try{
         const { data, error } = await sb
           .from("user_profiles")
           .select("id, locked")
-          .eq("id", currentProfile.id)
+          .eq("id",currentProfile.id)
           .maybeSingle();
-
         if(error) throw error;
-
-        if(!data){
-          await forceLogoutToLogin("account gelöscht");
-          return;
-        }
-
-        if(data.locked){
-          await forceLogoutToLogin("account gesperrt");
-          return;
-        }
+        if(!data){ await forceLogoutToLogin("account gelöscht"); return; }
+        if(data.locked){ await forceLogoutToLogin("account gesperrt"); return; }
       }catch(err){
         console.error(err);
       }
     }
 
-    window.addEventListener("focus", checkOwnProfileStillValid);
-    document.addEventListener("visibilitychange", () => {
+    window.addEventListener("focus",checkOwnProfileStillValid);
+    document.addEventListener("visibilitychange",() => {
       if(!document.hidden) checkOwnProfileStillValid();
     });
-    setInterval(checkOwnProfileStillValid, 15000);
+    setInterval(checkOwnProfileStillValid,15000);
 
-    function showMsg(id, text, ok=false){
+    function showMsg(id,text,ok=false){
       const el = document.getElementById(id);
       el.textContent = text;
-      el.classList.toggle("ok", ok);
+      el.classList.toggle("ok",ok);
       el.style.display = "block";
     }
 
@@ -1251,17 +1240,17 @@
       clearTimeout(showStatus.timer);
       showStatus.timer = setTimeout(() => {
         statusBar.style.display = "none";
-      }, 2500);
+      },2500);
     }
 
     function formatDateTime(value){
       const d = new Date(value);
-      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}).toLowerCase();
+      return d.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}).toLowerCase();
     }
 
     function formatSystemMessageDateTime(){
       const d = new Date();
-      return d.toLocaleString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+      return d.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
     }
 
     function bikeSortValue(value){
@@ -1276,7 +1265,7 @@
       if(av.isNumber && bv.isNumber) return av.number - bv.number;
       if(av.isNumber && !bv.isNumber) return -1;
       if(!av.isNumber && bv.isNumber) return 1;
-      return av.text.localeCompare(bv.text, "de", {numeric:true,sensitivity:"base"});
+      return av.text.localeCompare(bv.text,"de",{numeric:true,sensitivity:"base"});
     }
 
     function statusClassForBike(entry){
@@ -1293,7 +1282,6 @@
         entry.isMoving ? "moving" : "",
         entry.isPulsing ? "selectedPulse" : ""
       ].filter(Boolean).join(" ");
-
       return L.divIcon({
         className:"",
         html:`<div class="bikeWrap"><div class="${classes}"><div class="bikeNum">${escapeHtml(entry.bikeNumber)}</div></div></div>`,
@@ -1308,7 +1296,6 @@
         entry.isMoving ? "moving" : "",
         entry.isPulsing ? "selectedPulse" : ""
       ].filter(Boolean).join(" ");
-
       return L.divIcon({
         className:"",
         html:`<div class="stationIconWrap"><img class="${classes}" src="logo.png" alt="" /></div>`,
@@ -1322,12 +1309,12 @@
     }
 
     async function dbLoadAllMarkers(){
-      const { data, error } = await sb.from("markers").select("*").order("created_at", {ascending:true});
+      const { data, error } = await sb.from("markers").select("*").order("created_at",{ascending:true});
       if(error) throw error;
       return data || [];
     }
 
-    async function dbInsertMarker(type, lat, lng){
+    async function dbInsertMarker(type,lat,lng){
       const payload = {
         type,lat,lng,
         bike_number:"",
@@ -1345,13 +1332,13 @@
       return data;
     }
 
-    async function dbUpdateMarker(id, patch){
-      const { error } = await sb.from("markers").update(patch).eq("id", id);
+    async function dbUpdateMarker(id,patch){
+      const { error } = await sb.from("markers").update(patch).eq("id",id);
       if(error) throw error;
     }
 
     async function dbDeleteMarker(id){
-      const { error } = await sb.from("markers").delete().eq("id", id);
+      const { error } = await sb.from("markers").delete().eq("id",id);
       if(error) throw error;
     }
 
@@ -1381,7 +1368,7 @@
       if(!entry){
         entry = rowToEntry(row);
         const pane = entry.type === "bike" ? "bikePane" : "stationPane";
-        entry.marker = L.marker([entry.lat,entry.lng], {icon:iconForEntry(entry),draggable:true,pane}).addTo(map);
+        entry.marker = L.marker([entry.lat,entry.lng],{icon:iconForEntry(entry),draggable:true,pane}).addTo(map);
         if(entry.marker.dragging) entry.marker.dragging.disable();
         markers.set(entry.id,entry);
         wireMarker(entry);
@@ -1408,9 +1395,7 @@
       if(markersLoaded) return;
       const rows = await dbLoadAllMarkers();
       rows.forEach(row => {
-        if(row.type === "bike" || row.type === "note"){
-          addOrUpdateMarker(row);
-        }
+        if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row);
       });
       markersLoaded = true;
     }
@@ -1419,24 +1404,24 @@
       return markers.get(id) || null;
     }
 
-    // ── wireMarker mit Auto-Pan ──────────────────────────────────────────────────
+    // ── wireMarker mit Auto-Pan ───────────────────────────────────────────────────
 
     function wireMarker(entry){
       const marker = entry.marker;
 
-      marker.on("click", e => {
+      marker.on("click",e => {
         L.DomEvent.stop(e);
         if(moveModeEntry) return;
         entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
       });
 
-      marker.on("contextmenu", e => {
-  L.DomEvent.stop(e);
-  if(!isAdmin) return;
-  openMarkerMenu(e.originalEvent, entry);
-});
+      marker.on("contextmenu",e => {
+        L.DomEvent.stop(e);
+        if(!isAdmin) return;
+        openMarkerMenu(e.originalEvent,entry);
+      });
 
-      marker.on("dragstart", () => {
+      marker.on("dragstart",() => {
         map.dragging.disable();
         if(moveModeEntry === entry){
           autoPanMarkerEntry = entry;
@@ -1446,7 +1431,7 @@
         }
       });
 
-      marker.on("drag", () => {
+      marker.on("drag",() => {
         if(moveModeEntry === entry){
           const ll = marker.getLatLng();
           entry.lat = ll.lat;
@@ -1454,7 +1439,7 @@
         }
       });
 
-      marker.on("dragend", () => {
+      marker.on("dragend",() => {
         map.dragging.enable();
         stopAutoPan();
         if(moveModeEntry !== entry) return;
@@ -1473,7 +1458,7 @@
       setTimeout(() => {
         entry.isPulsing = false;
         entry.marker.setIcon(iconForEntry(entry));
-      }, 1400);
+      },1400);
     }
 
     function startMoveMode(entry){
@@ -1482,9 +1467,7 @@
       entry.isMoving = true;
       entry.marker.setIcon(iconForEntry(entry));
       if(entry.marker.dragging) entry.marker.dragging.enable();
-
       ignoreMapClickUntil = Date.now() + 800;
-
       showStatus("marker verschieben, dann auf karte klicken");
     }
 
@@ -1494,7 +1477,7 @@
       const entry = moveModeEntry;
       const ll = entry.marker.getLatLng();
       try{
-        await dbUpdateMarker(entry.id, {lat:ll.lat,lng:ll.lng});
+        await dbUpdateMarker(entry.id,{lat:ll.lat,lng:ll.lng});
         entry.lat = ll.lat;
         entry.lng = ll.lng;
         entry.isMoving = false;
@@ -1514,16 +1497,16 @@
         function finish(value){
           if(done) return;
           done = true;
-          map.off("locationfound", onFound);
-          map.off("locationerror", onError);
+          map.off("locationfound",onFound);
+          map.off("locationerror",onError);
           resolve(value);
         }
         function onFound(e){ finish(e.latlng); }
         function onError(){ finish(null); }
-        map.on("locationfound", onFound);
-        map.on("locationerror", onError);
+        map.on("locationfound",onFound);
+        map.on("locationerror",onError);
         map.locate({setView:false,enableHighAccuracy:true,timeout:timeoutMs,maximumAge:0});
-        setTimeout(() => finish(null), timeoutMs+1000);
+        setTimeout(() => finish(null),timeoutMs+1000);
       });
     }
 
@@ -1632,10 +1615,7 @@
     }
 
     async function toggleMaintenanceBike(entry){
-      if(!isAdmin){
-        showStatus("nur admin");
-        return;
-      }
+      if(!isAdmin){ showStatus("nur admin"); return; }
       const currentStatus = entry.status || "verfügbar";
       const nextStatus = currentStatus === "nicht verfügbar" ? "verfügbar" : "nicht verfügbar";
       try{
@@ -1660,20 +1640,20 @@
         const cancelX = document.getElementById("returnCancelX");
         function close(value){
           overlay.style.display = "none";
-          autoBtn.removeEventListener("click", onAuto);
-          manualBtn.removeEventListener("click", onManual);
-          cancelX.removeEventListener("click", onCancel);
-          overlay.removeEventListener("click", onOverlay);
+          autoBtn.removeEventListener("click",onAuto);
+          manualBtn.removeEventListener("click",onManual);
+          cancelX.removeEventListener("click",onCancel);
+          overlay.removeEventListener("click",onOverlay);
           resolve(value);
         }
         function onAuto(){ close("auto"); }
         function onManual(){ close("manual"); }
         function onCancel(){ close("cancel"); }
         function onOverlay(e){ if(e.target === overlay) close("cancel"); }
-        autoBtn.addEventListener("click", onAuto);
-        manualBtn.addEventListener("click", onManual);
-        cancelX.addEventListener("click", onCancel);
-        overlay.addEventListener("click", onOverlay);
+        autoBtn.addEventListener("click",onAuto);
+        manualBtn.addEventListener("click",onManual);
+        cancelX.addEventListener("click",onCancel);
+        overlay.addEventListener("click",onOverlay);
         overlay.style.display = "flex";
       });
     }
@@ -1683,19 +1663,19 @@
     const menuBtn = document.getElementById("menuBtn");
     const dropdownMenu = document.getElementById("dropdownMenu");
 
-    menuBtn.addEventListener("click", e => {
+    menuBtn.addEventListener("click",e => {
       e.stopPropagation();
       dropdownMenu.style.display = dropdownMenu.style.display === "block" ? "none" : "block";
     });
 
-    document.addEventListener("click", e => {
+    document.addEventListener("click",e => {
       if(!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)){
         dropdownMenu.style.display = "none";
       }
     });
 
     document.querySelectorAll(".dropdown-item").forEach(item => {
-      item.addEventListener("click", () => {
+      item.addEventListener("click",() => {
         const kind = item.dataset.kind;
         dropdownMenu.style.display = "none";
         if(kind === "bikes") showBikeList();
@@ -1721,11 +1701,11 @@
       document.getElementById("listItems").appendChild(div);
     }
 
-    function addListRow(text, entry, extraClass=""){
+    function addListRow(text,entry,extraClass=""){
       const row = document.createElement("div");
       row.className = extraClass ? `list-item ${extraClass}` : "list-item";
       row.textContent = text;
-      row.addEventListener("click", () => {
+      row.addEventListener("click",() => {
         document.getElementById("listOverlay").style.display = "none";
         map.setView([entry.lat,entry.lng],17);
         pulseEntry(entry);
@@ -1736,37 +1716,29 @@
     function showBikeList(){
       const bikes = Array.from(markers.values()).filter(e => e.type === "bike").sort(sortBikeEntries);
       openList("natebikes");
-      if(bikes.length === 0){
-        addEmptyListMessage("keine fahrräder gefunden");
-        return;
-      }
+      if(bikes.length === 0){ addEmptyListMessage("keine fahrräder gefunden"); return; }
       bikes.forEach(entry => {
         const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
-        addListRow(line || "(ohne nummer/name)", entry, statusClassForBike(entry));
+        addListRow(line || "(ohne nummer/name)",entry,statusClassForBike(entry));
       });
     }
 
     function showNoteList(){
       const notes = Array.from(markers.values()).filter(e => e.type === "note").sort((a,b) => Number(a.lng)-Number(b.lng));
       openList("natebikestationen");
-      if(notes.length === 0){
-        addEmptyListMessage("keine stationen gefunden");
-        return;
-      }
+      if(notes.length === 0){ addEmptyListMessage("keine stationen gefunden"); return; }
       notes.forEach(entry => {
         const line = String(entry.content || "").trim();
-        addListRow(line || "(ohne inhalt)", entry);
+        addListRow(line || "(ohne inhalt)",entry);
       });
     }
 
-    document.getElementById("listCloseBtn").addEventListener("click", () => {
+    document.getElementById("listCloseBtn").addEventListener("click",() => {
       document.getElementById("listOverlay").style.display = "none";
     });
 
-    document.getElementById("listOverlay").addEventListener("click", e => {
-      if(e.target.id === "listOverlay"){
-        document.getElementById("listOverlay").style.display = "none";
-      }
+    document.getElementById("listOverlay").addEventListener("click",e => {
+      if(e.target.id === "listOverlay") document.getElementById("listOverlay").style.display = "none";
     });
 
     // ── Login / Account ──────────────────────────────────────────────────────────
@@ -1779,40 +1751,25 @@
     async function loginUser(){
       const name = document.getElementById("loginNameInput").value.trim();
       const password = document.getElementById("loginPasswordInput").value;
-
-      if(!name || !password){
-        showMsg("loginMsg","bitte name und passwort eingeben");
-        return;
-      }
-
+      if(!name || !password){ showMsg("loginMsg","bitte name und passwort eingeben"); return; }
       const email = usernameToEmail(name);
-
       try{
         const { data, error } = await sb.auth.signInWithPassword({email,password});
         if(error) throw error;
-
         const profile = await loadProfile(data.user.id);
-        if(profile.locked){
-          await sb.auth.signOut();
-          showMsg("loginMsg","account gesperrt");
-          return;
-        }
-
+        if(profile.locked){ await sb.auth.signOut(); showMsg("loginMsg","account gesperrt"); return; }
         currentProfile = profile;
         currentUserName = profile.display_name || profile.username;
         hideMsg("loginMsg");
-
         loginFrame.style.display = "none";
         accountCreateFrame.style.display = "none";
         mapFrame.style.display = "block";
         headerActions.style.display = "flex";
         updateAdminUI();
-
         setTimeout(() => {
           map.invalidateSize();
           map.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
         },100);
-
         await loadMarkersOnce();
       }catch(err){
         console.error(err);
@@ -1838,52 +1795,26 @@
       const pw1 = document.getElementById("createPasswordInput").value;
       const pw2 = document.getElementById("createPasswordRepeatInput").value;
       const secret = document.getElementById("createSecretInput").value.trim();
-
-      if(secret !== CREATE_ACCOUNT_SECRET){
-        showMsg("createAccountMsg","falscher geheimcode");
-        return;
-      }
-
-      if(!name || !pw1 || !pw2){
-        showMsg("createAccountMsg","bitte alle felder ausfüllen");
-        return;
-      }
-
-      if(pw1 !== pw2){
-        showMsg("createAccountMsg","passwörter stimmen nicht überein");
-        return;
-      }
-
+      if(secret !== CREATE_ACCOUNT_SECRET){ showMsg("createAccountMsg","falscher geheimcode"); return; }
+      if(!name || !pw1 || !pw2){ showMsg("createAccountMsg","bitte alle felder ausfüllen"); return; }
+      if(pw1 !== pw2){ showMsg("createAccountMsg","passwörter stimmen nicht überein"); return; }
       const username = usernameKey(name);
       const email = usernameToEmail(name);
-
       try{
         const { data, error } = await sb.auth.signUp({email,password:pw1});
         if(error) throw error;
-
-        if(!data.user){
-          showMsg("createAccountMsg","account konnte nicht erstellt werden");
-          return;
-        }
-
+        if(!data.user){ showMsg("createAccountMsg","account konnte nicht erstellt werden"); return; }
         const { error: profileError } = await sb.from("user_profiles").insert({
-          id:data.user.id,
-          username,
-          display_name:name,
-          locked:false
+          id:data.user.id, username, display_name:name, locked:false
         });
-
         if(profileError) throw profileError;
-
         await sb.auth.signOut();
-
         document.getElementById("loginNameInput").value = name;
         document.getElementById("loginPasswordInput").value = "";
         document.getElementById("createNameInput").value = "";
         document.getElementById("createPasswordInput").value = "";
         document.getElementById("createPasswordRepeatInput").value = "";
         document.getElementById("createSecretInput").value = "";
-
         showMsg("createAccountMsg","account erstellt",true);
         setTimeout(showLogin,900);
       }catch(err){
@@ -1898,12 +1829,12 @@
     }
 
     document.getElementById("loginBtn").addEventListener("click",loginUser);
-    document.getElementById("loginPasswordInput").addEventListener("keydown",e => {if(e.key === "Enter") loginUser();});
-    document.getElementById("loginNameInput").addEventListener("keydown",e => {if(e.key === "Enter") loginUser();});
+    document.getElementById("loginPasswordInput").addEventListener("keydown",e => { if(e.key === "Enter") loginUser(); });
+    document.getElementById("loginNameInput").addEventListener("keydown",e => { if(e.key === "Enter") loginUser(); });
     document.getElementById("openCreateAccountLink").addEventListener("click",showCreateAccount);
     document.getElementById("backToLoginBtn").addEventListener("click",showLogin);
     document.getElementById("createAccountBtn").addEventListener("click",createAccount);
-    document.getElementById("createSecretInput").addEventListener("keydown",e => {if(e.key === "Enter") createAccount();});
+    document.getElementById("createSecretInput").addEventListener("keydown",e => { if(e.key === "Enter") createAccount(); });
 
     // ── Admin ────────────────────────────────────────────────────────────────────
 
@@ -1934,10 +1865,7 @@
 
     function confirmAdmin(){
       const value = (adminPwInput.value || "").trim();
-      if(value !== ADMIN_PASSWORD){
-        adminMsg.style.display = "block";
-        return;
-      }
+      if(value !== ADMIN_PASSWORD){ adminMsg.style.display = "block"; return; }
       isAdmin = true;
       updateAdminUI();
       closeAdminModal();
@@ -1945,19 +1873,14 @@
     }
 
     adminBtn.addEventListener("click",() => {
-      if(isAdmin){
-        isAdmin = false;
-        updateAdminUI();
-        showStatus("admin abgemeldet");
-      }else{
-        openAdminModal();
-      }
+      if(isAdmin){ isAdmin = false; updateAdminUI(); showStatus("admin abgemeldet"); }
+      else openAdminModal();
     });
 
     document.getElementById("adminOkBtn").addEventListener("click",confirmAdmin);
-    adminPwInput.addEventListener("keydown",e => {if(e.key === "Enter") confirmAdmin();});
+    adminPwInput.addEventListener("keydown",e => { if(e.key === "Enter") confirmAdmin(); });
     document.getElementById("adminCloseBtn").addEventListener("click",closeAdminModal);
-    adminOverlay.addEventListener("click",e => {if(e.target === adminOverlay) closeAdminModal();});
+    adminOverlay.addEventListener("click",e => { if(e.target === adminOverlay) closeAdminModal(); });
 
     // ── Account verwalten ────────────────────────────────────────────────────────
 
@@ -1973,7 +1896,7 @@
     }
 
     document.getElementById("accountCloseBtn").addEventListener("click",closeAccountOverlay);
-    accountOverlay.addEventListener("click",e => {if(e.target === accountOverlay) closeAccountOverlay();});
+    accountOverlay.addEventListener("click",e => { if(e.target === accountOverlay) closeAccountOverlay(); });
 
     function openAccountManage(){
       accountTitle.textContent = "account verwalten";
@@ -1984,27 +1907,20 @@
         </div>
       `;
       accountFooter.innerHTML = `
-         <button class="btn secondary" id="logoutBtn" type="button">ausloggen</button>
+        <button class="btn secondary" id="logoutBtn" type="button">ausloggen</button>
       `;
       accountOverlay.style.display = "flex";
-
       document.getElementById("changePasswordItem").addEventListener("click",openChangePassword);
       document.getElementById("deleteOwnAccountItem").addEventListener("click",deleteOwnAccount);
       document.getElementById("logoutBtn").addEventListener("click",logoutUser);
     }
 
     async function logoutUser(){
-      try{
-        await sb.auth.signOut();
-      }catch(err){
-        console.error(err);
-      }
-
+      try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
       currentUserName = "";
       currentProfile = null;
       isAdmin = false;
       markersLoaded = false;
-
       updateAdminUI();
       closeAccountOverlay();
       headerActions.style.display = "none";
@@ -2040,25 +1956,14 @@
       const oldPw = document.getElementById("oldPasswordInput").value;
       const newPw = document.getElementById("newPasswordInput").value;
       const rep = document.getElementById("newPasswordRepeatInput").value;
-
-      if(!currentProfile){
-        showMsg("changePasswordMsg","nicht angemeldet");
-        return;
-      }
-
-      if(!newPw || newPw !== rep){
-        showMsg("changePasswordMsg","neue passwörter stimmen nicht überein");
-        return;
-      }
-
+      if(!currentProfile){ showMsg("changePasswordMsg","nicht angemeldet"); return; }
+      if(!newPw || newPw !== rep){ showMsg("changePasswordMsg","neue passwörter stimmen nicht überein"); return; }
       try{
         const email = usernameToEmail(currentProfile.username);
         const { error: signInError } = await sb.auth.signInWithPassword({email,password:oldPw});
         if(signInError) throw signInError;
-
         const { error } = await sb.auth.updateUser({password:newPw});
         if(error) throw error;
-
         showMsg("changePasswordMsg","passwort geändert",true);
         setTimeout(closeAccountOverlay,800);
       }catch(err){
@@ -2071,18 +1976,13 @@
       const ok = confirm("account wirklich löschen?");
       if(!ok) return;
       try{
-        if(currentProfile){
-          await sb.from("user_profiles").delete().eq("id",currentProfile.id);
-        }
+        if(currentProfile) await sb.from("user_profiles").delete().eq("id",currentProfile.id);
         await sb.auth.signOut();
-      }catch(err){
-        console.error(err);
-      }
+      }catch(err){ console.error(err); }
       currentProfile = null;
       currentUserName = "";
       isAdmin = false;
       markersLoaded = false;
-
       updateAdminUI();
       closeAccountOverlay();
       headerActions.style.display = "none";
@@ -2099,10 +1999,7 @@
         const { data,error } = await sb.from("user_profiles").select("*").order("username",{ascending:true});
         if(error) throw error;
         const accounts = data || [];
-        if(accounts.length === 0){
-          addEmptyListMessage("keine accounts vorhanden");
-          return;
-        }
+        if(accounts.length === 0){ addEmptyListMessage("keine accounts vorhanden"); return; }
         accounts.forEach(account => {
           const row = document.createElement("div");
           row.className = account.locked ? "list-item accountRow locked" : "list-item accountRow";
@@ -2135,7 +2032,6 @@
       const action = item.dataset.action;
       const id = ctxAccountId;
       hideContextMenus();
-
       if(action === "toggleLock"){
         try{
           const {data:profile,error:loadErr} = await sb.from("user_profiles").select("*").eq("id",id).single();
@@ -2150,7 +2046,6 @@
           showStatus("account konnte nicht geändert werden");
         }
       }
-
       if(action === "delete"){
         const ok = confirm("account wirklich aus der profilliste löschen?");
         if(!ok) return;
@@ -2200,11 +2095,7 @@
 
     map.on("click",async() => {
       if(Date.now() < ignoreMapClickUntil) return;
-
-      if(moveModeEntry){
-        await finishMoveMode();
-        return;
-      }
+      if(moveModeEntry){ await finishMoveMode(); return; }
       hideContextMenus();
     });
 
@@ -2283,11 +2174,7 @@
       revealedBikeCodeId = null;
     }
 
-    modalOverlay.addEventListener("click",e => {
-      if(e.target === modalOverlay) closeModal();
-    });
-
-    document.getElementById("modalCloseBtn").addEventListener("click",closeModal);
+    // ── Bike-Fenster ─────────────────────────────────────────────────────────────
 
     function openBikeWindow(entry){
       modalTitle.textContent = "geparktes fahrrad";
@@ -2332,34 +2219,8 @@
         modalFooter.innerHTML = `
           ${loanButtonHtml}
           ${maintenanceButtonHtml}
-          <button class="btn" id="bikeSaveBtn" type="button">speichern</button>
           <button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>
         `;
-
-        document.getElementById("bikeSaveBtn").addEventListener("click",async() => {
-          const patch = {
-            bike_number:document.getElementById("bikeNumberInput").value.trim(),
-            name:document.getElementById("bikeNameInput").value.trim(),
-            color:document.getElementById("bikeColorInput").value.trim(),
-            remark:document.getElementById("bikeRemarkInput").value.trim()
-          };
-          if(codeIsVisible) patch.code = document.getElementById("bikeCodeInput").value.trim();
-
-          try{
-            await dbUpdateMarker(entry.id,patch);
-            entry.bikeNumber = patch.bike_number;
-            entry.bikeName = patch.name;
-            entry.bikeColor = patch.color;
-            entry.bikeRemark = patch.remark;
-            if(codeIsVisible) entry.bikeCode = patch.code;
-            entry.marker.setIcon(iconForEntry(entry));
-            closeModal();
-          }catch(err){
-            console.error(err);
-            showStatus("speichern fehlgeschlagen");
-          }
-        },{once:true});
-
         document.getElementById("bikeDeleteBtn").addEventListener("click",async() => {
           try{
             await dbDeleteMarker(entry.id);
@@ -2372,22 +2233,7 @@
           }
         },{once:true});
       }else{
-        modalFooter.innerHTML = `
-          ${loanButtonHtml}
-          <button class="btn" id="bikeRemarkSaveBtn" type="button">speichern</button>
-        `;
-        document.getElementById("bikeRemarkSaveBtn").addEventListener("click",async() => {
-          const newRemark = document.getElementById("bikeRemarkInput").value.trim();
-          try{
-            await dbUpdateMarker(entry.id,{remark:newRemark});
-            entry.bikeRemark = newRemark;
-            closeModal();
-            showStatus("bemerkung gespeichert");
-          }catch(err){
-            console.error(err);
-            showStatus("speichern fehlgeschlagen");
-          }
-        },{once:true});
+        modalFooter.innerHTML = `${loanButtonHtml}`;
       }
 
       const loanBtn = document.getElementById("bikeLoanBtn");
@@ -2399,29 +2245,68 @@
       const maintenanceBtn = document.getElementById("bikeMaintenanceBtn");
       if(maintenanceBtn) maintenanceBtn.addEventListener("click",() => toggleMaintenanceBike(entry),{once:true});
 
+      async function saveOnClose(){
+        if(isAdmin){
+          const patch = {
+            bike_number:document.getElementById("bikeNumberInput")?.value.trim() ?? entry.bikeNumber,
+            name:document.getElementById("bikeNameInput")?.value.trim() ?? entry.bikeName,
+            color:document.getElementById("bikeColorInput")?.value.trim() ?? entry.bikeColor,
+            remark:document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark
+          };
+          if(codeIsVisible) patch.code = document.getElementById("bikeCodeInput")?.value.trim() ?? entry.bikeCode;
+          try{
+            await dbUpdateMarker(entry.id,patch);
+            entry.bikeNumber = patch.bike_number;
+            entry.bikeName = patch.name;
+            entry.bikeColor = patch.color;
+            entry.bikeRemark = patch.remark;
+            if(codeIsVisible) entry.bikeCode = patch.code;
+            entry.marker.setIcon(iconForEntry(entry));
+          }catch(err){
+            console.error(err);
+            showStatus("speichern fehlgeschlagen");
+          }
+        }else{
+          const newRemark = document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark;
+          if(newRemark !== entry.bikeRemark){
+            try{
+              await dbUpdateMarker(entry.id,{remark:newRemark});
+              entry.bikeRemark = newRemark;
+            }catch(err){
+              console.error(err);
+              showStatus("speichern fehlgeschlagen");
+            }
+          }
+        }
+      }
+
+      document.getElementById("modalCloseBtn").addEventListener("click",async() => {
+        await saveOnClose();
+        closeModal();
+      },{once:true});
+
+      modalOverlay.addEventListener("click",async function onOverlayClick(e){
+        if(e.target === modalOverlay){
+          modalOverlay.removeEventListener("click",onOverlayClick);
+          await saveOnClose();
+          closeModal();
+        }
+      });
+
       openModal();
     }
+
+    // ── Station-Fenster ──────────────────────────────────────────────────────────
 
     function openStationWindow(entry){
       modalTitle.textContent = "natebikestation";
       const readonly = isAdmin ? "" : "readonly";
       modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>`;
+
       if(isAdmin){
         modalFooter.innerHTML = `
-          <button class="btn" id="stationSaveBtn" type="button">speichern</button>
           <button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>
         `;
-        document.getElementById("stationSaveBtn").addEventListener("click",async() => {
-          const content = document.getElementById("stationContentInput").value.trim();
-          try{
-            await dbUpdateMarker(entry.id,{content});
-            entry.content = content;
-            closeModal();
-          }catch(err){
-            console.error(err);
-            showStatus("speichern fehlgeschlagen");
-          }
-        },{once:true});
         document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
           try{
             await dbDeleteMarker(entry.id);
@@ -2434,6 +2319,34 @@
           }
         },{once:true});
       }
+
+      async function saveOnClose(){
+        if(!isAdmin) return;
+        const content = document.getElementById("stationContentInput")?.value.trim() ?? entry.content;
+        if(content !== entry.content){
+          try{
+            await dbUpdateMarker(entry.id,{content});
+            entry.content = content;
+          }catch(err){
+            console.error(err);
+            showStatus("speichern fehlgeschlagen");
+          }
+        }
+      }
+
+      document.getElementById("modalCloseBtn").addEventListener("click",async() => {
+        await saveOnClose();
+        closeModal();
+      },{once:true});
+
+      modalOverlay.addEventListener("click",async function onOverlayClick(e){
+        if(e.target === modalOverlay){
+          modalOverlay.removeEventListener("click",onOverlayClick);
+          await saveOnClose();
+          closeModal();
+        }
+      });
+
       openModal();
     }
 
@@ -2601,19 +2514,13 @@
 
     document.getElementById("sendChatBtn").addEventListener("click",sendChatMessage);
     document.getElementById("chatTextInput").addEventListener("keydown",e => {
-      if(e.key === "Enter" && !e.shiftKey){
-        e.preventDefault();
-        sendChatMessage();
-      }
+      if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendChatMessage(); }
     });
 
     async function sendChatMessage(){
       const input = document.getElementById("chatTextInput");
       const message = input.value.trim();
-      if(message.length > 144){
-        showStatus("maximal 144 zeichen");
-        return;
-      }
+      if(message.length > 144){ showStatus("maximal 144 zeichen"); return; }
       if(!message && !selectedPhotoData) return;
       try{
         const savedMessage = await dbInsertChatMessage(message,selectedPhotoData);
@@ -2639,10 +2546,7 @@
       const action = item.dataset.action;
       hideContextMenus();
       if(action === "delete"){
-        if(!isAdmin){
-          showStatus("nur admin");
-          return;
-        }
+        if(!isAdmin){ showStatus("nur admin"); return; }
         try{
           await dbDeleteChatMessage(id);
           removeChatMessageFromView(id);
@@ -2657,10 +2561,7 @@
     document.getElementById("clearChatBtn").addEventListener("click",clearChat);
 
     async function clearChat(){
-      if(!isAdmin){
-        showStatus("nur admin");
-        return;
-      }
+      if(!isAdmin){ showStatus("nur admin"); return; }
       const ok = confirm("chat wirklich leeren?");
       if(!ok) return;
       try{
@@ -2685,23 +2586,15 @@
         if(payload.eventType === "DELETE"){
           const oldRow = payload.old;
           const entry = findEntryById(oldRow.id);
-          if(entry){
-            map.removeLayer(entry.marker);
-            markers.delete(entry.id);
-          }
+          if(entry){ map.removeLayer(entry.marker); markers.delete(entry.id); }
         }
       })
       .subscribe();
 
     sb.channel("chat-realtime")
       .on("postgres_changes",{event:"*",schema:"public",table:"chat_messages"},payload => {
-        if(payload.eventType === "INSERT"){
-          renderChatMessage(payload.new);
-          scrollChatBottom();
-        }
-        if(payload.eventType === "DELETE"){
-          removeChatMessageFromView(payload.old.id);
-        }
+        if(payload.eventType === "INSERT"){ renderChatMessage(payload.new); scrollChatBottom(); }
+        if(payload.eventType === "DELETE"){ removeChatMessageFromView(payload.old.id); }
       })
       .subscribe();
 
@@ -2709,9 +2602,7 @@
       .on("postgres_changes",{event:"*",schema:"public",table:"user_profiles"},async payload => {
         if(!currentProfile || !currentProfile.id) return;
         if(payload.eventType === "UPDATE" && payload.new && payload.new.id === currentProfile.id){
-          if(payload.new.locked){
-            await forceLogoutToLogin("account gesperrt");
-          }
+          if(payload.new.locked) await forceLogoutToLogin("account gesperrt");
         }
         if(payload.eventType === "DELETE" && payload.old && payload.old.id === currentProfile.id){
           await forceLogoutToLogin("account gelöscht");
