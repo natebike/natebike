@@ -1431,10 +1431,10 @@
       });
 
       marker.on("contextmenu", e => {
-        L.DomEvent.stop(e);
-        if(entry.type === "note" && !isAdmin) return;
-        openMarkerMenu(e.originalEvent, entry);
-      });
+  L.DomEvent.stop(e);
+  if(!isAdmin) return;
+  openMarkerMenu(e.originalEvent, entry);
+});
 
       marker.on("dragstart", () => {
         map.dragging.disable();
