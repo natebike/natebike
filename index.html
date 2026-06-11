@@ -1028,6 +1028,10 @@
     let markersLoaded = false;
     let ignoreMapClickUntil = 0;
 
+    // Auto-Pan state
+    let autoPanAnimFrame = null;
+    let autoPanMarkerEntry = null;
+
     const markers = new Map();
     const renderedChatMessages = new Set();
 
@@ -1070,6 +1074,59 @@
 
     map.on("locationerror", () => showStatus("standort nicht verfügbar"));
 
+    // ── Auto-Pan ────────────────────────────────────────────────────────────────
+
+    function stopAutoPan(){
+      if(autoPanAnimFrame !== null){
+        cancelAnimationFrame(autoPanAnimFrame);
+        autoPanAnimFrame = null;
+      }
+      autoPanMarkerEntry = null;
+    }
+
+    function runAutoPan(){
+      if(!autoPanMarkerEntry || !moveModeEntry){
+        autoPanAnimFrame = null;
+        return;
+      }
+
+      const container = map.getContainer();
+      const rect = container.getBoundingClientRect();
+      const entry = autoPanMarkerEntry;
+      const markerPoint = map.latLngToContainerPoint(entry.marker.getLatLng());
+
+      const EDGE = 60;
+      const MAX_SPEED = 8;
+
+      let dx = 0;
+      let dy = 0;
+
+      if(markerPoint.x < EDGE)
+        dx = -Math.round(MAX_SPEED * (1 - markerPoint.x / EDGE));
+      if(markerPoint.x > rect.width - EDGE)
+        dx = Math.round(MAX_SPEED * (1 - (rect.width - markerPoint.x) / EDGE));
+      if(markerPoint.y < EDGE)
+        dy = -Math.round(MAX_SPEED * (1 - markerPoint.y / EDGE));
+      if(markerPoint.y > rect.height - EDGE)
+        dy = Math.round(MAX_SPEED * (1 - (rect.height - markerPoint.y) / EDGE));
+
+      if(dx !== 0 || dy !== 0){
+        map.panBy([dx, dy], {animate:false});
+        // Marker an seiner Bildschirmposition halten
+        const currentPoint = map.latLngToContainerPoint(entry.marker.getLatLng());
+        const newLatLng = map.containerPointToLatLng(
+          L.point(currentPoint.x + dx, currentPoint.y + dy)
+        );
+        entry.marker.setLatLng(newLatLng);
+        entry.lat = newLatLng.lat;
+        entry.lng = newLatLng.lng;
+      }
+
+      autoPanAnimFrame = requestAnimationFrame(runAutoPan);
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────────
+
     function usernameKey(name){
       return String(name || "").trim().toLowerCase();
     }
@@ -1110,6 +1167,7 @@
       revealedBikeCodeId = null;
       markersLoaded = false;
 
+      stopAutoPan();
       updateAdminUI();
       closeAllOverlays();
       hideContextMenus();
@@ -1361,21 +1419,44 @@
       return markers.get(id) || null;
     }
 
+    // ── wireMarker mit Auto-Pan ──────────────────────────────────────────────────
+
     function wireMarker(entry){
       const marker = entry.marker;
+
       marker.on("click", e => {
         L.DomEvent.stop(e);
         if(moveModeEntry) return;
         entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
       });
+
       marker.on("contextmenu", e => {
         L.DomEvent.stop(e);
         if(entry.type === "note" && !isAdmin) return;
         openMarkerMenu(e.originalEvent, entry);
       });
-      marker.on("dragstart", () => map.dragging.disable());
+
+      marker.on("dragstart", () => {
+        map.dragging.disable();
+        if(moveModeEntry === entry){
+          autoPanMarkerEntry = entry;
+          if(autoPanAnimFrame === null){
+            autoPanAnimFrame = requestAnimationFrame(runAutoPan);
+          }
+        }
+      });
+
+      marker.on("drag", () => {
+        if(moveModeEntry === entry){
+          const ll = marker.getLatLng();
+          entry.lat = ll.lat;
+          entry.lng = ll.lng;
+        }
+      });
+
       marker.on("dragend", () => {
         map.dragging.enable();
+        stopAutoPan();
         if(moveModeEntry !== entry) return;
         const ll = marker.getLatLng();
         entry.lat = ll.lat;
@@ -1383,6 +1464,8 @@
         showStatus("zum abschließen auf karte klicken");
       });
     }
+
+    // ── Move-Mode ────────────────────────────────────────────────────────────────
 
     function pulseEntry(entry){
       entry.isPulsing = true;
@@ -1407,6 +1490,7 @@
 
     async function finishMoveMode(){
       if(!moveModeEntry) return;
+      stopAutoPan();
       const entry = moveModeEntry;
       const ll = entry.marker.getLatLng();
       try{
@@ -1594,6 +1678,8 @@
       });
     }
 
+    // ── Menü ─────────────────────────────────────────────────────────────────────
+
     const menuBtn = document.getElementById("menuBtn");
     const dropdownMenu = document.getElementById("dropdownMenu");
 
@@ -1619,6 +1705,8 @@
         if(kind === "accounts") openAllAccountsManage();
       });
     });
+
+    // ── Listen ───────────────────────────────────────────────────────────────────
 
     function openList(title){
       document.getElementById("listTitle").textContent = title;
@@ -1680,6 +1768,8 @@
         document.getElementById("listOverlay").style.display = "none";
       }
     });
+
+    // ── Login / Account ──────────────────────────────────────────────────────────
 
     const loginFrame = document.getElementById("loginFrame");
     const accountCreateFrame = document.getElementById("accountCreateFrame");
@@ -1815,6 +1905,8 @@
     document.getElementById("createAccountBtn").addEventListener("click",createAccount);
     document.getElementById("createSecretInput").addEventListener("keydown",e => {if(e.key === "Enter") createAccount();});
 
+    // ── Admin ────────────────────────────────────────────────────────────────────
+
     const adminBtn = document.getElementById("adminBtn");
     const adminOverlay = document.getElementById("adminOverlay");
     const adminPwInput = document.getElementById("adminPwInput");
@@ -1866,6 +1958,8 @@
     adminPwInput.addEventListener("keydown",e => {if(e.key === "Enter") confirmAdmin();});
     document.getElementById("adminCloseBtn").addEventListener("click",closeAdminModal);
     adminOverlay.addEventListener("click",e => {if(e.target === adminOverlay) closeAdminModal();});
+
+    // ── Account verwalten ────────────────────────────────────────────────────────
 
     const accountOverlay = document.getElementById("accountOverlay");
     const accountTitle = document.getElementById("accountTitle");
@@ -2072,6 +2166,8 @@
       }
     });
 
+    // ── Context-Menüs ────────────────────────────────────────────────────────────
+
     const ctxMenuMap = document.getElementById("ctxMenuMap");
     const ctxMenuMarker = document.getElementById("ctxMenuMarker");
     const ctxMenuChat = document.getElementById("ctxMenuChat");
@@ -2168,6 +2264,8 @@
       if(action === "move") startMoveMode(entry);
     });
 
+    // ── Modal ────────────────────────────────────────────────────────────────────
+
     const modalOverlay = document.getElementById("modalOverlay");
     const modalTitle = document.getElementById("modalTitle");
     const modalBody = document.getElementById("modalBody");
@@ -2220,7 +2318,7 @@
 
       let loanButtonHtml = "";
       if(isAvailable) loanButtonHtml = `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`;
-      if(isBorrowed && currentUserMayReturnBike(entry)) {
+      if(isBorrowed && currentUserMayReturnBike(entry)){
         loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
       }
 
@@ -2304,18 +2402,6 @@
       openModal();
     }
 
-    function getBorrowerFromStatus(status){
-      const text = String(status || "");
-      if(!text.startsWith("von ") || !text.endsWith(" ausgeliehen")) return "";
-      return text.replace(/^von /,"").replace(/ ausgeliehen$/,"").trim();
-    }
-
-    function currentUserMayReturnBike(entry){
-      if(isAdmin) return true;
-      const borrower = getBorrowerFromStatus(entry.status);
-      return borrower === currentUserName;
-    }
-
     function openStationWindow(entry){
       modalTitle.textContent = "natebikestation";
       const readonly = isAdmin ? "" : "readonly";
@@ -2350,6 +2436,8 @@
       }
       openModal();
     }
+
+    // ── Chat ─────────────────────────────────────────────────────────────────────
 
     async function dbLoadChatMessages(){
       const {data,error} = await sb.from("chat_messages").select("*").order("created_at",{ascending:true}).limit(300);
@@ -2585,6 +2673,8 @@
         showStatus("chat konnte nicht geleert werden");
       }
     }
+
+    // ── Realtime ─────────────────────────────────────────────────────────────────
 
     sb.channel("markers-realtime")
       .on("postgres_changes",{event:"*",schema:"public",table:"markers"},payload => {
