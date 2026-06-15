@@ -17,905 +17,2303 @@
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
-    :root{\r
-      --blue:#004a95;\r
-      --bikePurple:#6a00ff;\r
-      --rentGrey:#8a8a8a;\r
-      --danger:#7a0b0b;\r
-      --adminGrey:#c9c9c9;\r
-      --adminGreen:#9be39b;\r
-      --text:#0b1a2a;\r
-      --bg:#ffffff;\r
-    }\r
-    *{\r
-      box-sizing:border-box;\r
-      margin:0;\r
-      padding:0;\r
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;\r
-      -webkit-tap-highlight-color:transparent;\r
-    }\r
-    body,html{\r
-      width:100%;\r
-      height:100%;\r
-      background:#f0f2f5;\r
-      color:var(--text);\r
-      overflow:hidden;\r
-    }\r
-    .app-frame{\r
-      display:none;\r
-      width:100%;\r
-      height:100%;\r
-      position:absolute;\r
-      top:0;\r
-      left:0;\r
-    }\r
-    .app-frame.active{\r
-      display:flex;\r
-      flex-direction:column;\r
-    }\r
-    .btn{\r
-      background:var(--blue);\r
-      color:#fff;\r
-      border:none;\r
-      padding:12px 20px;\r
-      border-radius:8px;\r
-      font-size:16px;\r
-      font-weight:bold;\r
-      cursor:pointer;\r
-      width:100%;\r
-      transition:opacity 0.2s;\r
-    }\r
-    .btn:active{ opacity:0.8; }\r
-    .input-field{\r
-      width:100%;\r
-      padding:12px;\r
-      border:1px solid #ccc;\r
-      border-radius:8px;\r
-      font-size:16px;\r
-      margin-bottom:15px;\r
-      outline:none;\r
-    }\r
-    .input-field:focus{ border-color:var(--blue); }\r
-\r
-    /* LOGIN / REGISTER */\r
-    .auth-container{\r
-      max-width:400px;\r
-      width:90%;\r
-      background:#fff;\r
-      padding:30px;\r
-      border-radius:16px;\r
-      box-shadow:0 4px 12px rgba(0,0,0,0.1);\r
-      text-align:center;\r
-      margin:auto;\r
-    }\r
-    .auth-logo{ width:80px; margin-bottom:20px; }\r
-    .auth-toggle{ margin-top:15px; color:var(--blue); cursor:pointer; font-size:14px; }\r
-\r
-    /* MAP & TOPBAR */\r
-    .topbar{\r
-      background:var(--blue);\r
-      color:#fff;\r
-      padding:10px 15px;\r
-      display:flex;\r
-      align-items:center;\r
-      justify-content:space-between;\r
-      font-weight:bold;\r
-      z-index:1000;\r
-      box-shadow:0 2px 5px rgba(0,0,0,0.2);\r
-    }\r
-    .topbar-left{ display:flex; align-items:center; gap:10px; }\r
-    .topbar-logo{ height:32px; }\r
-    .topbar-right{ display:flex; gap:12px; font-size:20px; }\r
-    .topbar-icon{ cursor:pointer; padding:5px; }\r
-    #map{ flex:1; width:100%; z-index:1; }\r
-\r
-    /* FLOATING BUTTONS */\r
-    .fab-container{\r
-      position:absolute;\r
-      bottom:25px;\r
-      right:15px;\r
-      display:flex;\r
-      flex-direction:column;\r
-      gap:12px;\r
-      z-index:999;\r
-    }\r
-    .fab{\r
-      width:52px;\r
-      height:52px;\r
-      border-radius:50%;\r
-      background:#fff;\r
-      box-shadow:0 3px 8px rgba(0,0,0,0.3);\r
-      display:flex;\r
-      align-items:center;\r
-      justify-content:center;\r
-      font-size:24px;\r
-      cursor:pointer;\r
-    }\r
-    .fab-primary{ background:var(--blue); color:#fff; }\r
-\r
-    /* BOTTOM SHEETS / SLIDEOVERS */\r
-    .sheet-overlay{\r
-      position:fixed;\r
-      top:0; left:0; width:100%; height:100%;\r
-      background:rgba(0,0,0,0.4);\r
-      z-index:2000;\r
-      opacity:0; pointer-events:none;\r
-      transition:opacity 0.3s ease;\r
-    }\r
-    .sheet-overlay.active{ opacity:1; pointer-events:auto; }\r
-    .sheet{\r
-      position:fixed;\r
-      bottom:0; left:0; width:100%;\r
-      background:#fff;\r
-      border-top-left-radius:20px;\r
-      border-top-right-radius:20px;\r
-      z-index:2001;\r
-      transform:translateY(100%);\r
-      transition:transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);\r
-      max-height:85%;\r
-      display:flex;\r
-      flex-direction:column;\r
-    }\r
-    .sheet.active{ transform:translateY(0); }\r
-    .sheet-header{\r
-      padding:15px;\r
-      font-weight:bold;\r
-      font-size:18px;\r
-      border-bottom:1px solid #eee;\r
-      display:flex;\r
-      justify-content:space-between;\r
-      align-items:center;\r
-    }\r
-    .sheet-close{ cursor:pointer; font-size:22px; padding:5px; }\r
-    .sheet-content{\r
-      padding:20px;\r
-      overflow-y:auto;\r
-      flex:1;\r
-    }\r
-\r
-    /* CHAT FULLSCREEN SHEET */\r
-    .chat-layout{\r
-      display:flex; flex-direction:column; height:100%;\r
-    }\r
-    .chat-messages{\r
-      flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:10px;\r
-      background:#f4f6f9;\r
-    }\r
-    .msg-bubble{\r
-      max-width:75%; padding:10px 14px; border-radius:14px; font-size:15px; line-height:1.4;\r
-      word-break:break-word;\r
-    }\r
-    .msg-bubble.own{\r
-      background:var(--blue); color:#fff; align-self:flex-end;\r
-      border-bottom-right-radius:2px;\r
-    }\r
-    .msg-bubble.other{\r
-      background:#fff; color:var(--text); align-self:flex-start;\r
-      border-bottom-left-radius:2px;\r
-      box-shadow:0 1px 3px rgba(0,0,0,0.1);\r
-    }\r
-    .msg-meta{ font-size:11px; margin-top:4px; opacity:0.7; text-align:right; }\r
-    .chat-input-area{\r
-      padding:12px; display:flex; gap:10px; background:#fff; border-top:1px solid #eee;\r
-    }\r
-    .chat-input{ flex:1; padding:10px; border:1px solid #ccc; border-radius:20px; outline:none; font-size:15px; }\r
-    .chat-send-btn{\r
-      width:40px; height:40px; border-radius:50%; background:var(--blue); color:#fff;\r
-      display:flex; align-items:center; justify-content:center; border:none; font-size:18px; cursor:pointer;\r
-    }\r
-\r
-    /* MARKER POPUPS & DETAILS */\r
-    .popup-title{ font-weight:bold; font-size:16px; margin-bottom:5px; color:var(--blue); }\r
-    .popup-info{ font-size:14px; margin-bottom:8px; color:#555; }\r
-\r
-    /* LOADING OVERLAY */\r
-    .loader-overlay{\r
-      position:fixed; top:0; left:0; width:100%; height:100%;\r
-      background:rgba(255,255,255,0.85); z-index:9999;\r
-      display:none; flex-direction:column; align-items:center; justify-content:center;\r
-      font-weight:bold; font-size:18px; color:var(--blue);\r
-    }\r
-    .spinner{\r
-      width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid var(--blue);\r
-      border-radius:50%; animation:spin 1s linear infinite; margin-bottom:15px;\r
-    }\r
-    @keyframes spin{ 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }\r
-\r
-    /* ADMIN PANEL */\r
-    .admin-section{ margin-bottom:25px; background:#f9f9f9; padding:15px; border-radius:10px; border:1px solid #e0e0e0; }\r
-    .admin-section h4{ margin-bottom:10px; color:var(--blue); border-bottom:1px solid #ddd; padding-bottom:4px; }\r
-    .admin-list-item{ display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; font-size:14px; }\r
-    .admin-list-item:last-child{ border-bottom:none; }\r
-    .admin-badge{ padding:3px 6px; border-radius:4px; font-size:11px; font-weight:bold; color:#fff; }\r
-    .admin-badge.active{ background:#28a745; }\r
-    .admin-badge.locked{ background:#dc3545; }\r
-    .admin-btn-group{ display:flex; gap:5px; }\r
-    .admin-sm-btn{\r
-      padding:4px 8px; font-size:12px; border:none; border-radius:4px; cursor:pointer; font-weight:bold;\r
-    }\r
-    .btn-lock{ background:#dc3545; color:#fff; }\r
-    .btn-unlock{ background:#28a745; color:#fff; }\r
-    .btn-delete{ background:#6c757d; color:#fff; }\r
-    .btn-approve{ background:#007bff; color:#fff; }\r
-\r
-    /* PROFILE INFO BOX */\r
-    .profile-card{\r
-      background:#f4f6f9; padding:15px; border-radius:12px; margin-bottom:20px; text-align:center;\r
-    }\r
-    .profile-name{ font-size:18px; font-weight:bold; color:var(--blue); margin-bottom:5px; }\r
-    .profile-role{ font-size:13px; color:#666; font-weight:600; text-transform:uppercase; letter-spacing:1px; }\r
+    :root{
+      --blue:#004a95;
+      --bikePurple:#6a00ff;
+      --rentGrey:#8a8a8a;
+      --danger:#7a0b0b;
+      --adminGrey:#c9c9c9;
+      --adminGreen:#9be39b;
+      --text:#0b1a2a;
+      --bg:#fff;
+      --border:#cfd7e6;
+      --windowBorder:0.5pt;
+      --font:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family:var(--font);
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    header{
+      padding:14px 16px 8px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .headerLeft{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+    }
+
+    #logo{
+      width:40px;
+      height:40px;
+      border-radius:8px;
+      object-fit:contain;
+    }
+
+    h1{
+      margin:0;
+      font-size:30px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
+      white-space:nowrap;
+      font-family:"Century Gothic","URW Gothic L","Futura",Arial,sans-serif;
+    }
+
+    .headerActions{
+      margin-left:auto;
+      display:none;
+      align-items:center;
+      gap:8px;
+    }
+
+    .menu-container{
+      position:relative;
+      display:inline-block;
+    }
+
+    .menu-btn{
+      width:44px;
+      height:44px;
+      border:none;
+      background:transparent;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      padding:0;
+    }
+
+    .menu-lines{
+      width:28px;
+      height:20px;
+      position:relative;
+    }
+
+    .menu-lines::before,
+    .menu-lines::after,
+    .menu-lines span{
+      content:"";
+      position:absolute;
+      left:0;
+      width:28px;
+      height:3px;
+      background:var(--blue);
+      border-radius:4px;
+    }
+
+    .menu-lines::before{top:0;}
+    .menu-lines span{top:8px;}
+    .menu-lines::after{top:16px;}
+
+    .dropdown-menu{
+      position:absolute;
+      top:100%;
+      right:0;
+      display:none;
+      background:#fff;
+      border:var(--windowBorder) solid var(--blue);
+      border-radius:8px;
+      min-width:250px;
+      padding:6px;
+      box-shadow:0 8px 22px rgba(0,0,0,.14);
+      z-index:20000;
+      margin-top:5px;
+    }
+
+    .dropdown-item{
+      padding:10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .dropdown-item:hover{
+      background:rgba(0,74,149,.08);
+    }
+
+    .adminOnly{display:none;}
+
+    .adminBtn{
+      background:var(--adminGrey);
+      border:none;
+      color:#1b1b1b;
+      border-radius:10px;
+      padding:9px 13px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      text-transform:lowercase;
+      font-family:var(--font);
+    }
+
+    .adminBtn.isAdmin{
+      background:var(--adminGreen);
+      color:#0b2a0b;
+    }
+
+    .wrap{
+      padding:8px 16px 16px;
+      height:calc(100% - 70px);
+      box-sizing:border-box;
+    }
+
+    #mapFrame{
+      height:100%;
+      border:none;
+      border-radius:8px;
+      box-sizing:border-box;
+      overflow:hidden;
+      background:#fff;
+      position:relative;
+    }
+
+    #loginFrame,
+    #accountCreateFrame{
+      height:100%;
+      border:none;
+      border-radius:0;
+      box-sizing:border-box;
+      overflow:hidden;
+      background:#fff;
+      position:relative;
+      display:grid;
+      place-items:center;
+    }
+
+    #map{
+      height:100%;
+      width:100%;
+    }
+
+    .panel{
+      width:min(560px,92%);
+      border:var(--windowBorder) solid var(--blue);
+      border-radius:12px;
+      padding:16px;
+      box-sizing:border-box;
+      background:#fff;
+    }
+
+    .formRow{
+      display:grid;
+      grid-template-columns:125px 1fr;
+      gap:12px;
+      align-items:center;
+      margin-bottom:10px;
+    }
+
+    input[type="password"],
+    input[type="text"],
+    textarea{
+      width:100%;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      font-size:14px;
+      box-sizing:border-box;
+      outline:none;
+      font-family:var(--font);
+    }
+
+    textarea{
+      min-height:72px;
+      resize:vertical;
+      font-family:var(--font);
+      font-size:14px;
+    }
+
+    #stationContentInput{
+      font-family:var(--font);
+      font-size:14px;
+    }
+
+    .footer{
+      display:flex;
+      justify-content:flex-end;
+      margin-top:14px;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .smallLink{
+      color:var(--blue);
+      cursor:pointer;
+      text-decoration:underline;
+      font-size:13px;
+      margin-top:10px;
+      display:inline-block;
+    }
+
+    .msg{
+      margin-top:10px;
+      color:var(--danger);
+      font-size:13px;
+      display:none;
+    }
+
+    .msg.ok{color:#0b6b0b;}
+
+    #adminMsg{
+      margin-top:10px;
+      color:var(--danger);
+      font-size:13px;
+      display:none;
+    }
+
+    .btn{
+      background:var(--blue);
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      padding:10px 14px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      text-transform:lowercase;
+      font-family:var(--font);
+    }
+
+    .btn.secondary{
+      background:#e8f0ff;
+      border:1px solid #b9c6f2;
+      color:var(--blue);
+    }
+
+    .btn.danger{background:var(--danger);}
+
+    .btn.returnBikeBtn{
+      background:var(--bikePurple);
+      color:#fff;
+    }
+
+    .btn.returnBikeBtn:hover{background:#5700d1;}
+
+    .btn.returnBikeBtn.isReturning{
+      color:#fff;
+      background:linear-gradient(90deg,var(--bikePurple) 0%,var(--danger) 25%,var(--bikePurple) 50%,var(--danger) 75%,var(--bikePurple) 100%);
+      background-size:200% 100%;
+      animation:returnWave 1.1s linear infinite;
+    }
+
+    @keyframes returnWave{
+      0%{background-position:0% 50%;}
+      100%{background-position:200% 50%;}
+    }
+
+    .btn.maintenanceBtn{
+      background:#e8f0ff;
+      color:var(--blue);
+      border:1px solid var(--danger);
+    }
+
+    .btn.maintenanceBtn:hover{background:rgba(0,74,149,.06);}
+
+    .btn.maintenanceBtn.release{
+      background:var(--adminGreen);
+      color:#0b2a0b;
+      border:none;
+    }
+
+    .statusBar{
+      position:absolute;
+      left:10px;
+      bottom:10px;
+      z-index:5000;
+      background:rgba(255,255,255,.94);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:12px;
+      color:#25324a;
+      display:none;
+      max-width:70%;
+    }
+
+    .ctx-menu{
+      position:fixed;
+      z-index:50000;
+      background:#fff;
+      border:var(--windowBorder) solid var(--blue);
+      border-radius:8px;
+      min-width:220px;
+      box-shadow:0 8px 22px rgba(0,0,0,.14);
+      padding:6px;
+      display:none;
+      user-select:none;
+    }
+
+    .ctx-item{
+      padding:10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .ctx-item:hover{background:rgba(0,74,149,.08);}
+
+    .modal-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.25);
+      display:none;
+      z-index:10000;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      box-sizing:border-box;
+    }
+
+    .modal{
+      width:min(640px,95vw);
+      background:#fff;
+      border:var(--windowBorder) solid var(--blue);
+      border-radius:10px;
+      padding:14px;
+      box-sizing:border-box;
+    }
+
+    .modalHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .modalHeader h2{
+      margin:0;
+      font-size:16px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
+    }
+
+    .modalCloseX,
+    .chatCloseX{
+      width:30px;
+      height:30px;
+      border:none;
+      background:transparent;
+      color:var(--danger);
+      font-size:28px;
+      font-weight:900;
+      line-height:1;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      font-family:var(--font);
+    }
+
+    .modalCloseX:hover,
+    .chatCloseX:hover{
+      transform:scale(1.08);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:140px 1fr;
+      gap:10px 12px;
+      align-items:center;
+    }
+
+    .label{font-size:14px;}
+
+    .modal-footer{
+      display:flex;
+      justify-content:flex-end;
+      margin-top:14px;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .statusAvailable{border:2px solid var(--adminGreen)!important;}
+    .statusBorrowed{border:2px solid var(--bikePurple)!important;}
+    .statusMaintenance{border:2px solid var(--danger)!important;}
+
+    .list-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      display:none;
+      z-index:30000;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      box-sizing:border-box;
+    }
+
+    .list-container{
+      width:min(620px,95vw);
+      background:#fff;
+      border:var(--windowBorder) solid var(--blue);
+      border-radius:10px;
+      padding:14px;
+      box-sizing:border-box;
+      max-height:80vh;
+      overflow-y:auto;
+    }
+
+    .list-header{
+      margin:0 0 12px;
+      font-size:16px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .list-items{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .list-item{
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+      line-height:1.35;
+    }
+
+    .list-item:hover{
+      background:rgba(0,74,149,.06);
+      border-color:var(--blue);
+    }
+
+    .empty-list{
+      padding:16px;
+      color:#666;
+      font-style:italic;
+    }
+
+    .accountRow.locked{
+      opacity:.45;
+      background:#f4f4f4;
+    }
+
+    .chat-modal{
+      width:min(720px,96vw);
+      height:min(720px,88vh);
+      display:flex;
+      flex-direction:column;
+      position:relative;
+    }
+
+    .chatHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .chatHeader h2{
+      margin:0;
+      font-size:16px;
+      font-weight:800;
+      color:var(--blue);
+      text-transform:lowercase;
+    }
+
+    .chatHeaderActions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .chatClearBtn{
+      background:var(--danger);
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      padding:7px 10px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+      text-transform:lowercase;
+      font-family:var(--font);
+    }
+
+    .chatMessages{
+      flex:1;
+      overflow-y:auto;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      background:#fafcff;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .chatMessage{
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:8px 10px;
+      max-width:95%;
+      cursor:default;
+    }
+
+    .chatMessage:hover{border-color:#b9c6f2;}
+
+    .chatMeta{
+      font-size:11px;
+      color:#667;
+      margin-bottom:4px;
+      text-transform:lowercase;
+    }
+
+    .chatText{
+      font-size:14px;
+      white-space:pre-wrap;
+      overflow-wrap:anywhere;
+    }
+
+    .chatPhoto{
+      display:block;
+      margin-top:6px;
+      max-width:200px;
+      max-height:200px;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+
+    .chatMessage.systemMessage{
+      background:transparent;
+      border:none;
+      padding:2px 6px;
+      max-width:100%;
+    }
+
+    .chatMessage.systemMessage .chatMeta{display:none;}
+
+    .chatMessage.systemMessage .chatText{
+      font-size:11px;
+      color:#667;
+      font-style:italic;
+    }
+
+    .chatInputArea{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:1fr auto auto;
+      gap:8px;
+      align-items:end;
+    }
+
+    .chatInputArea textarea{
+      min-height:48px;
+      max-height:90px;
+      resize:vertical;
+    }
+
+    .charCount{
+      font-size:11px;
+      color:#667;
+      margin-top:4px;
+    }
+
+    .iconBtn{
+      width:44px;
+      height:44px;
+      border:2px solid var(--blue);
+      background:#fff;
+      color:var(--blue);
+      border-radius:10px;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      padding:0;
+    }
+
+    .iconBtn:hover{background:rgba(0,74,149,.06);}
+
+    .iconBtn svg{
+      width:24px;
+      height:24px;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:2;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+
+    .sendIconBtn{
+      background:var(--blue);
+      color:#fff;
+    }
+
+    .sendIconBtn:hover{background:#003d7a;}
+
+    .photoPreview{
+      margin-top:8px;
+      display:none;
+      align-items:center;
+      gap:8px;
+      font-size:12px;
+      color:#445;
+    }
+
+    .photoPreview img{
+      width:54px;
+      height:54px;
+      object-fit:cover;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+
+    .bikeWrap{
+      position:relative;
+      width:24px;
+      height:24px;
+      pointer-events:none;
+    }
+
+    .bikeDot{
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background:var(--bikePurple);
+      box-shadow:0 2px 7px rgba(0,0,0,.22);
+      display:grid;
+      place-items:center;
+    }
+
+    .bikeDot.rented{background:var(--rentGrey);}
+
+    .bikeNum{
+      font-size:12px;
+      font-weight:900;
+      color:#fff;
+      line-height:1;
+      text-shadow:0 1px 2px rgba(0,0,0,.35);
+      user-select:none;
+      white-space:nowrap;
+      max-width:22px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .stationIconWrap{
+      position:relative;
+      width:33px;
+      height:33px;
+      pointer-events:none;
+    }
+
+    .stationIconImg{
+      position:absolute;
+      inset:0;
+      width:33px;
+      height:33px;
+      object-fit:contain;
+      filter:drop-shadow(0 4px 10px rgba(0,0,0,.22));
+    }
+
+    .selectedPulse{
+      animation:selectedPulse .45s ease-in-out 3;
+      transform-origin:center center;
+    }
+
+    @keyframes selectedPulse{
+      0%,100%{transform:scale(1);}
+      50%{transform:scale(1.5);}
+    }
+
+    .moving{
+      outline:2px solid red;
+      outline-offset:2px;
+    }
+
+    .leaflet-control-zoom{
+      border:none!important;
+      box-shadow:0 8px 18px rgba(0,0,0,.14)!important;
+      border-radius:10px!important;
+      overflow:hidden;
+      background:#fff;
+    }
+
+    .leaflet-control-zoom a{
+      width:36px!important;
+      height:36px!important;
+      line-height:36px!important;
+      border:none!important;
+      background:#fff!important;
+      color:var(--blue)!important;
+      font-size:22px!important;
+      font-weight:900!important;
+      text-decoration:none!important;
+      font-family:var(--font)!important;
+    }
+
+    .leaflet-control-zoom a:hover{
+      background:rgba(0,74,149,.06)!important;
+      color:var(--blue)!important;
+    }
+
+    .leaflet-control-zoom-in{
+      border-bottom:1px solid var(--border)!important;
+    }
+
+    .locateBtn{
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:none;
+      background:#fff;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+    }
+
+    .locateBtn:hover{background:rgba(0,74,149,.06);}
+
+    .crosshair{
+      width:18px;
+      height:18px;
+      border:2px solid var(--blue);
+      border-radius:50%;
+      position:relative;
+      box-sizing:border-box;
+    }
+
+    .crosshair::before,
+    .crosshair::after{
+      content:"";
+      position:absolute;
+      background:var(--blue);
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+    }
+
+    .crosshair::before{width:2px;height:22px;}
+    .crosshair::after{width:22px;height:2px;}
   </style>
 </head>
+
 <body>
-
-  <div id="loader" class="loader-overlay">
-    <div class="spinner"></div>
-    <div id="loaderText">Lade natebike...</div>
-  </div>
-
-  <div id="authFrame" class="app-frame active" style="justify-content:center;">
-    <div class="auth-container">
-      <img src="logo.png" alt="natebike" class="auth-logo">
-      <h2 id="authTitle" style="margin-bottom:20px; color:var(--blue);">Login</h2>
-      
-      <input type="text" id="authUsername" class="input-field" placeholder="Benutzername" autocomplete="off" />
-      <input type="password" id="authPassword" class="input-field" placeholder="Passwort" />
-      
-      <button id="authBtn" class="btn">Einloggen</button>
-      <div id="authToggle" class="auth-toggle">Noch kein Account? Registrieren</div>
-    </div>
-  </div>
-
-  <div id="mapFrame" class="app-frame">
-    <div class="topbar">
-      <div class="topbar-left">
-        <img src="logo.png" alt="logo" class="topbar-logo">
-        <span>natebike</span>
-      </div>
-      <div class="topbar-right">
-        <span id="navChatBtn" class="topbar-icon">💬</span>
-        <span id="navProfileBtn" class="topbar-icon">👤</span>
-      </div>
+  <header>
+    <div class="headerLeft">
+      <img id="logo" alt="logo" src="logo.png" />
+      <h1>natebike</h1>
     </div>
 
-    <div id="map"></div>
-
-    <div class="fab-container">
-      <div id="fabTarget" class="fab">🎯</div>
-      <div id="fabLockNorth" class="fab">🧭</div>
-      <div id="fabAdd" class="fab fab-primary">＋</div>
-    </div>
-  </div>
-
-  <div id="sheetOverlay" class="sheet-overlay"></div>
-
-  <div id="addSheet" class="sheet">
-    <div class="sheet-header">
-      <span id="addSheetTitle">Objekt hinzufügen</span>
-      <span class="sheet-close" onclick="closeAllSheets()">×</span>
-    </div>
-    <div class="sheet-content">
-      <label style="font-weight:bold; display:block; margin-bottom:5px;">Typ auswählen:</label>
-      <select id="addType" class="input-field">
-        <option value="bike">Fahrrad abstellen/melden</option>
-        <option value="note">Station / Hinweis eintragen</option>
-      </select>
-
-      <div id="bikeFields">
-        <input type="number" id="addBikeNumber" class="input-field" placeholder="Fahrradnummer (z.B. 18274)" inputmode="numeric" />
-        <label style="display:flex; align-items:center; gap:10px; margin-bottom:15px; font-size:15px;">
-          <input type="checkbox" id="addBikeIsDefekt" style="width:18px; height:18px;" />
-          Fahrrad ist defekt
-        </label>
-      </div>
-
-      <div id="noteFields" style="display:none;">
-        <input type="text" id="addNoteText" class="input-field" placeholder="Beschreibung / Stationsname" />
-      </div>
-
-      <button id="submitAddBtn" class="btn">Auf aktueller Position speichern</button>
-    </div>
-  </div>
-
-  <div id="chatSheet" class="sheet" style="height:85%;">
-    <div class="sheet-header">
-      <span>Globaler Chat</span>
-      <span class="sheet-close" onclick="closeAllSheets()">×</span>
-    </div>
-    <div class="chat-layout">
-      <div id="chatMessages" class="chat-messages"></div>
-      <div class="chat-input-area">
-        <input type="text" id="chatInput" class="chat-input" placeholder="Nachricht schreiben..." autocomplete="off" />
-        <button id="chatSendBtn" class="chat-send-btn">➤</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="profileSheet" class="sheet">
-    <div class="sheet-header">
-      <span>Mein Profil / Einstellungen</span>
-      <span class="sheet-close" onclick="closeAllSheets()">×</span>
-    </div>
-    <div class="sheet-content">
-      <div class="profile-card">
-        <div id="profName" class="profile-name">-</div>
-        <div id="profRole" class="profile-role">-</div>
-      </div>
-
-      <div id="adminPanel" style="display:none;">
-        <h3 style="margin-bottom:15px; color:var(--danger);">Admin Kontrollzentrum</h3>
-        
-        <div class="admin-section">
-          <h4>Freizuschaltende User</h4>
-          <div id="adminPendingUsersList">Keine ausstehenden Registrierungen.</div>
-        </div>
-
-        <div class="admin-section">
-          <h4>Alle Benutzer verwalten</h4>
-          <div id="adminAllUsersList">Lade Benutzer...</div>
+    <div id="headerActions" class="headerActions">
+      <div class="menu-container">
+        <button id="menuBtn" class="menu-btn" type="button" title="menü">
+          <div class="menu-lines"><span></span></div>
+        </button>
+        <div id="dropdownMenu" class="dropdown-menu">
+          <div class="dropdown-item" data-kind="notes">natebikestationen</div>
+          <div class="dropdown-item" data-kind="bikes">natebikes</div>
+          <div class="dropdown-item" data-kind="chat">chat</div>
+          <div class="dropdown-item" data-kind="account">account verwalten</div>
+          <div class="dropdown-item adminOnly" data-kind="accounts">alle accounts verwalten</div>
+          <div class="dropdown-item adminOnly" data-kind="admintools">admin tools</div>
         </div>
       </div>
+      <button id="adminBtn" class="adminBtn" type="button">admin</button>
+    </div>
+  </header>
 
-      <button id="logoutBtn" class="btn" style="background:var(--danger); margin-top:10px;">Ausloggen</button>
+  <div class="wrap">
+    <div id="loginFrame">
+      <div class="panel">
+        <div class="formRow">
+          <div>name:</div>
+          <input id="loginNameInput" type="text" maxlength="40" autocomplete="username" />
+        </div>
+        <div class="formRow">
+          <div>passwort:</div>
+          <input id="loginPasswordInput" type="password" autocomplete="current-password" />
+        </div>
+        <div class="footer">
+          <button class="btn" id="loginBtn" type="button">anmelden</button>
+        </div>
+        <div id="loginMsg" class="msg">anmeldung fehlgeschlagen</div>
+        <span id="openCreateAccountLink" class="smallLink">account erstellen</span>
+      </div>
+    </div>
+
+    <div id="accountCreateFrame" style="display:none;">
+      <div class="panel">
+        <div class="formRow">
+          <div>name:</div>
+          <input id="createNameInput" type="text" maxlength="40" autocomplete="username" />
+        </div>
+        <div class="formRow">
+          <div>passwort:</div>
+          <input id="createPasswordInput" type="password" autocomplete="new-password" />
+        </div>
+        <div class="formRow">
+          <div>wiederholung:</div>
+          <input id="createPasswordRepeatInput" type="password" autocomplete="new-password" />
+        </div>
+        <div class="formRow">
+          <div>geheimcode:</div>
+          <input id="createSecretInput" type="password" autocomplete="off" />
+        </div>
+        <div class="footer">
+          <button class="btn secondary" id="backToLoginBtn" type="button">zurück</button>
+          <button class="btn" id="createAccountBtn" type="button">account erstellen</button>
+        </div>
+        <div id="createAccountMsg" class="msg">meldung</div>
+      </div>
+    </div>
+
+    <div id="mapFrame" style="display:none;">
+      <div id="map"></div>
+      <div id="statusBar" class="statusBar"></div>
+    </div>
+  </div>
+
+  <div id="ctxMenuMap" class="ctx-menu">
+    <div class="ctx-item" data-action="bike">neues rad hinzufügen</div>
+    <div class="ctx-item" data-action="note">natebikestation hinzufügen</div>
+  </div>
+
+  <div id="ctxMenuMarker" class="ctx-menu">
+    <div class="ctx-item" data-action="open">öffnen</div>
+    <div class="ctx-item" data-action="move">verschieben</div>
+  </div>
+
+  <div id="ctxMenuChat" class="ctx-menu">
+    <div class="ctx-item" data-action="delete">nachricht löschen</div>
+  </div>
+
+  <div id="ctxMenuAccount" class="ctx-menu">
+    <div class="ctx-item" data-action="toggleLock" id="accountLockToggleItem">account sperren</div>
+    <div class="ctx-item" data-action="delete">account löschen</div>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <h2 id="modalTitle">details</h2>
+        <button id="modalCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
+      <div class="grid" id="modalBody"></div>
+      <div class="modal-footer" id="modalFooter"></div>
+    </div>
+  </div>
+
+  <div id="adminOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <h2>admin</h2>
+        <button id="adminCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
+      <div class="grid">
+        <div class="label">passwort</div>
+        <input id="adminPwInput" type="password" autocomplete="current-password" />
+      </div>
+      <div id="adminMsg">falsches passwort</div>
+      <div class="modal-footer">
+        <button class="btn" id="adminOkBtn" type="button">bestätigen</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="accountOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <h2 id="accountTitle">account</h2>
+        <button id="accountCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
+      <div id="accountBody"></div>
+      <div id="accountFooter" class="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- Admin Tools Overlay -->
+  <div id="adminToolsOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <h2 id="adminToolsTitle">admin tools</h2>
+        <button id="adminToolsCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
+      <div id="adminToolsBody"></div>
+      <div id="adminToolsFooter" class="modal-footer"></div>
+    </div>
+  </div>
+
+  <div id="listOverlay" class="list-overlay">
+    <div class="list-container">
+      <div class="list-header">
+        <div id="listTitle">liste</div>
+        <button class="modalCloseX" id="listCloseBtn" type="button" title="schließen">×</button>
+      </div>
+      <div id="listItems" class="list-items"></div>
+    </div>
+  </div>
+
+  <div id="chatOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal chat-modal">
+      <div class="chatHeader">
+        <h2>chat</h2>
+        <div class="chatHeaderActions">
+          <button id="clearChatBtn" class="chatClearBtn" type="button" style="display:none;">chat leeren</button>
+          <button id="chatCloseBtn" class="chatCloseX" type="button" title="schließen">×</button>
+        </div>
+      </div>
+      <div id="chatMessages" class="chatMessages"></div>
+      <div class="photoPreview" id="photoPreview">
+        <img id="photoPreviewImg" alt="" />
+        <span>foto bereit</span>
+        <button class="btn secondary" id="removePhotoBtn" type="button">entfernen</button>
+      </div>
+      <div class="chatInputArea">
+        <div>
+          <textarea id="chatTextInput" maxlength="144" placeholder="nachricht schreiben"></textarea>
+          <div class="charCount"><span id="charCount">0</span>/144</div>
+        </div>
+        <button class="iconBtn" id="photoBtn" type="button" title="foto aufnehmen">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+            <circle cx="8" cy="9" r="2"></circle>
+            <path d="M4 18l5.5-6 4 4 2.5-3 4 5"></path>
+          </svg>
+        </button>
+        <button class="iconBtn sendIconBtn" id="sendChatBtn" type="button" title="senden">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 11.5L21 3l-4.5 18-4.2-7.2L3 11.5z"></path>
+            <path d="M12.3 13.8L21 3"></path>
+          </svg>
+        </button>
+        <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none;" />
+      </div>
+    </div>
+  </div>
+
+  <div id="returnChoiceOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <h2>rückgabe</h2>
+        <button id="returnCancelX" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
+      <div style="font-size:14px; margin-bottom:14px;">standort automatisch übernehmen?</div>
+      <div class="modal-footer">
+        <button class="btn secondary" id="returnManualBtn" type="button">natebike manuell verschieben</button>
+        <button class="btn" id="returnAutoBtn" type="button">ja</button>
+      </div>
     </div>
   </div>
 
   <script>
-    // SUPABASE CONFIGURATION
-    const SUPABASE_URL = "https://wzbcshwccypgskmkmqsa.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YmNzaHdjY3lwZ3NrbWttcXNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU4MTcyNTYsImV4cCI6MjA1MTM5MzI1Nn0.6XfT_KAtY-oT5mN_67N8T7-yDqZpYxG8-Cg1N93jYwM";
+    const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
+
+    const KASSEL_CENTER = [51.3127, 9.4797];
+    const DEFAULT_ZOOM = 13;
+
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // APP STATE
-    let isRegisterMode = false;
-    let currentProfile = null; 
-    let map = null;
-    let userMarker = null;
-    let markers = new Map(); // id -> { data, marker }
-    
-    // Gps Tracking & Map Autopan state
-    let currentLat = null;
-    let currentLng = null;
-    let currentHeading = null;
-    let autoPanActive = true; 
-    let lockNorth = true; 
-    let watchId = null;
-    let deviceOrientationListenerAttached = false;
+    let currentUserName = "";
+    let currentProfile = null;
+    let isAdmin = false;
+    let moveModeEntry = null;
+    let selectedPhotoData = null;
+    let ctxChatMessageId = null;
+    let revealedBikeCodeId = null;
+    let ctxAccountId = null;
+    let forcedLogoutInProgress = false;
+    let markersLoaded = false;
+    let ignoreMapClickUntil = 0;
+    let modalCleanup = null;
 
-    // DOM ELEMENTS
-    const loader = document.getElementById("loader");
-    const loaderText = document.getElementById("loaderText");
-    const authFrame = document.getElementById("authFrame");
-    const mapFrame = document.getElementById("mapFrame");
-    const authTitle = document.getElementById("authTitle");
-    const authUsername = document.getElementById("authUsername");
-    const authPassword = document.getElementById("authPassword");
-    const authBtn = document.getElementById("authBtn");
-    const authToggle = document.getElementById("authToggle");
-    const sheetOverlay = document.getElementById("sheetOverlay");
-    const addSheet = document.getElementById("addSheet");
-    const chatSheet = document.getElementById("chatSheet");
-    const profileSheet = document.getElementById("profileSheet");
-    const chatMessages = document.getElementById("chatMessages");
-    const chatInput = document.getElementById("chatInput");
-    const chatSendBtn = document.getElementById("chatSendBtn");
+    let autoPanAnimFrame = null;
+    let autoPanMarkerEntry = null;
 
-    // CUSTOM CUSTOM PIN ICONS (Bicycle, Information Note, Pulsing Dot for user)
-    function createCustomDivIcon(color, char, isDot=false) {
-      if(isDot){
-        return L.divIcon({
-          className: '',
-          html: `<div style="position:relative; width:22px; height:22px;">
-                   <div style="position:absolute; width:16px; height:16px; background:${color}; border:3px solid #fff; border-radius:50%; top:3px; left:3px; box-shadow:0 0 6px rgba(0,0,0,0.4); z-index:2;"></div>
-                   <div style="position:absolute; width:22px; height:22px; background:${color}; opacity:0.4; border-radius:50%; animation:spin 1.5s infinite ease-out; z-index:1;"></div>
-                 </div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11]
-        });
+    const markers = new Map();
+    const renderedChatMessages = new Set();
+
+    const map = L.map("map", { center:KASSEL_CENTER, zoom:DEFAULT_ZOOM });
+    map.createPane("stationPane");
+    map.getPane("stationPane").style.zIndex = 380;
+    map.createPane("bikePane");
+    map.getPane("bikePane").style.zIndex = 420;
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom:19, attribution:"&copy; OpenStreetMap"
+    }).addTo(map);
+
+    const LocateControl = L.Control.extend({
+      options:{ position:"bottomright" },
+      onAdd:function(){
+        const btn = L.DomUtil.create("div","locateBtn");
+        btn.title = "standort zentrieren";
+        btn.innerHTML = '<div class="crosshair"></div>';
+        L.DomEvent.disableClickPropagation(btn);
+        L.DomEvent.on(btn,"click",() => { map.locate({ setView:true, maxZoom:16, enableHighAccuracy:true }); });
+        return btn;
       }
+    });
+    map.addControl(new LocateControl());
+
+    let locationMarker = null;
+    map.on("locationfound", e => {
+      if(!locationMarker){
+        locationMarker = L.circleMarker(e.latlng,{radius:10,color:"#ff0000",weight:3,fillOpacity:0}).addTo(map);
+      }else{
+        locationMarker.setLatLng(e.latlng);
+      }
+    });
+    map.on("locationerror",() => showStatus("standort nicht verfügbar"));
+
+    // ── Supabase Secret Helpers ───────────────────────────────────────────────────
+
+    async function checkSecret(key, value){
+      const { data, error } = await sb.rpc("check_secret",{ p_key:key, p_value:value });
+      if(error) throw error;
+      return !!data;
+    }
+
+    async function updateSecret(key, oldValue, newValue){
+      const { data, error } = await sb.rpc("update_secret",{ p_key:key, p_old_value:oldValue, p_new_value:newValue });
+      if(error) throw error;
+      return !!data;
+    }
+
+    // ── Auto-Pan ──────────────────────────────────────────────────────────────────
+
+    function stopAutoPan(){
+      if(autoPanAnimFrame !== null){ cancelAnimationFrame(autoPanAnimFrame); autoPanAnimFrame = null; }
+      autoPanMarkerEntry = null;
+    }
+
+    function runAutoPan(){
+      if(!autoPanMarkerEntry || !moveModeEntry){ autoPanAnimFrame = null; return; }
+      const container = map.getContainer();
+      const rect = container.getBoundingClientRect();
+      const entry = autoPanMarkerEntry;
+      const markerPoint = map.latLngToContainerPoint(entry.marker.getLatLng());
+      const EDGE = 60, MAX_SPEED = 8;
+      let dx = 0, dy = 0;
+      if(markerPoint.x < EDGE) dx = -Math.round(MAX_SPEED * (1 - markerPoint.x / EDGE));
+      if(markerPoint.x > rect.width - EDGE) dx = Math.round(MAX_SPEED * (1 - (rect.width - markerPoint.x) / EDGE));
+      if(markerPoint.y < EDGE) dy = -Math.round(MAX_SPEED * (1 - markerPoint.y / EDGE));
+      if(markerPoint.y > rect.height - EDGE) dy = Math.round(MAX_SPEED * (1 - (rect.height - markerPoint.y) / EDGE));
+      if(dx !== 0 || dy !== 0){
+        map.panBy([dx,dy],{animate:false});
+        const currentPoint = map.latLngToContainerPoint(entry.marker.getLatLng());
+        const newLatLng = map.containerPointToLatLng(L.point(currentPoint.x + dx, currentPoint.y + dy));
+        entry.marker.setLatLng(newLatLng);
+        entry.lat = newLatLng.lat;
+        entry.lng = newLatLng.lng;
+      }
+      autoPanAnimFrame = requestAnimationFrame(runAutoPan);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────────
+
+    function usernameKey(name){ return String(name || "").trim().toLowerCase(); }
+
+    function usernameToEmail(name){
+      const key = usernameKey(name);
+      const encoded = btoa(unescape(encodeURIComponent(key))).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");
+      return `u_${encoded}@natebike.local`;
+    }
+
+    async function loadProfile(userId){
+      const { data, error } = await sb.from("user_profiles").select("*").eq("id",userId).single();
+      if(error) throw error;
+      return data;
+    }
+
+    async function forceLogoutToLogin(message){
+      if(forcedLogoutInProgress) return;
+      forcedLogoutInProgress = true;
+      try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
+      currentUserName = ""; currentProfile = null; isAdmin = false;
+      moveModeEntry = null; revealedBikeCodeId = null; markersLoaded = false;
+      stopAutoPan(); updateAdminUI(); closeAllOverlays(); hideContextMenus();
+      document.getElementById("headerActions").style.display = "none";
+      document.getElementById("mapFrame").style.display = "none";
+      document.getElementById("accountCreateFrame").style.display = "none";
+      document.getElementById("loginFrame").style.display = "grid";
+      document.getElementById("loginNameInput").value = "";
+      document.getElementById("loginPasswordInput").value = "";
+      showMsg("loginMsg", message || "bitte erneut anmelden");
+      forcedLogoutInProgress = false;
+    }
+
+    function closeAllOverlays(){
+      document.querySelectorAll(".modal-overlay,.list-overlay").forEach(el => { el.style.display = "none"; });
+    }
+
+    async function checkOwnProfileStillValid(){
+      if(!currentProfile || !currentProfile.id) return;
+      try{
+        const { data, error } = await sb.from("user_profiles").select("id, locked").eq("id",currentProfile.id).maybeSingle();
+        if(error) throw error;
+        if(!data){ await forceLogoutToLogin("account gelöscht"); return; }
+        if(data.locked){ await forceLogoutToLogin("account gesperrt"); return; }
+      }catch(err){ console.error(err); }
+    }
+
+    window.addEventListener("focus",checkOwnProfileStillValid);
+    document.addEventListener("visibilitychange",() => { if(!document.hidden) checkOwnProfileStillValid(); });
+    setInterval(checkOwnProfileStillValid,15000);
+
+    function showMsg(id,text,ok=false){
+      const el = document.getElementById(id);
+      el.textContent = text; el.classList.toggle("ok",ok); el.style.display = "block";
+    }
+
+    function hideMsg(id){
+      const el = document.getElementById(id);
+      el.style.display = "none"; el.classList.remove("ok");
+    }
+
+    function escapeHtml(value){
+      return String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    function showStatus(message){
+      const statusBar = document.getElementById("statusBar");
+      statusBar.textContent = message; statusBar.style.display = "block";
+      clearTimeout(showStatus.timer);
+      showStatus.timer = setTimeout(() => { statusBar.style.display = "none"; },2500);
+    }
+
+    function formatDateTime(value){
+      const d = new Date(value);
+      return d.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}).toLowerCase();
+    }
+
+    function formatSystemMessageDateTime(){
+      const d = new Date();
+      return d.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+    }
+
+    function bikeSortValue(value){
+      const text = String(value ?? "").trim();
+      const number = Number(text);
+      return { isNumber:text !== "" && Number.isFinite(number), number, text };
+    }
+
+    function sortBikeEntries(a,b){
+      const av = bikeSortValue(a.bikeNumber), bv = bikeSortValue(b.bikeNumber);
+      if(av.isNumber && bv.isNumber) return av.number - bv.number;
+      if(av.isNumber && !bv.isNumber) return -1;
+      if(!av.isNumber && bv.isNumber) return 1;
+      return av.text.localeCompare(bv.text,"de",{numeric:true,sensitivity:"base"});
+    }
+
+    function statusClassForBike(entry){
+      const status = entry.status || "verfügbar";
+      if(status === "verfügbar") return "statusAvailable";
+      if(status === "nicht verfügbar") return "statusMaintenance";
+      return "statusBorrowed";
+    }
+
+    function bikeIcon(entry){
+      const classes = ["bikeDot", entry.isRented?"rented":"", entry.isMoving?"moving":"", entry.isPulsing?"selectedPulse":""].filter(Boolean).join(" ");
       return L.divIcon({
-        className: '',
-        html: `<div style="background:${color}; width:36px; height:36px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:-1px 2px 5px rgba(0,0,0,0.3); border:2px solid #fff;">
-                 <div style="transform:rotate(45deg); color:#fff; font-size:16px; font-weight:bold; font-family:sans-serif; margin-bottom:3px; margin-left:1px;">${char}</div>
-               </div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
-        popupAnchor: [0, -32]
+        className:"",
+        html:`<div class="bikeWrap"><div class="${classes}"><div class="bikeNum">${escapeHtml(entry.bikeNumber)}</div></div></div>`,
+        iconSize:[24,24], iconAnchor:[12,12]
       });
     }
 
-    const iconBikeNormal = createCustomDivIcon("var(--blue)", "🚲");
-    const iconBikeDefekt = createCustomDivIcon("var(--danger)", "🔧");
-    const iconNote = createCustomDivIcon("var(--bikePurple)", "📌");
-
-    // INITIALIZATION & EVENT LISTENERS
-    window.addEventListener("DOMContentLoaded", async () => {
-      // Check local storage session
-      const savedUser = localStorage.getItem("natebike_user");
-      const savedPass = localStorage.getItem("natebike_pass");
-      if(savedUser && savedPass){
-        showLoader("Automatische Anmeldung...");
-        const success = await attemptLogin(savedUser, savedPass);
-        hideLoader();
-        if(success) return;
-      }
-    });
-
-    authToggle.addEventListener("click", () => {
-      isRegisterMode = !isRegisterMode;
-      if(isRegisterMode){
-        authTitle.innerText = "Registrieren";
-        authBtn.innerText = "Account anfragen";
-        authToggle.innerText = "Bereits registriert? Hier einloggen";
-      } else {
-        authTitle.innerText = "Login";
-        authBtn.innerText = "Einloggen";
-        authToggle.innerText = "Noch kein Account? Registrieren";
-      }
-    });
-
-    authBtn.addEventListener("click", async () => {
-      const u = authUsername.value.trim();
-      const p = authPassword.value;
-      if(!u || !p){ alert("Bitte fülle alle Felder aus."); return; }
-
-      showLoader(isRegisterMode ? "Sende Registrierungsanfrage..." : "Prüfe Zugangsdaten...");
-      if(isRegisterMode){
-        const res = await attemptRegister(u, p);
-        hideLoader();
-        if(res){
-          alert("Registrierung erfolgreich eingereicht! Ein Administrator muss dich freischalten, bevor du dich einloggen kannst.");
-          isRegisterMode = false;
-          authTitle.innerText = "Login"; authBtn.innerText = "Einloggen";
-          authToggle.innerText = "Noch kein Account? Registrieren";
-          authPassword.value = "";
-        }
-      } else {
-        const success = await attemptLogin(u, p);
-        hideLoader();
-        if(!success) alert("Login fehlgeschlagen. Falsche Daten oder Account noch nicht freigegeben / gesperrt.");
-      }
-    });
-
-    // SHEET LOGIC
-    sheetOverlay.addEventListener("click", closeAllSheets);
-    document.getElementById("navChatBtn").addEventListener("click", () => openSheet(chatSheet));
-    document.getElementById("navProfileBtn").addEventListener("click", () => openSheet(profileSheet));
-    document.getElementById("fabAdd").addEventListener("click", () => openSheet(addSheet));
-    
-    document.getElementById("addType").addEventListener("click", (e) => {
-      const val = e.target.value;
-      document.getElementById("bikeFields").style.display = (val === "bike") ? "block" : "none";
-      document.getElementById("noteFields").style.display = (val === "note") ? "block" : "none";
-    });
-
-    document.getElementById("submitAddBtn").addEventListener("click", async () => {
-      if(currentLat === null || currentLng === null){
-        alert("Fehler: Kein GPS Signal. Erlaube Standortzugriff."); return;
-      }
-      const type = document.getElementById("addType").value;
-      let bike_number = null;
-      let is_defekt = false;
-      let note_text = null;
-
-      if(type === "bike"){
-        const numStr = document.getElementById("addBikeNumber").value.trim();
-        if(!numStr){ alert("Bitte gib eine Fahrradnummer ein."); return; }
-        bike_number = parseInt(numStr, 10);
-        is_defekt = document.getElementById("addBikeIsDefekt").checked;
-      } else {
-        note_text = document.getElementById("addNoteText").value.trim();
-        if(!note_text){ alert("Bitte gib einen Text für den Hinweis ein."); return; }
-      }
-
-      showLoader("Speichere auf Karte...");
-      const success = await dbInsertMarker(type, currentLat, currentLng, bike_number, is_defekt, note_text);
-      hideLoader();
-
-      if(success){
-        closeAllSheets();
-        document.getElementById("addBikeNumber").value = "";
-        document.getElementById("addBikeIsDefekt").checked = false;
-        document.getElementById("addNoteText").value = "";
-      } else {
-        alert("Fehler beim Speichern in der Datenbank.");
-      }
-    });
-
-    chatSendBtn.addEventListener("click", sendChatMessage);
-    chatInput.addEventListener("keydown", (e) => { if(e.key === "Enter") sendChatMessage(); });
-
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.removeItem("natebike_user");
-      localStorage.removeItem("natebike_pass");
-      location.reload();
-    });
-
-    document.getElementById("fabTarget").addEventListener("click", () => {
-      autoPanActive = true;
-      document.getElementById("fabTarget").style.background = "var(--blue)";
-      document.getElementById("fabTarget").style.color = "#fff";
-      if(currentLat !== null && currentLng !== null){
-        map.setView([currentLat, currentLng], 17);
-      }
-    });
-
-    document.getElementById("fabLockNorth").addEventListener("click", () => {
-      lockNorth = !lockNorth;
-      const f = document.getElementById("fabLockNorth");
-      if(lockNorth){
-        f.style.background = "#fff"; f.style.color = "#000"; f.innerText = "🧭";
-        if(map) map.setBearing(0);
-      } else {
-        f.style.background = "var(--bikePurple)"; f.style.color = "#fff"; f.innerText = "🔄";
-      }
-    });
-
-    // VISUALS / UTILS
-    function showLoader(txt){ loaderText.innerText = txt; loader.style.display = "flex"; }
-    function hideLoader(){ loader.style.display = "none"; }
-    
-    function openSheet(sheetEl){
-      sheetOverlay.classList.add("active");
-      sheetEl.classList.add("active");
-      if(sheetEl === chatSheet) { scrollChatBottom(); }
-    }
-    function closeAllSheets(){
-      sheetOverlay.classList.remove("active");
-      addSheet.classList.remove("active");
-      chatSheet.classList.remove("active");
-      profileSheet.classList.remove("active");
-    }
-
-    function escapeHtml(str) {
-      if(!str) return '';
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    }
-
-    // DATABASE AUTHENTICATION EMULATION VIA USER_PROFILES
-    async function attemptRegister(username, password){
-      const fakeEmail = btoa(username).toLowerCase().replace(/=/g,"") + "@natebike.internal";
-      const { data: existing } = await sb.from("user_profiles").select("id").eq("username", username).maybeSingle();
-      if(existing){ alert("Dieser Username ist bereits vergeben."); return false; }
-
-      const { data, error } = await sb.from("user_profiles").insert([
-        { username: username, password_plain: password, email: fakeEmail, approved: false, locked: false, is_admin: false }
-      ]).select();
-      if(error){ console.error(error); return false; }
-      return true;
-    }
-
-    async function attemptLogin(username, password){
-      const { data, error } = await sb.from("user_profiles")
-        .select("*")
-        .eq("username", username)
-        .eq("password_plain", password)
-        .maybeSingle();
-
-      if(error || !data) return false;
-      if(!data.approved || data.locked) return false;
-
-      currentProfile = data;
-      localStorage.setItem("natebike_user", username);
-      localStorage.setItem("natebike_pass", password);
-
-      // Populate interface
-      document.getElementById("profName").innerText = currentProfile.username;
-      document.getElementById("profRole").innerText = currentProfile.is_admin ? "Administrator" : "Benutzer";
-      
-      if(currentProfile.is_admin){
-        document.getElementById("adminPanel").style.display = "block";
-        loadAdminData();
-      }
-
-      // Switch Frame
-      authFrame.classList.remove("active");
-      mapFrame.classList.add("active");
-
-      // Start core engine
-      initMap();
-      startGpsTracking();
-      await dbLoadAllMarkers();
-      await dbLoadInitialChat();
-
-      return true;
-    }
-
-    async function forceLogoutToLogin(reason){
-      localStorage.removeItem("natebike_user");
-      localStorage.removeItem("natebike_pass");
-      alert("Abmeldung: " + reason);
-      location.reload();
-    }
-
-    // MAP AND GEOLOCATION LOGIC
-    function initMap(){
-      if(map) return;
-      // Initialize map with rotation support (Leaflet inherently doesn't rotate easily without Plugins or Bearing options, we use CSS hack or standard bearing if supported by custom wrapper)
-      map = L.map('map', {
-        zoomControl: false,
-        attributionControl: false
-      }).setView([51.3127, 9.4791], 13); // Default Kassel
-
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19
-      }).addTo(map);
-
-      // Map move events to untarget autoPan
-      map.on("movestart", (e) => {
-        if(e.hard) return; // ignore programmatic moves
-        // If triggered by user drag, un-highlight target fab
-        if(navigator.userActivation && navigator.userActivation.isActive){
-           deactivateAutoPan();
-        }
+    function stationIcon(entry){
+      const classes = ["stationIconImg", entry.isMoving?"moving":"", entry.isPulsing?"selectedPulse":""].filter(Boolean).join(" ");
+      return L.divIcon({
+        className:"",
+        html:`<div class="stationIconWrap"><img class="${classes}" src="logo.png" alt="" /></div>`,
+        iconSize:[33,33], iconAnchor:[16.5,16.5]
       });
-      map.on("drag", () => { deactivateAutoPan(); });
     }
 
-    function deactivateAutoPan(){
-      autoPanActive = false;
-      document.getElementById("fabTarget").style.background = "#fff";
-      document.getElementById("fabTarget").style.color = "#000";
-    }
+    function iconForEntry(entry){ return entry.type === "bike" ? bikeIcon(entry) : stationIcon(entry); }
 
-    function startGpsTracking(){
-      if(!navigator.geolocation){ alert("GPS nicht unterstützt."); return; }
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          currentLat = pos.coords.coords ? pos.coords.coords.latitude : pos.coords.latitude;
-          currentLng = pos.coords.coords ? pos.coords.coords.longitude : pos.coords.longitude;
-          if(pos.coords.heading !== undefined && pos.coords.heading !== null && !isNaN(pos.coords.heading)){
-            currentHeading = pos.coords.heading;
-          }
-
-          updateUserMarkerOnMap();
-        },
-        (err) => { console.warn("GPS Error:", err); },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-      );
-
-      // Smooth Orientation Heading integration via DeviceOrientation
-      if(window.DeviceOrientationEvent){
-        // Request iOS permission if needed
-        if(typeof DeviceOrientationEvent.requestPermission === 'function'){
-          // Will need a user gesture, but let's bind it or catch it silently
-        } else {
-          window.addEventListener('deviceorientation', handleOrientation, true);
-        }
-      }
-    }
-
-    function handleOrientation(event) {
-      let heading = null;
-      if(event.webkitCompassHeading){ heading = event.webkitCompassHeading; } // iOS
-      else if(event.alpha){ heading = 360 - event.alpha; } // Android
-      if(heading !== null){
-        currentHeading = heading;
-        updateUserMarkerOrientationOnly();
-      }
-    }
-
-    function updateUserMarkerOnMap(){
-      if(currentLat === null || currentLng === null) return;
-      const pos = [currentLat, currentLng];
-
-      if(!userMarker){
-        userMarker = L.marker(pos, { icon: createCustomDivIcon("var(--blue)", "", true) }).addTo(map);
-      } else {
-        userMarker.setLatLng(pos);
-      }
-
-      if(autoPanActive && map){
-        // Request Animation Frame animation alternative
-        window.requestAnimationFrame(() => {
-          if(lockNorth){
-            map.setView(pos, map.getZoom());
-          } else {
-            // Rotate map logic emulation if bearing plugins aren't installed, we can rotate the actual DOM element safely
-            if(currentHeading !== null){
-               document.getElementById("map").style.transform = `rotate(${-currentHeading}deg)`;
-               // But Leaflet popups break then. Better use standard view alignment if plugin absent.
-            }
-            map.setView(pos, map.getZoom());
-          }
-        });
-      }
-    }
-
-    function updateUserMarkerOrientationOnly(){
-      // If we have a special arrow, we'd rotate it here. For dot pulsing, we just rotate map container if lockNorth is false
-      if(!lockNorth && currentHeading !== null && map && autoPanActive){
-         // Simple CSS Map view rotation emulated
-         const mapDiv = document.getElementById("map");
-         // mapDiv.style.transform = `rotate(${-currentHeading}deg)`; // Known layout breaks, standard map stays north for safety
-      }
-    }
-
-    // DATABASE OPERATIONS (MARKERS)
     async function dbLoadAllMarkers(){
-      const { data, error } = await sb.from("markers").select("*");
-      if(error){ console.error(error); return; }
-      if(data){
-        data.forEach(row => addOrUpdateMarker(row));
-      }
+      const { data, error } = await sb.from("markers").select("*").order("created_at",{ascending:true});
+      if(error) throw error;
+      return data || [];
+    }
+
+    async function dbInsertMarker(type,lat,lng){
+      const payload = { type,lat,lng, bike_number:"", name:"natebike", color:"undefiniert", remark:"keine", code:"", content:" ", status:"verfügbar", is_rented:false, photo_url:null };
+      const { data, error } = await sb.from("markers").insert(payload).select().single();
+      if(error) throw error;
+      return data;
+    }
+
+    async function dbUpdateMarker(id,patch){
+      const { error } = await sb.from("markers").update(patch).eq("id",id);
+      if(error) throw error;
+    }
+
+    async function dbDeleteMarker(id){
+      const { error } = await sb.from("markers").delete().eq("id",id);
+      if(error) throw error;
+    }
+
+    function rowToEntry(row){
+      const status = row.status ?? "verfügbar";
+      return {
+        id:row.id, type:row.type, lat:row.lat, lng:row.lng,
+        bikeNumber:row.bike_number ?? "", bikeName:row.name ?? "",
+        bikeColor:row.color ?? "", bikeRemark:row.remark ?? "",
+        bikeCode:row.code ?? "", content:row.content ?? "",
+        status, isRented:status !== "verfügbar" ? true : !!row.is_rented,
+        isMoving:false, isPulsing:false, marker:null
+      };
     }
 
     function addOrUpdateMarker(row){
-      if(markers.has(row.id)){
-        // Update position/data
-        const entry = markers.get(row.id);
-        entry.marker.setLatLng([row.lat, row.lng]);
-        entry.data = row;
-        updatePopupContent(entry.marker, row);
-      } else {
-        // Create new
-        let ico = iconNote;
-        if(row.type === 'bike'){
-          ico = row.is_defekt ? iconBikeDefekt : iconBikeNormal;
-        }
-        const m = L.marker([row.lat, row.lng], { icon: ico }).addTo(map);
-        updatePopupContent(m, row);
-        markers.set(row.id, { data: row, marker: m });
+      let entry = markers.get(row.id);
+      if(!entry){
+        entry = rowToEntry(row);
+        const pane = entry.type === "bike" ? "bikePane" : "stationPane";
+        entry.marker = L.marker([entry.lat,entry.lng],{icon:iconForEntry(entry),draggable:true,pane}).addTo(map);
+        if(entry.marker.dragging) entry.marker.dragging.disable();
+        markers.set(entry.id,entry);
+        wireMarker(entry);
+      }else{
+        const status = row.status ?? "verfügbar";
+        entry.type = row.type; entry.lat = row.lat; entry.lng = row.lng;
+        entry.bikeNumber = row.bike_number ?? ""; entry.bikeName = row.name ?? "";
+        entry.bikeColor = row.color ?? ""; entry.bikeRemark = row.remark ?? "";
+        entry.bikeCode = row.code ?? ""; entry.content = row.content ?? "";
+        entry.status = status;
+        entry.isRented = status !== "verfügbar" ? true : !!row.is_rented;
+        if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
+        entry.marker.setIcon(iconForEntry(entry));
       }
+      return entry;
     }
 
-    function updatePopupContent(leafletMarker, row){
-      let html = `<div style="min-width:160px;">`;
-      if(row.type === 'bike'){
-        html += `<div class="popup-title">Fahrrad #${escapeHtml(row.bike_number.toString())}</div>`;
-        html += `<div class="popup-info">Zustand: ${row.is_defekt ? '<span style="color:var(--danger);font-weight:bold;">Defekt 🔧</span>' : 'Bereit 🚲'}</div>`;
-      } else {
-        html += `<div class="popup-title">Station / Info</div>`;
-        html += `<div class="popup-info">${escapeHtml(row.note_text)}</div>`;
-      }
-      html += `<div style="font-size:11px; color:#999; margin-bottom:8px;">Gemeldet von: ${escapeHtml(row.created_by)}</div>`;
-      html += `<button class="admin-sm-btn btn-lock" style="width:100%; padding:6px;" onclick="dbDeleteMarkerTrigger('${row.id}')">Löschen / Entfernen</button>`;
-      html += `</div>`;
-      leafletMarker.bindPopup(html);
+    async function loadMarkersOnce(){
+      if(markersLoaded) return;
+      const rows = await dbLoadAllMarkers();
+      rows.forEach(row => { if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row); });
+      markersLoaded = true;
     }
 
-    async function dbInsertMarker(type, lat, lng, bike_number, is_defekt, note_text){
-      const { data, error } = await sb.from("markers").insert([
-        {
-          type, lat, lng, bike_number, is_defekt, note_text,
-          created_by: currentProfile.username, user_id: currentProfile.id
+    function findEntryById(id){ return markers.get(id) || null; }
+
+    // ── wireMarker ────────────────────────────────────────────────────────────────
+
+    function wireMarker(entry){
+      const marker = entry.marker;
+      marker.on("click",e => {
+        L.DomEvent.stop(e);
+        if(moveModeEntry) return;
+        entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
+      });
+      marker.on("contextmenu",e => {
+        L.DomEvent.stop(e);
+        if(!isAdmin) return;
+        openMarkerMenu(e.originalEvent,entry);
+      });
+      marker.on("dragstart",() => {
+        map.dragging.disable();
+        if(moveModeEntry === entry){
+          autoPanMarkerEntry = entry;
+          if(autoPanAnimFrame === null) autoPanAnimFrame = requestAnimationFrame(runAutoPan);
         }
-      ]).select();
-      if(error){ console.error(error); return false; }
-      return true;
+      });
+      marker.on("drag",() => {
+        if(moveModeEntry === entry){ const ll = marker.getLatLng(); entry.lat = ll.lat; entry.lng = ll.lng; }
+      });
+      marker.on("dragend",() => {
+        map.dragging.enable(); stopAutoPan();
+        if(moveModeEntry !== entry) return;
+        const ll = marker.getLatLng(); entry.lat = ll.lat; entry.lng = ll.lng;
+        showStatus("zum abschließen auf karte klicken");
+      });
     }
 
-    window.dbDeleteMarkerTrigger = async function(id){
-      if(!confirm("Möchtest du diesen Marker wirklich entfernen?")) return;
-      showLoader("Entferne Marker...");
-      const { error } = await sb.from("markers").delete().eq("id", id);
-      hideLoader();
-      if(error){ alert("Fehler: Du kannst nur deine eigenen Marker löschen (außer du bist Admin)."); }
-    };
+    // ── Move-Mode ─────────────────────────────────────────────────────────────────
 
-    function findEntryById(id){ return markers.get(id); }
-
-    // DATABASE OPERATIONS (CHAT)
-    async function dbLoadInitialChat(){
-      const { data, error } = await sb.from("chat_messages").select("*").order("created_at", { ascending: true }).limit(80);
-      if(error){ console.error(error); return; }
-      chatMessages.innerHTML = "";
-      if(data){ data.forEach(msg => renderChatMessage(msg)); }
-      scrollChatBottom();
+    function pulseEntry(entry){
+      entry.isPulsing = true; entry.marker.setIcon(iconForEntry(entry));
+      setTimeout(() => { entry.isPulsing = false; entry.marker.setIcon(iconForEntry(entry)); },1400);
     }
 
-    function renderChatMessage(msg){
-      if(document.getElementById(`msg-${msg.id}`)) return; // skip double rendering
-      const isOwn = (msg.username === currentProfile.username);
-      const bubble = document.createElement("div");
-      bubble.id = `msg-${msg.id}`;
-      bubble.className = `msg-bubble ${isOwn ? 'own' : 'other'}`;
-      
-      let timeStr = "";
+    function startMoveMode(entry){
+      if(!entry) return;
+      moveModeEntry = entry; entry.isMoving = true; entry.marker.setIcon(iconForEntry(entry));
+      if(entry.marker.dragging) entry.marker.dragging.enable();
+      ignoreMapClickUntil = Date.now() + 800;
+      showStatus("marker verschieben, dann auf karte klicken");
+    }
+
+    async function finishMoveMode(){
+      if(!moveModeEntry) return;
+      stopAutoPan();
+      const entry = moveModeEntry;
+      const ll = entry.marker.getLatLng();
       try{
-        const d = new Date(msg.created_at);
-        timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      }catch(e){}
+        await dbUpdateMarker(entry.id,{lat:ll.lat,lng:ll.lng});
+        entry.lat = ll.lat; entry.lng = ll.lng; entry.isMoving = false; moveModeEntry = null;
+        if(entry.marker.dragging) entry.marker.dragging.disable();
+        entry.marker.setIcon(iconForEntry(entry));
+        showStatus("position gespeichert");
+      }catch(err){ console.error(err); showStatus("position konnte nicht gespeichert werden"); }
+    }
 
-      bubble.innerHTML = `
-        <div style="font-size:12px; font-weight:bold; opacity:0.9; margin-bottom:2px;">${escapeHtml(msg.username)}</div>
-        <div>${escapeHtml(msg.message)}</div>
-        <div class="msg-meta">${timeStr}</div>
+    function getCurrentDeviceLatLng(timeoutMs=6000){
+      return new Promise(resolve => {
+        let done = false;
+        function finish(value){ if(done) return; done = true; map.off("locationfound",onFound); map.off("locationerror",onError); resolve(value); }
+        function onFound(e){ finish(e.latlng); }
+        function onError(){ finish(null); }
+        map.on("locationfound",onFound); map.on("locationerror",onError);
+        map.locate({setView:false,enableHighAccuracy:true,timeout:timeoutMs,maximumAge:0});
+        setTimeout(() => finish(null),timeoutMs+1000);
+      });
+    }
+
+    function borrowedStatusText(){ return `von ${currentUserName} ausgeliehen`; }
+
+    async function dbInsertSystemChatMessage(message){
+      const payload = {user_name:"system",message,photo_data:null};
+      const { data, error } = await sb.from("chat_messages").insert(payload).select().single();
+      if(error) throw error;
+      return data;
+    }
+
+    async function borrowBike(entry){
+      const newStatus = borrowedStatusText();
+      try{
+        await dbUpdateMarker(entry.id,{status:newStatus,is_rented:true});
+        entry.status = newStatus; entry.isRented = true; entry.marker.setIcon(iconForEntry(entry));
+        const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
+        const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
+        const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
+        renderChatMessage(savedSystemMessage); scrollChatBottom();
+        revealedBikeCodeId = entry.id; openBikeWindow(entry);
+        showStatus("natebike ausgeliehen");
+      }catch(err){ console.error(err); showStatus("ausleihen fehlgeschlagen"); }
+    }
+
+    function getBorrowerFromStatus(status){
+      const text = String(status || "");
+      if(!text.startsWith("von ") || !text.endsWith(" ausgeliehen")) return "";
+      return text.replace(/^von /,"").replace(/ ausgeliehen$/,"").trim();
+    }
+
+    function currentUserMayReturnBike(entry){
+      if(isAdmin) return true;
+      return getBorrowerFromStatus(entry.status) === currentUserName;
+    }
+
+    async function returnBike(entry){
+      if(!currentUserMayReturnBike(entry)){ showStatus("nur ausleihender nutzer oder admin"); return; }
+      const returnBtn = document.getElementById("bikeReturnBtn");
+      if(returnBtn){ returnBtn.classList.add("isReturning"); returnBtn.dataset.returning = "true"; }
+      const choice = await openReturnChoiceDialog();
+      if(choice === "cancel"){
+        if(returnBtn){ returnBtn.classList.remove("isReturning"); delete returnBtn.dataset.returning; }
+        return;
+      }
+      if(choice === "manual") closeModal();
+      try{
+        const patch = {status:"verfügbar",is_rented:false};
+        if(choice === "auto"){
+          const ll = await getCurrentDeviceLatLng();
+          if(!ll){
+            showStatus("standort nicht verfügbar");
+            if(returnBtn){ returnBtn.classList.remove("isReturning"); delete returnBtn.dataset.returning; }
+            return;
+          }
+          patch.lat = ll.lat; patch.lng = ll.lng;
+          entry.lat = ll.lat; entry.lng = ll.lng; entry.marker.setLatLng([ll.lat,ll.lng]);
+        }
+        await dbUpdateMarker(entry.id,patch);
+        entry.status = "verfügbar"; entry.isRented = false; entry.marker.setIcon(iconForEntry(entry));
+        const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
+        const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
+        const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
+        renderChatMessage(savedSystemMessage); scrollChatBottom();
+        if(choice === "auto") closeModal();
+        if(choice === "manual") startMoveMode(entry);
+        showStatus("natebike zurückgegeben");
+      }catch(err){
+        console.error(err); showStatus("zurückgeben fehlgeschlagen");
+        if(returnBtn){ returnBtn.classList.remove("isReturning"); delete returnBtn.dataset.returning; }
+      }
+    }
+
+    async function toggleMaintenanceBike(entry){
+      if(!isAdmin){ showStatus("nur admin"); return; }
+      const currentStatus = entry.status || "verfügbar";
+      const nextStatus = currentStatus === "nicht verfügbar" ? "verfügbar" : "nicht verfügbar";
+      try{
+        await dbUpdateMarker(entry.id,{status:nextStatus,is_rented:nextStatus !== "verfügbar"});
+        entry.status = nextStatus; entry.isRented = nextStatus !== "verfügbar"; entry.marker.setIcon(iconForEntry(entry));
+        closeModal(); openBikeWindow(entry);
+        showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
+      }catch(err){ console.error(err); showStatus("status konnte nicht geändert werden"); }
+    }
+
+    function openReturnChoiceDialog(){
+      return new Promise(resolve => {
+        const overlay = document.getElementById("returnChoiceOverlay");
+        const autoBtn = document.getElementById("returnAutoBtn");
+        const manualBtn = document.getElementById("returnManualBtn");
+        const cancelX = document.getElementById("returnCancelX");
+        function close(value){
+          overlay.style.display = "none";
+          autoBtn.removeEventListener("click",onAuto); manualBtn.removeEventListener("click",onManual);
+          cancelX.removeEventListener("click",onCancel); overlay.removeEventListener("click",onOverlay);
+          resolve(value);
+        }
+        function onAuto(){ close("auto"); } function onManual(){ close("manual"); }
+        function onCancel(){ close("cancel"); } function onOverlay(e){ if(e.target === overlay) close("cancel"); }
+        autoBtn.addEventListener("click",onAuto); manualBtn.addEventListener("click",onManual);
+        cancelX.addEventListener("click",onCancel); overlay.addEventListener("click",onOverlay);
+        overlay.style.display = "flex";
+      });
+    }
+
+    // ── Menü ──────────────────────────────────────────────────────────────────────
+
+    const menuBtn = document.getElementById("menuBtn");
+    const dropdownMenu = document.getElementById("dropdownMenu");
+
+    menuBtn.addEventListener("click",e => {
+      e.stopPropagation();
+      dropdownMenu.style.display = dropdownMenu.style.display === "block" ? "none" : "block";
+    });
+
+    document.addEventListener("click",e => {
+      if(!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) dropdownMenu.style.display = "none";
+    });
+
+    document.querySelectorAll(".dropdown-item").forEach(item => {
+      item.addEventListener("click",() => {
+        const kind = item.dataset.kind;
+        dropdownMenu.style.display = "none";
+        if(kind === "bikes") showBikeList();
+        if(kind === "notes") showNoteList();
+        if(kind === "chat") openChat();
+        if(kind === "account") openAccountManage();
+        if(kind === "accounts") openAllAccountsManage();
+        if(kind === "admintools") openAdminTools();
+      });
+    });
+
+    // ── Listen ────────────────────────────────────────────────────────────────────
+
+    function openList(title){
+      document.getElementById("listTitle").textContent = title;
+      document.getElementById("listItems").innerHTML = "";
+      document.getElementById("listOverlay").style.display = "flex";
+    }
+
+    function addEmptyListMessage(text){
+      const div = document.createElement("div"); div.className = "empty-list"; div.textContent = text;
+      document.getElementById("listItems").appendChild(div);
+    }
+
+    function addListRow(text,entry,extraClass=""){
+      const row = document.createElement("div");
+      row.className = extraClass ? `list-item ${extraClass}` : "list-item";
+      row.textContent = text;
+      row.addEventListener("click",() => {
+        document.getElementById("listOverlay").style.display = "none";
+        map.setView([entry.lat,entry.lng],17); pulseEntry(entry);
+      });
+      document.getElementById("listItems").appendChild(row);
+    }
+
+    function showBikeList(){
+      const bikes = Array.from(markers.values()).filter(e => e.type === "bike").sort(sortBikeEntries);
+      openList("natebikes");
+      if(bikes.length === 0){ addEmptyListMessage("keine fahrräder gefunden"); return; }
+      bikes.forEach(entry => {
+        const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
+        addListRow(line || "(ohne nummer/name)",entry,statusClassForBike(entry));
+      });
+    }
+
+    function showNoteList(){
+      const notes = Array.from(markers.values()).filter(e => e.type === "note").sort((a,b) => Number(a.lng)-Number(b.lng));
+      openList("natebikestationen");
+      if(notes.length === 0){ addEmptyListMessage("keine stationen gefunden"); return; }
+      notes.forEach(entry => { addListRow(String(entry.content || "").trim() || "(ohne inhalt)",entry); });
+    }
+
+    document.getElementById("listCloseBtn").addEventListener("click",() => { document.getElementById("listOverlay").style.display = "none"; });
+    document.getElementById("listOverlay").addEventListener("click",e => { if(e.target.id === "listOverlay") document.getElementById("listOverlay").style.display = "none"; });
+
+    // ── Login ─────────────────────────────────────────────────────────────────────
+
+    const loginFrame = document.getElementById("loginFrame");
+    const accountCreateFrame = document.getElementById("accountCreateFrame");
+    const mapFrame = document.getElementById("mapFrame");
+    const headerActions = document.getElementById("headerActions");
+
+    async function loginUser(){
+      const name = document.getElementById("loginNameInput").value.trim();
+      const password = document.getElementById("loginPasswordInput").value;
+      if(!name || !password){ showMsg("loginMsg","bitte name und passwort eingeben"); return; }
+      const email = usernameToEmail(name);
+      try{
+        const { data, error } = await sb.auth.signInWithPassword({email,password});
+        if(error) throw error;
+        const profile = await loadProfile(data.user.id);
+        if(profile.locked){ await sb.auth.signOut(); showMsg("loginMsg","account gesperrt"); return; }
+        currentProfile = profile;
+        currentUserName = profile.display_name || profile.username;
+        hideMsg("loginMsg");
+        loginFrame.style.display = "none";
+        accountCreateFrame.style.display = "none";
+        mapFrame.style.display = "block";
+        headerActions.style.display = "flex";
+        updateAdminUI();
+        setTimeout(() => { map.invalidateSize(); map.locate({setView:true,maxZoom:16,enableHighAccuracy:true}); },100);
+        await loadMarkersOnce();
+      }catch(err){ console.error(err); showMsg("loginMsg","anmeldung fehlgeschlagen"); }
+    }
+
+    function showCreateAccount(){
+      loginFrame.style.display = "none"; accountCreateFrame.style.display = "grid";
+      hideMsg("createAccountMsg"); document.getElementById("createNameInput").focus();
+    }
+
+    function showLogin(){
+      accountCreateFrame.style.display = "none"; loginFrame.style.display = "grid"; hideMsg("loginMsg");
+    }
+
+    async function createAccount(){
+      const name = document.getElementById("createNameInput").value.trim();
+      const pw1 = document.getElementById("createPasswordInput").value;
+      const pw2 = document.getElementById("createPasswordRepeatInput").value;
+      const secret = document.getElementById("createSecretInput").value.trim();
+
+      if(!name || !pw1 || !pw2){ showMsg("createAccountMsg","bitte alle felder ausfüllen"); return; }
+      if(pw1 !== pw2){ showMsg("createAccountMsg","passwörter stimmen nicht überein"); return; }
+
+      // Geheimcode über Supabase prüfen
+      try{
+        const valid = await checkSecret("create_secret", secret);
+        if(!valid){ showMsg("createAccountMsg","falscher geheimcode"); return; }
+      }catch(err){
+        console.error(err); showMsg("createAccountMsg","prüfung fehlgeschlagen"); return;
+      }
+
+      const username = usernameKey(name);
+      const email = usernameToEmail(name);
+      try{
+        const { data, error } = await sb.auth.signUp({email,password:pw1});
+        if(error) throw error;
+        if(!data.user){ showMsg("createAccountMsg","account konnte nicht erstellt werden"); return; }
+        const { error: profileError } = await sb.from("user_profiles").insert({ id:data.user.id, username, display_name:name, locked:false });
+        if(profileError) throw profileError;
+        await sb.auth.signOut();
+        document.getElementById("loginNameInput").value = name;
+        document.getElementById("loginPasswordInput").value = "";
+        document.getElementById("createNameInput").value = "";
+        document.getElementById("createPasswordInput").value = "";
+        document.getElementById("createPasswordRepeatInput").value = "";
+        document.getElementById("createSecretInput").value = "";
+        showMsg("createAccountMsg","account erstellt",true);
+        setTimeout(showLogin,900);
+      }catch(err){
+        console.error(err);
+        const msg = String(err.message || "").toLowerCase();
+        if(msg.includes("registered") || msg.includes("duplicate") || msg.includes("unique")){
+          showMsg("createAccountMsg","benutzername bereits vergeben");
+        }else{
+          showMsg("createAccountMsg","account konnte nicht erstellt werden");
+        }
+      }
+    }
+
+    document.getElementById("loginBtn").addEventListener("click",loginUser);
+    document.getElementById("loginPasswordInput").addEventListener("keydown",e => { if(e.key === "Enter") loginUser(); });
+    document.getElementById("loginNameInput").addEventListener("keydown",e => { if(e.key === "Enter") loginUser(); });
+    document.getElementById("openCreateAccountLink").addEventListener("click",showCreateAccount);
+    document.getElementById("backToLoginBtn").addEventListener("click",showLogin);
+    document.getElementById("createAccountBtn").addEventListener("click",createAccount);
+    document.getElementById("createSecretInput").addEventListener("keydown",e => { if(e.key === "Enter") createAccount(); });
+
+    // ── Admin ─────────────────────────────────────────────────────────────────────
+
+    const adminBtn = document.getElementById("adminBtn");
+    const adminOverlay = document.getElementById("adminOverlay");
+    const adminPwInput = document.getElementById("adminPwInput");
+    const adminMsg = document.getElementById("adminMsg");
+
+    function updateAdminUI(){
+      adminBtn.classList.toggle("isAdmin",isAdmin);
+      document.querySelectorAll(".adminOnly").forEach(el => { el.style.display = isAdmin ? "block" : "none"; });
+      const clearChatBtn = document.getElementById("clearChatBtn");
+      if(clearChatBtn) clearChatBtn.style.display = isAdmin ? "inline-block" : "none";
+    }
+
+    function openAdminModal(){
+      adminPwInput.value = ""; adminMsg.style.display = "none";
+      adminOverlay.style.display = "flex"; adminPwInput.focus();
+    }
+
+    function closeAdminModal(){ adminOverlay.style.display = "none"; }
+
+    async function confirmAdmin(){
+      const value = (adminPwInput.value || "").trim();
+      try{
+        const valid = await checkSecret("admin_password", value);
+        if(!valid){ adminMsg.style.display = "block"; return; }
+        isAdmin = true; updateAdminUI(); closeAdminModal(); showStatus("admin aktiv");
+      }catch(err){
+        console.error(err); adminMsg.style.display = "block";
+      }
+    }
+
+    adminBtn.addEventListener("click",() => {
+      if(isAdmin){ isAdmin = false; updateAdminUI(); showStatus("admin abgemeldet"); }
+      else openAdminModal();
+    });
+
+    document.getElementById("adminOkBtn").addEventListener("click",confirmAdmin);
+    adminPwInput.addEventListener("keydown",e => { if(e.key === "Enter") confirmAdmin(); });
+    document.getElementById("adminCloseBtn").addEventListener("click",closeAdminModal);
+    adminOverlay.addEventListener("click",e => { if(e.target === adminOverlay) closeAdminModal(); });
+
+    // ── Admin Tools ───────────────────────────────────────────────────────────────
+
+    const adminToolsOverlay = document.getElementById("adminToolsOverlay");
+    const adminToolsTitle = document.getElementById("adminToolsTitle");
+    const adminToolsBody = document.getElementById("adminToolsBody");
+    const adminToolsFooter = document.getElementById("adminToolsFooter");
+
+    function closeAdminToolsOverlay(){
+      adminToolsOverlay.style.display = "none";
+      adminToolsBody.innerHTML = ""; adminToolsFooter.innerHTML = "";
+    }
+
+    document.getElementById("adminToolsCloseBtn").addEventListener("click",closeAdminToolsOverlay);
+    adminToolsOverlay.addEventListener("click",e => { if(e.target === adminToolsOverlay) closeAdminToolsOverlay(); });
+
+    function openAdminTools(){
+      adminToolsTitle.textContent = "admin tools";
+      adminToolsBody.innerHTML = `
+        <div class="list-items">
+          <div class="list-item" id="changeAdminPwItem">adminpasswort ändern</div>
+          <div class="list-item" id="changeSecretItem">geheimcode ändern</div>
+        </div>
       `;
-      chatMessages.appendChild(bubble);
-      scrollChatBottom();
+      adminToolsFooter.innerHTML = "";
+      adminToolsOverlay.style.display = "flex";
+      document.getElementById("changeAdminPwItem").addEventListener("click",openChangeAdminPassword);
+      document.getElementById("changeSecretItem").addEventListener("click",openChangeSecret);
+    }
+
+    function openChangeAdminPassword(){
+      adminToolsTitle.textContent = "adminpasswort ändern";
+      adminToolsBody.innerHTML = `
+        <div class="grid">
+          <div class="label">altes passwort:</div>
+          <input id="oldAdminPwInput" type="password" />
+          <div class="label">neues passwort:</div>
+          <input id="newAdminPwInput" type="password" />
+          <div class="label">wiederholung:</div>
+          <input id="newAdminPwRepeatInput" type="password" />
+        </div>
+        <div id="changeAdminPwMsg" class="msg">meldung</div>
+      `;
+      adminToolsFooter.innerHTML = `
+        <button class="btn secondary" id="backAdminToolsBtn" type="button">zurück</button>
+        <button class="btn" id="saveAdminPwBtn" type="button">speichern</button>
+      `;
+      document.getElementById("backAdminToolsBtn").addEventListener("click",openAdminTools);
+      document.getElementById("saveAdminPwBtn").addEventListener("click",saveAdminPassword);
+    }
+
+    async function saveAdminPassword(){
+      const oldPw = document.getElementById("oldAdminPwInput").value;
+      const newPw = document.getElementById("newAdminPwInput").value;
+      const rep = document.getElementById("newAdminPwRepeatInput").value;
+      if(!newPw || newPw !== rep){ showMsg("changeAdminPwMsg","neue passwörter stimmen nicht überein"); return; }
+      try{
+        const ok = await updateSecret("admin_password", oldPw, newPw);
+        if(!ok){ showMsg("changeAdminPwMsg","altes passwort falsch"); return; }
+        showMsg("changeAdminPwMsg","adminpasswort geändert",true);
+        setTimeout(openAdminTools,900);
+      }catch(err){ console.error(err); showMsg("changeAdminPwMsg","fehler beim speichern"); }
+    }
+
+    function openChangeSecret(){
+      adminToolsTitle.textContent = "geheimcode ändern";
+      adminToolsBody.innerHTML = `
+        <div class="grid">
+          <div class="label">alter geheimcode:</div>
+          <input id="oldSecretInput" type="password" />
+          <div class="label">neuer geheimcode:</div>
+          <input id="newSecretInput" type="password" />
+          <div class="label">wiederholung:</div>
+          <input id="newSecretRepeatInput" type="password" />
+        </div>
+        <div id="changeSecretMsg" class="msg">meldung</div>
+      `;
+      adminToolsFooter.innerHTML = `
+        <button class="btn secondary" id="backAdminToolsBtn2" type="button">zurück</button>
+        <button class="btn" id="saveSecretBtn" type="button">speichern</button>
+      `;
+      document.getElementById("backAdminToolsBtn2").addEventListener("click",openAdminTools);
+      document.getElementById("saveSecretBtn").addEventListener("click",saveSecret);
+    }
+
+    async function saveSecret(){
+      const oldSecret = document.getElementById("oldSecretInput").value;
+      const newSecret = document.getElementById("newSecretInput").value;
+      const rep = document.getElementById("newSecretRepeatInput").value;
+      if(!newSecret || newSecret !== rep){ showMsg("changeSecretMsg","neue geheimcodes stimmen nicht überein"); return; }
+      try{
+        const ok = await updateSecret("create_secret", oldSecret, newSecret);
+        if(!ok){ showMsg("changeSecretMsg","alter geheimcode falsch"); return; }
+        showMsg("changeSecretMsg","geheimcode geändert",true);
+        setTimeout(openAdminTools,900);
+      }catch(err){ console.error(err); showMsg("changeSecretMsg","fehler beim speichern"); }
+    }
+
+    // ── Account verwalten ─────────────────────────────────────────────────────────
+
+    const accountOverlay = document.getElementById("accountOverlay");
+    const accountTitle = document.getElementById("accountTitle");
+    const accountBody = document.getElementById("accountBody");
+    const accountFooter = document.getElementById("accountFooter");
+
+    function closeAccountOverlay(){ accountOverlay.style.display = "none"; accountBody.innerHTML = ""; accountFooter.innerHTML = ""; }
+
+    document.getElementById("accountCloseBtn").addEventListener("click",closeAccountOverlay);
+    accountOverlay.addEventListener("click",e => { if(e.target === accountOverlay) closeAccountOverlay(); });
+
+    function openAccountManage(){
+      accountTitle.textContent = "account verwalten";
+      accountBody.innerHTML = `
+        <div class="list-items">
+          <div class="list-item" id="changePasswordItem">passwort ändern</div>
+          <div class="list-item" id="deleteOwnAccountItem" style="border-color:var(--danger);">account löschen</div>
+        </div>
+      `;
+      accountFooter.innerHTML = `<button class="btn secondary" id="logoutBtn" type="button">ausloggen</button>`;
+      accountOverlay.style.display = "flex";
+      document.getElementById("changePasswordItem").addEventListener("click",openChangePassword);
+      document.getElementById("deleteOwnAccountItem").addEventListener("click",deleteOwnAccount);
+      document.getElementById("logoutBtn").addEventListener("click",logoutUser);
+    }
+
+    async function logoutUser(){
+      try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
+      currentUserName = ""; currentProfile = null; isAdmin = false; markersLoaded = false;
+      updateAdminUI(); closeAccountOverlay();
+      headerActions.style.display = "none"; mapFrame.style.display = "none"; loginFrame.style.display = "grid";
+      document.getElementById("loginNameInput").value = "";
+      document.getElementById("loginPasswordInput").value = "";
+      showStatus("ausgeloggt");
+    }
+
+    function openChangePassword(){
+      accountTitle.textContent = "passwort ändern";
+      accountBody.innerHTML = `
+        <div class="grid">
+          <div class="label">altes passwort:</div>
+          <input id="oldPasswordInput" type="password" />
+          <div class="label">neues passwort:</div>
+          <input id="newPasswordInput" type="password" />
+          <div class="label">wiederholung:</div>
+          <input id="newPasswordRepeatInput" type="password" />
+        </div>
+        <div id="changePasswordMsg" class="msg">meldung</div>
+      `;
+      accountFooter.innerHTML = `
+        <button class="btn secondary" id="backAccountBtn" type="button">zurück</button>
+        <button class="btn" id="savePasswordBtn" type="button">speichern</button>
+      `;
+      document.getElementById("backAccountBtn").addEventListener("click",openAccountManage);
+      document.getElementById("savePasswordBtn").addEventListener("click",saveChangedPassword);
+    }
+
+    async function saveChangedPassword(){
+      const oldPw = document.getElementById("oldPasswordInput").value;
+      const newPw = document.getElementById("newPasswordInput").value;
+      const rep = document.getElementById("newPasswordRepeatInput").value;
+      if(!currentProfile){ showMsg("changePasswordMsg","nicht angemeldet"); return; }
+      if(!newPw || newPw !== rep){ showMsg("changePasswordMsg","neue passwörter stimmen nicht überein"); return; }
+      try{
+        const email = usernameToEmail(currentProfile.username);
+        const { error: signInError } = await sb.auth.signInWithPassword({email,password:oldPw});
+        if(signInError) throw signInError;
+        const { error } = await sb.auth.updateUser({password:newPw});
+        if(error) throw error;
+        showMsg("changePasswordMsg","passwort geändert",true);
+        setTimeout(closeAccountOverlay,800);
+      }catch(err){ console.error(err); showMsg("changePasswordMsg","altes passwort falsch"); }
+    }
+
+    async function deleteOwnAccount(){
+      const ok = confirm("account wirklich löschen?");
+      if(!ok) return;
+      try{
+        if(currentProfile) await sb.from("user_profiles").delete().eq("id",currentProfile.id);
+        await sb.auth.signOut();
+      }catch(err){ console.error(err); }
+      currentProfile = null; currentUserName = ""; isAdmin = false; markersLoaded = false;
+      updateAdminUI(); closeAccountOverlay();
+      headerActions.style.display = "none"; mapFrame.style.display = "none"; loginFrame.style.display = "grid";
+      document.getElementById("loginNameInput").value = "";
+      document.getElementById("loginPasswordInput").value = "";
+      showMsg("loginMsg","account gelöscht",true);
+    }
+
+    async function openAllAccountsManage(){
+      openList("alle accounts");
+      try{
+        const { data,error } = await sb.from("user_profiles").select("*").order("username",{ascending:true});
+        if(error) throw error;
+        const accounts = data || [];
+        if(accounts.length === 0){ addEmptyListMessage("keine accounts vorhanden"); return; }
+        accounts.forEach(account => {
+          const row = document.createElement("div");
+          row.className = account.locked ? "list-item accountRow locked" : "list-item accountRow";
+          row.textContent = account.locked ? `${account.display_name} (gesperrt)` : account.display_name;
+          row.dataset.id = account.id;
+          row.addEventListener("contextmenu",e => {
+            if(!isAdmin) return;
+            e.preventDefault(); e.stopPropagation();
+            ctxAccountId = account.id;
+            const lockToggleItem = document.getElementById("accountLockToggleItem");
+            lockToggleItem.textContent = account.locked ? "account entsperren" : "account sperren";
+            const menu = document.getElementById("ctxMenuAccount");
+            menu.style.left = `${e.clientX}px`; menu.style.top = `${e.clientY}px`; menu.style.display = "block";
+          });
+          document.getElementById("listItems").appendChild(row);
+        });
+      }catch(err){ console.error(err); addEmptyListMessage("accounts konnten nicht geladen werden"); }
+    }
+
+    document.getElementById("ctxMenuAccount").addEventListener("pointerdown",async e => {
+      e.stopPropagation();
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxAccountId) return;
+      const action = item.dataset.action, id = ctxAccountId;
+      hideContextMenus();
+      if(action === "toggleLock"){
+        try{
+          const {data:profile,error:loadErr} = await sb.from("user_profiles").select("*").eq("id",id).single();
+          if(loadErr) throw loadErr;
+          const nextLockedState = !profile.locked;
+          const {error} = await sb.from("user_profiles").update({locked:nextLockedState}).eq("id",id);
+          if(error) throw error;
+          showStatus(nextLockedState ? "account gesperrt" : "account entsperrt");
+          openAllAccountsManage();
+        }catch(err){ console.error(err); showStatus("account konnte nicht geändert werden"); }
+      }
+      if(action === "delete"){
+        const ok = confirm("account wirklich aus der profilliste löschen?");
+        if(!ok) return;
+        try{
+          const {error} = await sb.from("user_profiles").delete().eq("id",id);
+          if(error) throw error;
+          showStatus("account gelöscht"); openAllAccountsManage();
+        }catch(err){ console.error(err); showStatus("account konnte nicht gelöscht werden"); }
+      }
+    });
+
+    // ── Context-Menüs ─────────────────────────────────────────────────────────────
+
+    const ctxMenuMap = document.getElementById("ctxMenuMap");
+    const ctxMenuMarker = document.getElementById("ctxMenuMarker");
+    const ctxMenuChat = document.getElementById("ctxMenuChat");
+    const ctxMenuAccount = document.getElementById("ctxMenuAccount");
+
+    let ctxMapLatLng = null;
+    let ctxMarkerEntry = null;
+
+    function hideContextMenus(){
+      ctxMenuMap.style.display = "none"; ctxMenuMarker.style.display = "none";
+      ctxMenuChat.style.display = "none"; ctxMenuAccount.style.display = "none";
+      ctxMapLatLng = null; ctxMarkerEntry = null; ctxChatMessageId = null; ctxAccountId = null;
+    }
+
+    map.getContainer().addEventListener("contextmenu",e => e.preventDefault());
+
+    map.on("contextmenu",e => {
+      if(!isAdmin) return;
+      hideContextMenus(); ctxMapLatLng = e.latlng;
+      ctxMenuMap.style.left = `${e.originalEvent.clientX}px`;
+      ctxMenuMap.style.top = `${e.originalEvent.clientY}px`;
+      ctxMenuMap.style.display = "block";
+    });
+
+    map.on("click",async() => {
+      if(Date.now() < ignoreMapClickUntil) return;
+      if(moveModeEntry){ await finishMoveMode(); return; }
+      hideContextMenus();
+    });
+
+    map.on("movestart",hideContextMenus);
+
+    document.addEventListener("pointerdown",e => {
+      if(!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target) && !ctxMenuChat.contains(e.target) && !ctxMenuAccount.contains(e.target)){
+        hideContextMenus();
+      }
+    });
+
+    ctxMenuMap.addEventListener("pointerdown",async e => {
+      e.stopPropagation();
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxMapLatLng) return;
+      const action = item.dataset.action, latlng = ctxMapLatLng;
+      hideContextMenus();
+      try{
+        if(action === "bike"){ const row = await dbInsertMarker("bike",latlng.lat,latlng.lng); addOrUpdateMarker(row); showStatus("rad hinzugefügt"); }
+        if(action === "note"){ const row = await dbInsertMarker("note",latlng.lat,latlng.lng); addOrUpdateMarker(row); showStatus("station hinzugefügt"); }
+      }catch(err){ console.error(err); showStatus("konnte nicht gespeichert werden"); }
+    });
+
+    function openMarkerMenu(mouseEvent,entry){
+      hideContextMenus(); ctxMarkerEntry = entry;
+      ctxMenuMarker.style.left = `${mouseEvent.clientX}px`;
+      ctxMenuMarker.style.top = `${mouseEvent.clientY}px`;
+      ctxMenuMarker.style.display = "block";
+    }
+
+    ctxMenuMarker.addEventListener("pointerdown",e => {
+      e.stopPropagation();
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxMarkerEntry) return;
+      const action = item.dataset.action, entry = ctxMarkerEntry;
+      hideContextMenus();
+      if(action === "open") entry.type === "bike" ? openBikeWindow(entry) : openStationWindow(entry);
+      if(action === "move") startMoveMode(entry);
+    });
+
+    // ── Modal ─────────────────────────────────────────────────────────────────────
+
+    const modalOverlay = document.getElementById("modalOverlay");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+    const modalFooter = document.getElementById("modalFooter");
+
+    function openModal(){ modalOverlay.style.display = "flex"; }
+
+    function closeModal(){
+      if(modalCleanup){ modalCleanup(); modalCleanup = null; }
+      modalOverlay.style.display = "none";
+      modalTitle.textContent = "details"; modalBody.innerHTML = ""; modalFooter.innerHTML = "";
+      revealedBikeCodeId = null;
+    }
+
+    // ── Bike-Fenster ──────────────────────────────────────────────────────────────
+
+    function openBikeWindow(entry){
+      if(modalCleanup){ modalCleanup(); modalCleanup = null; }
+      modalTitle.textContent = "geparktes fahrrad";
+      const adminReadonly = isAdmin ? "" : "readonly";
+      const statusText = entry.status || "verfügbar";
+      const isAvailable = statusText === "verfügbar";
+      const isBorrowed = statusText.startsWith("von ") && statusText.includes("ausgeliehen");
+      const isMaintenance = statusText === "nicht verfügbar";
+      const codeIsVisible = revealedBikeCodeId === entry.id;
+      const realCode = String(entry.bikeCode || "");
+      const displayedCode = codeIsVisible ? realCode : "*".repeat(realCode.length);
+      const codeReadonly = (isAdmin && codeIsVisible) ? "" : "readonly";
+
+      modalBody.innerHTML = `
+        <div class="label">nummer</div>
+        <input type="text" id="bikeNumberInput" ${adminReadonly} value="${escapeHtml(entry.bikeNumber)}" />
+        <div class="label">name</div>
+        <input type="text" id="bikeNameInput" ${adminReadonly} value="${escapeHtml(entry.bikeName)}" />
+        <div class="label">farbe</div>
+        <input type="text" id="bikeColorInput" ${adminReadonly} value="${escapeHtml(entry.bikeColor)}" />
+        <div class="label">bemerkung</div>
+        <input type="text" id="bikeRemarkInput" value="${escapeHtml(entry.bikeRemark)}" />
+        <div class="label">schlosscode</div>
+        <input type="text" id="bikeCodeInput" ${codeReadonly} value="${escapeHtml(displayedCode)}" />
+        <div class="label">status</div>
+        <input type="text" id="bikeStatusInput" class="${statusClassForBike(entry)}" readonly value="${escapeHtml(statusText)}" />
+      `;
+
+      let loanButtonHtml = "";
+      if(isAvailable) loanButtonHtml = `<button class="btn secondary" id="bikeLoanBtn" type="button">ausleihen</button>`;
+      if(isBorrowed && currentUserMayReturnBike(entry)){
+        loanButtonHtml = `<button class="btn returnBikeBtn" id="bikeReturnBtn" type="button">zurückgeben</button>`;
+      }
+
+      const maintenanceButtonHtml = isAdmin
+        ? (isMaintenance
+          ? `<button class="btn maintenanceBtn release" id="bikeMaintenanceBtn" type="button">freigeben</button>`
+          : `<button class="btn maintenanceBtn" id="bikeMaintenanceBtn" type="button">wartung</button>`)
+        : "";
+
+      if(isAdmin){
+        modalFooter.innerHTML = `${loanButtonHtml}${maintenanceButtonHtml}<button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>`;
+        document.getElementById("bikeDeleteBtn").addEventListener("click",async() => {
+          try{
+            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id); closeModal();
+          }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
+        },{once:true});
+      }else{
+        modalFooter.innerHTML = `${loanButtonHtml}`;
+      }
+
+      const loanBtn = document.getElementById("bikeLoanBtn");
+      if(loanBtn) loanBtn.addEventListener("click",() => borrowBike(entry),{once:true});
+      const returnBtn = document.getElementById("bikeReturnBtn");
+      if(returnBtn) returnBtn.addEventListener("click",() => returnBike(entry),{once:true});
+      const maintenanceBtn = document.getElementById("bikeMaintenanceBtn");
+      if(maintenanceBtn) maintenanceBtn.addEventListener("click",() => toggleMaintenanceBike(entry),{once:true});
+
+      async function saveOnClose(){
+        if(isAdmin){
+          const patch = {
+            bike_number:document.getElementById("bikeNumberInput")?.value.trim() ?? entry.bikeNumber,
+            name:document.getElementById("bikeNameInput")?.value.trim() ?? entry.bikeName,
+            color:document.getElementById("bikeColorInput")?.value.trim() ?? entry.bikeColor,
+            remark:document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark
+          };
+          if(codeIsVisible) patch.code = document.getElementById("bikeCodeInput")?.value.trim() ?? entry.bikeCode;
+          try{
+            await dbUpdateMarker(entry.id,patch);
+            entry.bikeNumber = patch.bike_number; entry.bikeName = patch.name;
+            entry.bikeColor = patch.color; entry.bikeRemark = patch.remark;
+            if(codeIsVisible) entry.bikeCode = patch.code;
+            entry.marker.setIcon(iconForEntry(entry));
+          }catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
+        }else{
+          const newRemark = document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark;
+          if(newRemark !== entry.bikeRemark){
+            try{
+              await dbUpdateMarker(entry.id,{remark:newRemark}); entry.bikeRemark = newRemark;
+            }catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
+          }
+        }
+      }
+
+      const closeBtnHandler = async() => { await saveOnClose(); closeModal(); };
+      const overlayHandler = async(e) => { if(e.target === modalOverlay){ await saveOnClose(); closeModal(); } };
+      document.getElementById("modalCloseBtn").addEventListener("click",closeBtnHandler);
+      modalOverlay.addEventListener("click",overlayHandler);
+      modalCleanup = () => {
+        document.getElementById("modalCloseBtn").removeEventListener("click",closeBtnHandler);
+        modalOverlay.removeEventListener("click",overlayHandler);
+      };
+      openModal();
+    }
+
+    // ── Station-Fenster ───────────────────────────────────────────────────────────
+
+    function openStationWindow(entry){
+      if(modalCleanup){ modalCleanup(); modalCleanup = null; }
+      modalTitle.textContent = "natebikestation";
+      const readonly = isAdmin ? "" : "readonly";
+      modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>`;
+
+      if(isAdmin){
+        modalFooter.innerHTML = `<button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>`;
+        document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
+          try{
+            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id); closeModal();
+          }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
+        },{once:true});
+      }
+
+      async function saveOnClose(){
+        if(!isAdmin) return;
+        const content = document.getElementById("stationContentInput")?.value.trim() ?? entry.content;
+        if(content !== entry.content){
+          try{ await dbUpdateMarker(entry.id,{content}); entry.content = content; }
+          catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
+        }
+      }
+
+      const closeBtnHandler = async() => { await saveOnClose(); closeModal(); };
+      const overlayHandler = async(e) => { if(e.target === modalOverlay){ await saveOnClose(); closeModal(); } };
+      document.getElementById("modalCloseBtn").addEventListener("click",closeBtnHandler);
+      modalOverlay.addEventListener("click",overlayHandler);
+      modalCleanup = () => {
+        document.getElementById("modalCloseBtn").removeEventListener("click",closeBtnHandler);
+        modalOverlay.removeEventListener("click",overlayHandler);
+      };
+      openModal();
+    }
+
+    // ── Chat ──────────────────────────────────────────────────────────────────────
+
+    async function dbLoadChatMessages(){
+      const {data,error} = await sb.from("chat_messages").select("*").order("created_at",{ascending:true}).limit(300);
+      if(error) throw error;
+      return data || [];
+    }
+
+    async function dbInsertChatMessage(message,photoData){
+      const payload = {user_name:currentUserName,message:message || "",photo_data:photoData || null};
+      const {data,error} = await sb.from("chat_messages").insert(payload).select().single();
+      if(error) throw error;
+      return data;
+    }
+
+    async function dbDeleteChatMessage(id){
+      const {error} = await sb.from("chat_messages").delete().eq("id",id);
+      if(error) throw error;
+    }
+
+    async function dbClearChat(){
+      const {error} = await sb.from("chat_messages").delete().gte("created_at","1970-01-01T00:00:00Z");
+      if(error) throw error;
+    }
+
+    function openChat(){ document.getElementById("chatOverlay").style.display = "flex"; updateAdminUI(); loadChatMessages(); }
+    function closeChat(){ document.getElementById("chatOverlay").style.display = "none"; hideContextMenus(); }
+
+    async function loadChatMessages(){
+      try{
+        const rows = await dbLoadChatMessages();
+        document.getElementById("chatMessages").innerHTML = ""; renderedChatMessages.clear();
+        rows.forEach(renderChatMessage); scrollChatBottom();
+      }catch(err){ console.error(err); showStatus("chat konnte nicht geladen werden"); }
+    }
+
+    function renderChatMessage(row){
+      if(!row || !row.id) return;
+      if(renderedChatMessages.has(row.id)) return;
+      renderedChatMessages.add(row.id);
+      const isSystemMessage = row.user_name === "system";
+      const box = document.createElement("div");
+      box.className = isSystemMessage ? "chatMessage systemMessage" : "chatMessage";
+      box.dataset.id = row.id;
+      if(!isSystemMessage){
+        const meta = document.createElement("div");
+        meta.className = "chatMeta";
+        meta.textContent = `${row.user_name || "unbekannt"} • ${formatDateTime(row.created_at)}`;
+        box.appendChild(meta);
+      }
+      if(row.message){
+        const text = document.createElement("div"); text.className = "chatText"; text.textContent = row.message; box.appendChild(text);
+      }
+      if(row.photo_data){
+        const img = document.createElement("img"); img.className = "chatPhoto"; img.src = row.photo_data; img.alt = "foto"; box.appendChild(img);
+      }
+      box.addEventListener("contextmenu",e => {
+        if(!isAdmin) return;
+        e.preventDefault(); e.stopPropagation();
+        ctxChatMessageId = row.id;
+        ctxMenuChat.style.left = `${e.clientX}px`; ctxMenuChat.style.top = `${e.clientY}px`; ctxMenuChat.style.display = "block";
+      });
+      document.getElementById("chatMessages").appendChild(box);
     }
 
     function removeChatMessageFromView(id){
-      const el = document.getElementById(`msg-${id}`);
+      renderedChatMessages.delete(id);
+      const el = document.querySelector(`.chatMessage[data-id="${CSS.escape(String(id))}"]`);
       if(el) el.remove();
     }
 
+    function scrollChatBottom(){ const c = document.getElementById("chatMessages"); c.scrollTop = c.scrollHeight; }
+
+    document.getElementById("chatCloseBtn").addEventListener("click",closeChat);
+    document.getElementById("chatOverlay").addEventListener("click",e => { if(e.target.id === "chatOverlay") closeChat(); });
+    document.getElementById("chatTextInput").addEventListener("input",() => { document.getElementById("charCount").textContent = document.getElementById("chatTextInput").value.length; });
+    document.getElementById("photoBtn").addEventListener("click",() => document.getElementById("photoInput").click());
+
+    document.getElementById("photoInput").addEventListener("change",async e => {
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+      try{
+        selectedPhotoData = await resizeImageToDataUrl(file,200,200);
+        document.getElementById("photoPreviewImg").src = selectedPhotoData;
+        document.getElementById("photoPreview").style.display = "flex";
+      }catch(err){ console.error(err); showStatus("foto konnte nicht verarbeitet werden"); }
+    });
+
+    document.getElementById("removePhotoBtn").addEventListener("click",() => {
+      selectedPhotoData = null; document.getElementById("photoInput").value = "";
+      document.getElementById("photoPreview").style.display = "none";
+      document.getElementById("photoPreviewImg").src = "";
+    });
+
+    function resizeImageToDataUrl(file,maxWidth,maxHeight){
+      return new Promise((resolve,reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+          const img = new Image(); img.onerror = reject;
+          img.onload = () => {
+            let width = img.width, height = img.height;
+            const scale = Math.min(maxWidth/width,maxHeight/height,1);
+            width = Math.round(width*scale); height = Math.round(height*scale);
+            const canvas = document.createElement("canvas");
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext("2d"); ctx.drawImage(img,0,0,width,height);
+            resolve(canvas.toDataURL("image/jpeg",.75));
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById("sendChatBtn").addEventListener("click",sendChatMessage);
+    document.getElementById("chatTextInput").addEventListener("keydown",e => { if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendChatMessage(); } });
+
     async function sendChatMessage(){
-      const txt = chatInput.value.trim();
-      if(!txt) return;
-      chatInput.value = "";
-
-      const { error } = await sb.from("chat_messages").insert([
-        { message: txt, username: currentProfile.username, user_id: currentProfile.id }
-      ]);
-      if(error) console.error("Chat send error:", error);
+      const input = document.getElementById("chatTextInput");
+      const message = input.value.trim();
+      if(message.length > 144){ showStatus("maximal 144 zeichen"); return; }
+      if(!message && !selectedPhotoData) return;
+      try{
+        const savedMessage = await dbInsertChatMessage(message,selectedPhotoData);
+        renderChatMessage(savedMessage); scrollChatBottom();
+        input.value = ""; document.getElementById("charCount").textContent = "0";
+        selectedPhotoData = null; document.getElementById("photoInput").value = "";
+        document.getElementById("photoPreview").style.display = "none";
+        document.getElementById("photoPreviewImg").src = "";
+      }catch(err){ console.error(err); showStatus("nachricht konnte nicht gesendet werden"); }
     }
 
-    function scrollChatBottom(){ chatMessages.scrollTop = chatMessages.scrollHeight; }
+    ctxMenuChat.addEventListener("pointerdown",async e => {
+      e.stopPropagation();
+      const item = e.target.closest(".ctx-item");
+      if(!item || !ctxChatMessageId) return;
+      const id = ctxChatMessageId, action = item.dataset.action;
+      hideContextMenus();
+      if(action === "delete"){
+        if(!isAdmin){ showStatus("nur admin"); return; }
+        try{ await dbDeleteChatMessage(id); removeChatMessageFromView(id); showStatus("nachricht gelöscht"); }
+        catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
+      }
+    });
 
-    // ADMIN MANAGEMENT DASHBOARD LOGIC
-    async function loadAdminData(){
-      if(!currentProfile || !currentProfile.is_admin) return;
+    document.getElementById("clearChatBtn").addEventListener("click",clearChat);
 
-      // 1. Pending Users
-      const { data: pending, error1 } = await sb.from("user_profiles").select("*").eq("approved", false);
-      const pendingDiv = document.getElementById("adminPendingUsersList");
-      if(!error1 && pending && pending.length > 0){
-        pendingDiv.innerHTML = "";
-        pending.forEach(u => {
-          const item = document.createElement("div");
-          item.className = "admin-list-item";
-          item.innerHTML = `
-            <span><strong>${escapeHtml(u.username)}</strong></span>
-            <button class="admin-sm-btn btn-approve" onclick="adminApproveUser('${u.id}')">Freischalten</button>
-          `;
-          pendingDiv.appendChild(item);
-        });
-      } else { pendingDiv.innerHTML = "Keine ausstehenden Registrierungen."; }
-
-      // 2. All Users
-      const { data: allUsers, error2 } = await sb.from("user_profiles").select("*").order("username", { ascending: true });
-      const allDiv = document.getElementById("adminAllUsersList");
-      if(!error2 && allUsers){
-        allDiv.innerHTML = "";
-        allUsers.forEach(u => {
-          if(u.id === currentProfile.id) return; // skip self
-          const item = document.createElement("div");
-          item.className = "admin-list-item";
-          item.innerHTML = `
-            <div>
-              <strong>${escapeHtml(u.username)}</strong> 
-              <span class="admin-badge ${u.locked ? 'locked' : 'active'}">${u.locked ? 'Gesperrt' : 'Aktiv'}</span>
-            </div>
-            <div class="admin-btn-group">
-              ${u.locked 
-                ? `<button class="admin-sm-btn btn-unlock" onclick="adminSetLock('${u.id}', false)">Entsperren</button>` 
-                : `<button class="admin-sm-btn btn-lock" onclick="adminSetLock('${u.id}', true)">Sperren</button>`
-              }
-              <button class="admin-sm-btn btn-delete" onclick="adminDeleteUser('${u.id}')">Löschen</button>
-            </div>
-          `;
-          allDiv.appendChild(item);
-        });
-      } else { allDiv.innerHTML = "Fehler beim Laden der Benutzerliste."; }
+    async function clearChat(){
+      if(!isAdmin){ showStatus("nur admin"); return; }
+      const ok = confirm("chat wirklich leeren?");
+      if(!ok) return;
+      try{ await dbClearChat(); renderedChatMessages.clear(); document.getElementById("chatMessages").innerHTML = ""; showStatus("chat geleert"); }
+      catch(err){ console.error(err); showStatus("chat konnte nicht geleert werden"); }
     }
 
-    window.adminApproveUser = async function(id){
-      showLoader("Schalte Benutzer frei...");
-      await sb.from("user_profiles").update({ approved: true }).eq("id", id);
-      await loadAdminData();
-      hideLoader();
-    };
+    // ── Realtime ──────────────────────────────────────────────────────────────────
 
-    window.adminSetLock = async function(id, shouldLock){
-      showLoader("Aktualisiere Status...");
-      await sb.from("user_profiles").update({ locked: shouldLock }).eq("id", id);
-      await loadAdminData();
-      hideLoader();
-    };
-
-    window.adminDeleteUser = async function(id){
-      if(!confirm("Diesen Benutzer unwiderruflich löschen?")) return;
-      showLoader("Lösche Benutzer...");
-      await sb.from("user_profiles").delete().eq("id", id);
-      await loadAdminData();
-      hideLoader();
-    };
-
-    // REALTIME CHANNELS SUBSCRIPTION
     sb.channel("markers-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "markers" }, payload => {
+      .on("postgres_changes",{event:"*",schema:"public",table:"markers"},payload => {
         if(payload.eventType === "INSERT" || payload.eventType === "UPDATE"){
           const row = payload.new;
           if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row);
@@ -927,36 +2325,23 @@
       }).subscribe();
 
     sb.channel("chat-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "chat_messages" }, payload => {
+      .on("postgres_changes",{event:"*",schema:"public",table:"chat_messages"},payload => {
         if(payload.eventType === "INSERT"){ renderChatMessage(payload.new); scrollChatBottom(); }
         if(payload.eventType === "DELETE"){ removeChatMessageFromView(payload.old.id); }
       }).subscribe();
 
-    // ERWEITERTER UND OPTIMIERTER PROFIL-REALTIME-KANAL (ERSETZT DEN SETINTERVAL-TIMER)
     sb.channel("profiles-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "user_profiles" }, async payload => {
+      .on("postgres_changes",{event:"*",schema:"public",table:"user_profiles"},async payload => {
         if(!currentProfile || !currentProfile.id) return;
-
-        // 1. Fall: Das eigene Profil wurde geändert (z.B. gesperrt oder Admin-Rechte entzogen)
         if(payload.eventType === "UPDATE" && payload.new && payload.new.id === currentProfile.id){
-          if(payload.new.locked){ 
-            await forceLogoutToLogin("Dein Account wurde gesperrt."); 
-          } else {
-            // Aktualisiere das lokale Profilobjekt bei Änderungen im Hintergrund
-            currentProfile = payload.new;
-          }
+          if(payload.new.locked) await forceLogoutToLogin("account gesperrt");
         }
-        
-        // 2. Fall: Das eigene Profil wurde gelöscht
         if(payload.eventType === "DELETE" && payload.old && payload.old.id === currentProfile.id){
-          await forceLogoutToLogin("Dein Account wurde gelöscht.");
-        }
-
-        // Falls ein Admin eingeloggt ist, aktualisiere die Admin-Listen live, wenn sich andere User-Profile ändern
-        if(currentProfile.is_admin){
-          loadAdminData();
+          await forceLogoutToLogin("account gelöscht");
         }
       }).subscribe();
+
+    updateAdminUI();
   </script>
 </body>
 </html>
