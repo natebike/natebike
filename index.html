@@ -630,6 +630,13 @@
       margin-top:4px;
     }
 
+    .loadMoreBtn{
+      align-self:center;
+      margin:4px auto;
+      font-size:12px;
+      padding:6px 12px;
+    }
+
     .iconBtn{
       width:44px;
       height:44px;
@@ -944,7 +951,6 @@
     </div>
   </div>
 
-  <!-- Admin Tools Overlay -->
   <div id="adminToolsOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal">
       <div class="modalHeader">
@@ -1024,6 +1030,7 @@
 
     const KASSEL_CENTER = [51.3127, 9.4797];
     const DEFAULT_ZOOM = 13;
+    const CHAT_PAGE_SIZE = 50;
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1039,9 +1046,16 @@
     let markersLoaded = false;
     let ignoreMapClickUntil = 0;
     let modalCleanup = null;
+    let chatOffset = 0;
+    let chatAllLoaded = false;
 
     let autoPanAnimFrame = null;
     let autoPanMarkerEntry = null;
+
+    // Realtime-Kanal-Referenzen
+    let markersChannel = null;
+    let chatChannel = null;
+    let profilesChannel = null;
 
     const markers = new Map();
     const renderedChatMessages = new Set();
@@ -1078,6 +1092,50 @@
       }
     });
     map.on("locationerror",() => showStatus("standort nicht verfügbar"));
+
+    // ── Realtime ──────────────────────────────────────────────────────────────────
+
+    function subscribeRealtime(){
+      markersChannel = sb.channel("markers-realtime")
+        .on("postgres_changes",{event:"*",schema:"public",table:"markers"},payload => {
+          if(payload.eventType === "INSERT" || payload.eventType === "UPDATE"){
+            const row = payload.new;
+            if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row);
+          }
+          if(payload.eventType === "DELETE"){
+            const entry = findEntryById(payload.old.id);
+            if(entry){ map.removeLayer(entry.marker); markers.delete(entry.id); }
+          }
+        }).subscribe();
+
+      chatChannel = sb.channel("chat-realtime")
+        .on("postgres_changes",{event:"*",schema:"public",table:"chat_messages"},payload => {
+          if(payload.eventType === "INSERT"){
+            renderChatMessage(payload.new);
+            scrollChatBottom();
+          }
+          if(payload.eventType === "DELETE"){
+            removeChatMessageFromView(payload.old.id);
+          }
+        }).subscribe();
+
+      profilesChannel = sb.channel("profiles-realtime")
+        .on("postgres_changes",{event:"*",schema:"public",table:"user_profiles"},async payload => {
+          if(!currentProfile || !currentProfile.id) return;
+          if(payload.eventType === "UPDATE" && payload.new && payload.new.id === currentProfile.id){
+            if(payload.new.locked) await forceLogoutToLogin("account gesperrt");
+          }
+          if(payload.eventType === "DELETE" && payload.old && payload.old.id === currentProfile.id){
+            await forceLogoutToLogin("account gelöscht");
+          }
+        }).subscribe();
+    }
+
+    function unsubscribeRealtime(){
+      if(markersChannel){ sb.removeChannel(markersChannel); markersChannel = null; }
+      if(chatChannel){ sb.removeChannel(chatChannel); chatChannel = null; }
+      if(profilesChannel){ sb.removeChannel(profilesChannel); profilesChannel = null; }
+    }
 
     // ── Supabase Secret Helpers ───────────────────────────────────────────────────
 
@@ -1142,9 +1200,11 @@
     async function forceLogoutToLogin(message){
       if(forcedLogoutInProgress) return;
       forcedLogoutInProgress = true;
+      unsubscribeRealtime();
       try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
       currentUserName = ""; currentProfile = null; isAdmin = false;
       moveModeEntry = null; revealedBikeCodeId = null; markersLoaded = false;
+      chatOffset = 0; chatAllLoaded = false;
       stopAutoPan(); updateAdminUI(); closeAllOverlays(); hideContextMenus();
       document.getElementById("headerActions").style.display = "none";
       document.getElementById("mapFrame").style.display = "none";
@@ -1172,7 +1232,8 @@
 
     window.addEventListener("focus",checkOwnProfileStillValid);
     document.addEventListener("visibilitychange",() => { if(!document.hidden) checkOwnProfileStillValid(); });
-    setInterval(checkOwnProfileStillValid,15000);
+    // Intervall auf 60s erhöht – Realtime übernimmt Sofortreaktion
+    setInterval(checkOwnProfileStillValid, 60000);
 
     function showMsg(id,text,ok=false){
       const el = document.getElementById(id);
@@ -1246,6 +1307,8 @@
 
     function iconForEntry(entry){ return entry.type === "bike" ? bikeIcon(entry) : stationIcon(entry); }
 
+    // ── Marker DB ─────────────────────────────────────────────────────────────────
+
     async function dbLoadAllMarkers(){
       const { data, error } = await sb.from("markers").select("*").order("created_at",{ascending:true});
       if(error) throw error;
@@ -1253,7 +1316,10 @@
     }
 
     async function dbInsertMarker(type,lat,lng){
-      const payload = { type,lat,lng, bike_number:"", name:"natebike", color:"undefiniert", remark:"keine", code:"", content:" ", status:"verfügbar", is_rented:false, photo_url:null };
+      const payload = {
+        type,lat,lng, bike_number:"", name:"natebike", color:"undefiniert",
+        remark:"keine", code:"", content:" ", status:"verfügbar", is_rented:false, photo_url:null
+      };
       const { data, error } = await sb.from("markers").insert(payload).select().single();
       if(error) throw error;
       return data;
@@ -1292,14 +1358,29 @@
         wireMarker(entry);
       }else{
         const status = row.status ?? "verfügbar";
-        entry.type = row.type; entry.lat = row.lat; entry.lng = row.lng;
-        entry.bikeNumber = row.bike_number ?? ""; entry.bikeName = row.name ?? "";
-        entry.bikeColor = row.color ?? ""; entry.bikeRemark = row.remark ?? "";
-        entry.bikeCode = row.code ?? ""; entry.content = row.content ?? "";
+        const newBikeNumber = row.bike_number ?? "";
+        const newIsRented = status !== "verfügbar" ? true : !!row.is_rented;
+
+        // Icon nur neu rendern wenn sich etwas Relevantes geändert hat
+        const iconNeedsUpdate =
+          entry.bikeNumber !== newBikeNumber ||
+          entry.isRented !== newIsRented ||
+          entry.status !== status ||
+          entry.type !== row.type;
+
+        entry.type = row.type;
+        entry.lat = row.lat; entry.lng = row.lng;
+        entry.bikeNumber = newBikeNumber;
+        entry.bikeName = row.name ?? "";
+        entry.bikeColor = row.color ?? "";
+        entry.bikeRemark = row.remark ?? "";
+        entry.bikeCode = row.code ?? "";
+        entry.content = row.content ?? "";
         entry.status = status;
-        entry.isRented = status !== "verfügbar" ? true : !!row.is_rented;
+        entry.isRented = newIsRented;
+
         if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
-        entry.marker.setIcon(iconForEntry(entry));
+        if(iconNeedsUpdate) entry.marker.setIcon(iconForEntry(entry));
       }
       return entry;
     }
@@ -1367,7 +1448,8 @@
       const ll = entry.marker.getLatLng();
       try{
         await dbUpdateMarker(entry.id,{lat:ll.lat,lng:ll.lng});
-        entry.lat = ll.lat; entry.lng = ll.lng; entry.isMoving = false; moveModeEntry = null;
+        entry.lat = ll.lat; entry.lng = ll.lng;
+        entry.isMoving = false; moveModeEntry = null;
         if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.setIcon(iconForEntry(entry));
         showStatus("position gespeichert");
@@ -1402,8 +1484,8 @@
         entry.status = newStatus; entry.isRented = true; entry.marker.setIcon(iconForEntry(entry));
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
-        const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
-        renderChatMessage(savedSystemMessage); scrollChatBottom();
+        const savedMsg = await dbInsertSystemChatMessage(systemMessage);
+        renderChatMessage(savedMsg); scrollChatBottom();
         revealedBikeCodeId = entry.id; openBikeWindow(entry);
         showStatus("natebike ausgeliehen");
       }catch(err){ console.error(err); showStatus("ausleihen fehlgeschlagen"); }
@@ -1440,14 +1522,15 @@
             return;
           }
           patch.lat = ll.lat; patch.lng = ll.lng;
-          entry.lat = ll.lat; entry.lng = ll.lng; entry.marker.setLatLng([ll.lat,ll.lng]);
+          entry.lat = ll.lat; entry.lng = ll.lng;
+          entry.marker.setLatLng([ll.lat,ll.lng]);
         }
         await dbUpdateMarker(entry.id,patch);
         entry.status = "verfügbar"; entry.isRented = false; entry.marker.setIcon(iconForEntry(entry));
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
-        const savedSystemMessage = await dbInsertSystemChatMessage(systemMessage);
-        renderChatMessage(savedSystemMessage); scrollChatBottom();
+        const savedMsg = await dbInsertSystemChatMessage(systemMessage);
+        renderChatMessage(savedMsg); scrollChatBottom();
         if(choice === "auto") closeModal();
         if(choice === "manual") startMoveMode(entry);
         showStatus("natebike zurückgegeben");
@@ -1463,7 +1546,8 @@
       const nextStatus = currentStatus === "nicht verfügbar" ? "verfügbar" : "nicht verfügbar";
       try{
         await dbUpdateMarker(entry.id,{status:nextStatus,is_rented:nextStatus !== "verfügbar"});
-        entry.status = nextStatus; entry.isRented = nextStatus !== "verfügbar"; entry.marker.setIcon(iconForEntry(entry));
+        entry.status = nextStatus; entry.isRented = nextStatus !== "verfügbar";
+        entry.marker.setIcon(iconForEntry(entry));
         closeModal(); openBikeWindow(entry);
         showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
       }catch(err){ console.error(err); showStatus("status konnte nicht geändert werden"); }
@@ -1481,8 +1565,10 @@
           cancelX.removeEventListener("click",onCancel); overlay.removeEventListener("click",onOverlay);
           resolve(value);
         }
-        function onAuto(){ close("auto"); } function onManual(){ close("manual"); }
-        function onCancel(){ close("cancel"); } function onOverlay(e){ if(e.target === overlay) close("cancel"); }
+        function onAuto(){ close("auto"); }
+        function onManual(){ close("manual"); }
+        function onCancel(){ close("cancel"); }
+        function onOverlay(e){ if(e.target === overlay) close("cancel"); }
         autoBtn.addEventListener("click",onAuto); manualBtn.addEventListener("click",onManual);
         cancelX.addEventListener("click",onCancel); overlay.addEventListener("click",onOverlay);
         overlay.style.display = "flex";
@@ -1587,6 +1673,7 @@
         updateAdminUI();
         setTimeout(() => { map.invalidateSize(); map.locate({setView:true,maxZoom:16,enableHighAccuracy:true}); },100);
         await loadMarkersOnce();
+        subscribeRealtime();
       }catch(err){ console.error(err); showMsg("loginMsg","anmeldung fehlgeschlagen"); }
     }
 
@@ -1604,18 +1691,12 @@
       const pw1 = document.getElementById("createPasswordInput").value;
       const pw2 = document.getElementById("createPasswordRepeatInput").value;
       const secret = document.getElementById("createSecretInput").value.trim();
-
       if(!name || !pw1 || !pw2){ showMsg("createAccountMsg","bitte alle felder ausfüllen"); return; }
       if(pw1 !== pw2){ showMsg("createAccountMsg","passwörter stimmen nicht überein"); return; }
-
-      // Geheimcode über Supabase prüfen
       try{
         const valid = await checkSecret("create_secret", secret);
         if(!valid){ showMsg("createAccountMsg","falscher geheimcode"); return; }
-      }catch(err){
-        console.error(err); showMsg("createAccountMsg","prüfung fehlgeschlagen"); return;
-      }
-
+      }catch(err){ console.error(err); showMsg("createAccountMsg","prüfung fehlgeschlagen"); return; }
       const username = usernameKey(name);
       const email = usernameToEmail(name);
       try{
@@ -1679,9 +1760,7 @@
         const valid = await checkSecret("admin_password", value);
         if(!valid){ adminMsg.style.display = "block"; return; }
         isAdmin = true; updateAdminUI(); closeAdminModal(); showStatus("admin aktiv");
-      }catch(err){
-        console.error(err); adminMsg.style.display = "block";
-      }
+      }catch(err){ console.error(err); adminMsg.style.display = "block"; }
     }
 
     adminBtn.addEventListener("click",() => {
@@ -1819,8 +1898,10 @@
     }
 
     async function logoutUser(){
+      unsubscribeRealtime();
       try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
       currentUserName = ""; currentProfile = null; isAdmin = false; markersLoaded = false;
+      chatOffset = 0; chatAllLoaded = false;
       updateAdminUI(); closeAccountOverlay();
       headerActions.style.display = "none"; mapFrame.style.display = "none"; loginFrame.style.display = "grid";
       document.getElementById("loginNameInput").value = "";
@@ -1869,11 +1950,13 @@
     async function deleteOwnAccount(){
       const ok = confirm("account wirklich löschen?");
       if(!ok) return;
+      unsubscribeRealtime();
       try{
         if(currentProfile) await sb.from("user_profiles").delete().eq("id",currentProfile.id);
         await sb.auth.signOut();
       }catch(err){ console.error(err); }
       currentProfile = null; currentUserName = ""; isAdmin = false; markersLoaded = false;
+      chatOffset = 0; chatAllLoaded = false;
       updateAdminUI(); closeAccountOverlay();
       headerActions.style.display = "none"; mapFrame.style.display = "none"; loginFrame.style.display = "grid";
       document.getElementById("loginNameInput").value = "";
@@ -1970,7 +2053,8 @@
     map.on("movestart",hideContextMenus);
 
     document.addEventListener("pointerdown",e => {
-      if(!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target) && !ctxMenuChat.contains(e.target) && !ctxMenuAccount.contains(e.target)){
+      if(!ctxMenuMap.contains(e.target) && !ctxMenuMarker.contains(e.target) &&
+         !ctxMenuChat.contains(e.target) && !ctxMenuAccount.contains(e.target)){
         hideContextMenus();
       }
     });
@@ -2099,9 +2183,8 @@
         }else{
           const newRemark = document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark;
           if(newRemark !== entry.bikeRemark){
-            try{
-              await dbUpdateMarker(entry.id,{remark:newRemark}); entry.bikeRemark = newRemark;
-            }catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
+            try{ await dbUpdateMarker(entry.id,{remark:newRemark}); entry.bikeRemark = newRemark; }
+            catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
           }
         }
       }
@@ -2128,9 +2211,8 @@
       if(isAdmin){
         modalFooter.innerHTML = `<button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>`;
         document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
-          try{
-            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id); closeModal();
-          }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
+          try{ await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id); closeModal(); }
+          catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
         },{once:true});
       }
 
@@ -2156,10 +2238,13 @@
 
     // ── Chat ──────────────────────────────────────────────────────────────────────
 
-    async function dbLoadChatMessages(){
-      const {data,error} = await sb.from("chat_messages").select("*").order("created_at",{ascending:true}).limit(300);
+    async function dbLoadChatMessages(offset = 0){
+      const { data, error } = await sb.from("chat_messages")
+        .select("*")
+        .order("created_at",{ascending:false})
+        .range(offset, offset + CHAT_PAGE_SIZE - 1);
       if(error) throw error;
-      return data || [];
+      return (data || []).reverse();
     }
 
     async function dbInsertChatMessage(message,photoData){
@@ -2179,21 +2264,82 @@
       if(error) throw error;
     }
 
-    function openChat(){ document.getElementById("chatOverlay").style.display = "flex"; updateAdminUI(); loadChatMessages(); }
-    function closeChat(){ document.getElementById("chatOverlay").style.display = "none"; hideContextMenus(); }
+    function openChat(){
+      document.getElementById("chatOverlay").style.display = "flex";
+      updateAdminUI();
+      loadChatMessages();
+    }
+
+    function closeChat(){
+      document.getElementById("chatOverlay").style.display = "none";
+      hideContextMenus();
+    }
 
     async function loadChatMessages(){
       try{
-        const rows = await dbLoadChatMessages();
-        document.getElementById("chatMessages").innerHTML = ""; renderedChatMessages.clear();
-        rows.forEach(renderChatMessage); scrollChatBottom();
+        chatOffset = 0; chatAllLoaded = false;
+        const rows = await dbLoadChatMessages(0);
+        document.getElementById("chatMessages").innerHTML = "";
+        renderedChatMessages.clear();
+
+        // "mehr laden"-Button entfernen falls vorhanden
+        const existingBtn = document.getElementById("loadMoreChatBtn");
+        if(existingBtn) existingBtn.remove();
+
+        if(rows.length < CHAT_PAGE_SIZE){
+          chatAllLoaded = true;
+        }else{
+          addLoadMoreButton();
+        }
+
+        rows.forEach(renderChatMessage);
+        scrollChatBottom();
+        chatOffset = rows.length;
       }catch(err){ console.error(err); showStatus("chat konnte nicht geladen werden"); }
     }
 
-    function renderChatMessage(row){
-      if(!row || !row.id) return;
-      if(renderedChatMessages.has(row.id)) return;
-      renderedChatMessages.add(row.id);
+    function addLoadMoreButton(){
+      const chatMessages = document.getElementById("chatMessages");
+      const btn = document.createElement("button");
+      btn.id = "loadMoreChatBtn";
+      btn.className = "btn secondary loadMoreBtn";
+      btn.textContent = "ältere nachrichten laden";
+      btn.addEventListener("click", loadMoreChatMessages);
+      chatMessages.prepend(btn);
+    }
+
+    async function loadMoreChatMessages(){
+      if(chatAllLoaded) return;
+      try{
+        const rows = await dbLoadChatMessages(chatOffset);
+        const chatMessages = document.getElementById("chatMessages");
+        const btn = document.getElementById("loadMoreChatBtn");
+        const scrollHeightBefore = chatMessages.scrollHeight;
+
+        if(rows.length < CHAT_PAGE_SIZE){
+          chatAllLoaded = true;
+          if(btn) btn.remove();
+        }
+
+        // Nachrichten oben einfügen
+        const fragment = document.createDocumentFragment();
+        rows.forEach(row => {
+          if(renderedChatMessages.has(row.id)) return;
+          renderedChatMessages.add(row.id);
+          const box = createChatMessageElement(row);
+          fragment.appendChild(box);
+        });
+
+        const firstExisting = btn ? btn.nextSibling : chatMessages.firstChild;
+        chatMessages.insertBefore(fragment, firstExisting);
+
+        // Scrollposition halten
+        chatMessages.scrollTop += chatMessages.scrollHeight - scrollHeightBefore;
+        chatOffset += rows.length;
+      }catch(err){ console.error(err); showStatus("nachrichten konnten nicht geladen werden"); }
+    }
+
+    function createChatMessageElement(row){
       const isSystemMessage = row.user_name === "system";
       const box = document.createElement("div");
       box.className = isSystemMessage ? "chatMessage systemMessage" : "chatMessage";
@@ -2216,6 +2362,14 @@
         ctxChatMessageId = row.id;
         ctxMenuChat.style.left = `${e.clientX}px`; ctxMenuChat.style.top = `${e.clientY}px`; ctxMenuChat.style.display = "block";
       });
+      return box;
+    }
+
+    function renderChatMessage(row){
+      if(!row || !row.id) return;
+      if(renderedChatMessages.has(row.id)) return;
+      renderedChatMessages.add(row.id);
+      const box = createChatMessageElement(row);
       document.getElementById("chatMessages").appendChild(box);
     }
 
@@ -2229,7 +2383,9 @@
 
     document.getElementById("chatCloseBtn").addEventListener("click",closeChat);
     document.getElementById("chatOverlay").addEventListener("click",e => { if(e.target.id === "chatOverlay") closeChat(); });
-    document.getElementById("chatTextInput").addEventListener("input",() => { document.getElementById("charCount").textContent = document.getElementById("chatTextInput").value.length; });
+    document.getElementById("chatTextInput").addEventListener("input",() => {
+      document.getElementById("charCount").textContent = document.getElementById("chatTextInput").value.length;
+    });
     document.getElementById("photoBtn").addEventListener("click",() => document.getElementById("photoInput").click());
 
     document.getElementById("photoInput").addEventListener("change",async e => {
@@ -2270,7 +2426,9 @@
     }
 
     document.getElementById("sendChatBtn").addEventListener("click",sendChatMessage);
-    document.getElementById("chatTextInput").addEventListener("keydown",e => { if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendChatMessage(); } });
+    document.getElementById("chatTextInput").addEventListener("keydown",e => {
+      if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendChatMessage(); }
+    });
 
     async function sendChatMessage(){
       const input = document.getElementById("chatTextInput");
@@ -2306,40 +2464,14 @@
       if(!isAdmin){ showStatus("nur admin"); return; }
       const ok = confirm("chat wirklich leeren?");
       if(!ok) return;
-      try{ await dbClearChat(); renderedChatMessages.clear(); document.getElementById("chatMessages").innerHTML = ""; showStatus("chat geleert"); }
-      catch(err){ console.error(err); showStatus("chat konnte nicht geleert werden"); }
+      try{
+        await dbClearChat();
+        renderedChatMessages.clear();
+        document.getElementById("chatMessages").innerHTML = "";
+        chatOffset = 0; chatAllLoaded = true;
+        showStatus("chat geleert");
+      }catch(err){ console.error(err); showStatus("chat konnte nicht geleert werden"); }
     }
-
-    // ── Realtime ──────────────────────────────────────────────────────────────────
-
-    sb.channel("markers-realtime")
-      .on("postgres_changes",{event:"*",schema:"public",table:"markers"},payload => {
-        if(payload.eventType === "INSERT" || payload.eventType === "UPDATE"){
-          const row = payload.new;
-          if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row);
-        }
-        if(payload.eventType === "DELETE"){
-          const entry = findEntryById(payload.old.id);
-          if(entry){ map.removeLayer(entry.marker); markers.delete(entry.id); }
-        }
-      }).subscribe();
-
-    sb.channel("chat-realtime")
-      .on("postgres_changes",{event:"*",schema:"public",table:"chat_messages"},payload => {
-        if(payload.eventType === "INSERT"){ renderChatMessage(payload.new); scrollChatBottom(); }
-        if(payload.eventType === "DELETE"){ removeChatMessageFromView(payload.old.id); }
-      }).subscribe();
-
-    sb.channel("profiles-realtime")
-      .on("postgres_changes",{event:"*",schema:"public",table:"user_profiles"},async payload => {
-        if(!currentProfile || !currentProfile.id) return;
-        if(payload.eventType === "UPDATE" && payload.new && payload.new.id === currentProfile.id){
-          if(payload.new.locked) await forceLogoutToLogin("account gesperrt");
-        }
-        if(payload.eventType === "DELETE" && payload.old && payload.old.id === currentProfile.id){
-          await forceLogoutToLogin("account gelöscht");
-        }
-      }).subscribe();
 
     updateAdminUI();
   </script>
