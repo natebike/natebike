@@ -736,8 +736,21 @@
     }
 
     .stationIconWrap.small{
-      transform:scale(0.333);
-    }
+    transform:scale(0.333);
+  }
+
+   .stationIconWrap.small .stationIconImg{
+    display:none;
+  }
+
+.stationIconWrap.small::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:var(--blue);
+  box-shadow:0 2px 7px rgba(0,0,0,.22);
+}
 
     .stationIconImg{
       position:absolute;
