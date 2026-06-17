@@ -233,9 +233,8 @@
     }
 
     #stationContentInput{
-  font-family:var(--font);
-  font-size:14px;
-  
+      font-family:var(--font);
+      font-size:14px;
     }
 
     .footer{
@@ -442,6 +441,12 @@
     .statusAvailable{border:2px solid var(--adminGreen)!important;}
     .statusBorrowed{border:2px solid var(--bikePurple)!important;}
     .statusMaintenance{border:2px solid var(--danger)!important;}
+
+    /* Grüner Rahmen für Listeneinträge in der Stationsliste */
+    .noteListItem.hasAvailableBike{
+      border-color:#9be39b;
+      border-width:2px;
+    }
 
     .list-overlay{
       position:fixed;
@@ -1138,6 +1143,14 @@
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
+    function noteHasAvailableBikeNearby(note){
+      const bikes = Array.from(markers.values()).filter(e => e.type === "bike");
+      return bikes.some(bike =>
+        bike.status === "verfügbar" &&
+        haversineKm(note.lat, note.lng, bike.lat, bike.lng) <= 0.03
+      );
+    }
+
     function buildNoteClusters(){
       const notes = Array.from(markers.values()).filter(e => e.type === "note");
       const assigned = new Set();
@@ -1172,27 +1185,21 @@
     function updateClusterView(){
       const zoom = map.getZoom();
       const showClusters = zoom < CLUSTER_ZOOM_THRESHOLD;
-
       markers.forEach(entry => {
         const el = entry.marker.getElement();
         if(!el) return;
         el.style.display = showClusters ? "none" : "";
       });
-
       clusterLeafletMarkers.forEach(m => map.removeLayer(m));
       clusterLeafletMarkers.clear();
-
       if(!showClusters) return;
-
       const clusters = buildNoteClusters();
       clusters.forEach(cluster => {
         const m = L.marker([cluster.lat, cluster.lng], {
           icon: clusterIcon(),
           pane: "clusterPane"
         }).addTo(map);
-        m.on("click", () => {
-          map.setView([cluster.lat, cluster.lng], 6);
-        });
+        m.on("click", () => { map.setView([cluster.lat, cluster.lng], 6); });
         clusterLeafletMarkers.set(cluster.id, m);
       });
     }
@@ -1500,11 +1507,7 @@
         if(entry.marker.dragging) entry.marker.dragging.disable();
         markers.set(entry.id,entry);
         wireMarker(entry);
-        if(markersLoaded){
-          updateMarkerSizes();
-          updateClusterView();
-          updateNoteMarkerOpacity();
-        }
+        if(markersLoaded){ updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); }
       }else{
         const status = row.status ?? "verfügbar";
         const newBikeNumber = row.bike_number ?? "";
@@ -1514,24 +1517,15 @@
           entry.isRented !== newIsRented ||
           entry.status !== status ||
           entry.type !== row.type;
-        entry.type = row.type;
-        entry.lat = row.lat; entry.lng = row.lng;
-        entry.bikeNumber = newBikeNumber;
-        entry.bikeName = row.name ?? "";
-        entry.bikeColor = row.color ?? "";
-        entry.bikeRemark = row.remark ?? "";
-        entry.bikeCode = row.code ?? "";
-        entry.content = row.content ?? "";
-        entry.status = status;
-        entry.isRented = newIsRented;
+        entry.type = row.type; entry.lat = row.lat; entry.lng = row.lng;
+        entry.bikeNumber = newBikeNumber; entry.bikeName = row.name ?? "";
+        entry.bikeColor = row.color ?? ""; entry.bikeRemark = row.remark ?? "";
+        entry.bikeCode = row.code ?? ""; entry.content = row.content ?? "";
+        entry.status = status; entry.isRented = newIsRented;
         if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
         if(iconNeedsUpdate){
           entry.marker.setIcon(iconForEntry(entry));
-          if(markersLoaded){
-            updateMarkerSizes();
-            updateClusterView();
-            updateNoteMarkerOpacity();
-          }
+          if(markersLoaded){ updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); }
         }
       }
       return entry;
@@ -1585,11 +1579,7 @@
 
     function pulseEntry(entry){
       entry.isPulsing = true; entry.marker.setIcon(iconForEntry(entry));
-      setTimeout(() => {
-        entry.isPulsing = false;
-        entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes();
-      },1400);
+      setTimeout(() => { entry.isPulsing = false; entry.marker.setIcon(iconForEntry(entry)); updateMarkerSizes(); },1400);
     }
 
     function startMoveMode(entry){
@@ -1611,9 +1601,7 @@
         entry.isMoving = false; moveModeEntry = null;
         if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes();
-        updateClusterView();
-        updateNoteMarkerOpacity();
+        updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity();
         showStatus("position gespeichert");
       }catch(err){ console.error(err); showStatus("position konnte nicht gespeichert werden"); }
     }
@@ -1645,8 +1633,7 @@
         await dbUpdateMarker(entry.id,{status:newStatus,is_rented:true});
         entry.status = newStatus; entry.isRented = true;
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes();
-        updateNoteMarkerOpacity();
+        updateMarkerSizes(); updateNoteMarkerOpacity();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1693,8 +1680,7 @@
         await dbUpdateMarker(entry.id,patch);
         entry.status = "verfügbar"; entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes();
-        updateNoteMarkerOpacity();
+        updateMarkerSizes(); updateNoteMarkerOpacity();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1716,8 +1702,7 @@
         await dbUpdateMarker(entry.id,{status:nextStatus,is_rented:nextStatus !== "verfügbar"});
         entry.status = nextStatus; entry.isRented = nextStatus !== "verfügbar";
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes();
-        updateNoteMarkerOpacity();
+        updateMarkerSizes(); updateNoteMarkerOpacity();
         closeModal(); openBikeWindow(entry);
         showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
       }catch(err){ console.error(err); showStatus("status konnte nicht geändert werden"); }
@@ -1785,7 +1770,7 @@
       document.getElementById("listItems").appendChild(div);
     }
 
-    function addListRow(text,entry,extraClass=""){
+    function addListRow(text, entry, extraClass=""){
       const row = document.createElement("div");
       row.className = extraClass ? `list-item ${extraClass}` : "list-item";
       row.textContent = text;
@@ -1802,15 +1787,28 @@
       if(bikes.length === 0){ addEmptyListMessage("keine fahrräder gefunden"); return; }
       bikes.forEach(entry => {
         const line = `${entry.bikeNumber || ""} ${entry.bikeName || ""}`.trim();
-        addListRow(line || "(ohne nummer/name)",entry,statusClassForBike(entry));
+        addListRow(line || "(ohne nummer/name)", entry, statusClassForBike(entry));
       });
     }
+
+    // ── Stationsliste mit grünem Rahmen ───────────────────────────────────────────
 
     function showNoteList(){
       const notes = Array.from(markers.values()).filter(e => e.type === "note").sort((a,b) => Number(a.lng)-Number(b.lng));
       openList("natebikestationen");
       if(notes.length === 0){ addEmptyListMessage("keine stationen gefunden"); return; }
-      notes.forEach(entry => { addListRow(String(entry.content || "").trim() || "(ohne inhalt)",entry); });
+      notes.forEach(entry => {
+        const line = String(entry.content || "").trim() || "(ohne inhalt)";
+        const hasBike = noteHasAvailableBikeNearby(entry);
+        const row = document.createElement("div");
+        row.className = "list-item noteListItem" + (hasBike ? " hasAvailableBike" : "");
+        row.textContent = line;
+        row.addEventListener("click",() => {
+          document.getElementById("listOverlay").style.display = "none";
+          map.setView([entry.lat,entry.lng],17); pulseEntry(entry);
+        });
+        document.getElementById("listItems").appendChild(row);
+      });
     }
 
     document.getElementById("listCloseBtn").addEventListener("click",() => { document.getElementById("listOverlay").style.display = "none"; });
@@ -2320,12 +2318,8 @@
         modalFooter.innerHTML = `${loanButtonHtml}${maintenanceButtonHtml}<button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>`;
         document.getElementById("bikeDeleteBtn").addEventListener("click",async() => {
           try{
-            await dbDeleteMarker(entry.id);
-            map.removeLayer(entry.marker);
-            markers.delete(entry.id);
-            updateClusterView();
-            updateNoteMarkerOpacity();
-            closeModal();
+            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id);
+            updateClusterView(); updateNoteMarkerOpacity(); closeModal();
           }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
         },{once:true});
       }else{
@@ -2354,8 +2348,7 @@
             entry.bikeColor = patch.color; entry.bikeRemark = patch.remark;
             if(codeIsVisible) entry.bikeCode = patch.code;
             entry.marker.setIcon(iconForEntry(entry));
-            updateMarkerSizes();
-            updateNoteMarkerOpacity();
+            updateMarkerSizes(); updateNoteMarkerOpacity();
           }catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
         }else{
           const newRemark = document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark;
@@ -2383,30 +2376,20 @@
       if(modalCleanup){ modalCleanup(); modalCleanup = null; }
       modalTitle.textContent = "natebikestation";
       const readonly = isAdmin ? "" : "readonly";
-      const bikes = Array.from(markers.values()).filter(e => e.type === "bike");
-      const hasAvailableBikeNearby = bikes.some(bike =>
-        bike.status === "verfügbar" &&
-        haversineKm(entry.lat, entry.lng, bike.lat, bike.lng) <= 0.03
-          );
-      
+
       modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>`;
 
-if(hasAvailableBikeNearby){
-  const ta = document.getElementById("stationContentInput");
-  if(ta) ta.style.border = "2px solid #9be39b";
-}
+      if(noteHasAvailableBikeNearby(entry)){
+        const ta = document.getElementById("stationContentInput");
+        if(ta) ta.style.border = "2px solid #9be39b";
+      }
 
-      
       if(isAdmin){
         modalFooter.innerHTML = `<button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>`;
         document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
           try{
-            await dbDeleteMarker(entry.id);
-            map.removeLayer(entry.marker);
-            markers.delete(entry.id);
-            updateClusterView();
-            updateNoteMarkerOpacity();
-            closeModal();
+            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id);
+            updateClusterView(); updateNoteMarkerOpacity(); closeModal();
           }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
         },{once:true});
       }
