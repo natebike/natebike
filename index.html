@@ -2382,8 +2382,18 @@
       if(modalCleanup){ modalCleanup(); modalCleanup = null; }
       modalTitle.textContent = "natebikestation";
       const readonly = isAdmin ? "" : "readonly";
-      modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>`;
+      const bikes = Array.from(markers.values()).filter(e => e.type === "bike");
+      const hasAvailableBikeNearby = bikes.some(bike =>
+        bike.status === "verfügbar" &&
+        haversineKm(entry.lat, entry.lng, bike.lat, bike.lng) <= 0.03
+          );
+      const stationBorderStyle = hasAvailableBikeNearby
+        ? "grid-column:1 / -1; border:2px solid var(--adminGreen);"
+        : "grid-column:1 / -1;";
 
+    modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} style="${stationBorderStyle}">${escapeHtml(entry.content)}</textarea>`;
+
+      
       if(isAdmin){
         modalFooter.innerHTML = `<button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>`;
         document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
