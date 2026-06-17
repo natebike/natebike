@@ -1614,6 +1614,7 @@
         entry.marker.setIcon(iconForEntry(entry));
         updateMarkerSizes();
         updateClusterView();
+        updateNoteMarkerOpacity();
         showStatus("position gespeichert");
       }catch(err){ console.error(err); showStatus("position konnte nicht gespeichert werden"); }
     }
