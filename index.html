@@ -1212,6 +1212,21 @@
       });
     }
 
+  function updateNoteMarkerOpacity(){
+    const notes = Array.from(markers.values()).filter(e => e.type === "note");
+    const bikes = Array.from(markers.values()).filter(e => e.type === "bike");
+
+    notes.forEach(note => {
+      const hasBikeNearby = bikes.some(bike =>
+        haversineKm(note.lat, note.lng, bike.lat, bike.lng) <= 0.03
+      );
+      const el = note.marker.getElement();
+      if(el) el.style.opacity = hasBikeNearby ? "1" : "0.5";
+    });
+  }
+
+
+    
     map.on("zoomend", () => {
       updateMarkerSizes();
       updateClusterView();
