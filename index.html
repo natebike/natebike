@@ -1536,7 +1536,7 @@
         if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
         if(iconNeedsUpdate){
           entry.marker.setIcon(iconForEntry(entry));
-          if(markersLoaded){ updateMarkerSizes(); updateClusterView(); }
+          if(markersLoaded){ updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); }
         }
       }
       return entry;
