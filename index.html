@@ -665,6 +665,7 @@
     .sendIconBtn{
       background:var(--blue);
       color:#fff;
+      border:none;
     }
 
     .sendIconBtn:hover{background:#003d7a;}
@@ -691,6 +692,12 @@
       width:24px;
       height:24px;
       pointer-events:none;
+      transition:transform .25s ease;
+      transform-origin:center center;
+    }
+
+    .bikeWrap.small{
+      transform:scale(0.25);
     }
 
     .bikeDot{
@@ -716,6 +723,7 @@
       max-width:22px;
       overflow:hidden;
       text-overflow:ellipsis;
+      transition:opacity .25s ease;
     }
 
     .stationIconWrap{
@@ -723,6 +731,12 @@
       width:33px;
       height:33px;
       pointer-events:none;
+      transition:transform .25s ease;
+      transform-origin:center center;
+    }
+
+    .stationIconWrap.small{
+      transform:scale(0.333);
     }
 
     .stationIconImg{
@@ -992,20 +1006,19 @@
           <textarea id="chatTextInput" maxlength="144" placeholder="nachricht schreiben"></textarea>
           <div class="charCount"><span id="charCount">0</span>/144</div>
         </div>
-       <button id="photoBtn" type="button" title="foto aufnehmen" style="width:44px;height:44px;background:none;border:none;border-radius:10px;cursor:pointer;padding:0;overflow:hidden;">
-  <svg width="44" height="44" viewBox="0 0 44 44">
-    <rect fill="#004a95" x="0" y="0" width="44" height="44" rx="10"/>
-    <circle fill="#fff" cx="34" cy="12" r="5"/>
-    <polygon fill="#e8f0ff" points="0,44 16,18 32,44"/>
-    <polygon fill="#e8f0ff" opacity="0.6" points="18,44 32,22 44,44"/>
-  </svg>
-</button>
-
-<button class="iconBtn sendIconBtn" id="sendChatBtn" type="button" title="senden">
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path fill="currentColor" d="M2 21l21-9L2 3v7l15 2-15 2z"/>
-  </svg>
-</button>
+        <button id="photoBtn" type="button" title="foto aufnehmen" style="width:44px;height:44px;background:none;border:none;border-radius:10px;cursor:pointer;padding:0;overflow:hidden;">
+          <svg width="44" height="44" viewBox="0 0 44 44">
+            <rect fill="#004a95" x="0" y="0" width="44" height="44" rx="10"/>
+            <circle fill="#fff" cx="34" cy="12" r="5"/>
+            <polygon fill="#e8f0ff" points="0,44 16,18 32,44"/>
+            <polygon fill="#e8f0ff" opacity="0.6" points="18,44 32,22 44,44"/>
+          </svg>
+        </button>
+        <button class="iconBtn sendIconBtn" id="sendChatBtn" type="button" title="senden">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M2 21l21-9L2 3v7l15 2-15 2z"/>
+          </svg>
+        </button>
         <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none;" />
       </div>
     </div>
@@ -1032,6 +1045,7 @@
     const KASSEL_CENTER = [51.3127, 9.4797];
     const DEFAULT_ZOOM = 13;
     const CHAT_PAGE_SIZE = 50;
+    const SMALL_MARKER_ZOOM_THRESHOLD = 14;
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1053,7 +1067,6 @@
     let autoPanAnimFrame = null;
     let autoPanMarkerEntry = null;
 
-    // Realtime-Kanal-Referenzen
     let markersChannel = null;
     let chatChannel = null;
     let profilesChannel = null;
@@ -1094,6 +1107,31 @@
     });
     map.on("locationerror",() => showStatus("standort nicht verfügbar"));
 
+    // ── Marker-Größe nach Zoom ────────────────────────────────────────────────────
+
+    function updateMarkerSizes(){
+      const zoom = map.getZoom();
+      const small = zoom < SMALL_MARKER_ZOOM_THRESHOLD;
+      markers.forEach(entry => {
+        const el = entry.marker.getElement();
+        if(!el) return;
+        if(entry.type === "bike"){
+          const wrap = el.querySelector(".bikeWrap");
+          if(wrap){
+            wrap.classList.toggle("small", small);
+            const num = wrap.querySelector(".bikeNum");
+            if(num) num.style.opacity = small ? "0" : "1";
+          }
+        }
+        if(entry.type === "note"){
+          const wrap = el.querySelector(".stationIconWrap");
+          if(wrap) wrap.classList.toggle("small", small);
+        }
+      });
+    }
+
+    map.on("zoomend", updateMarkerSizes);
+
     // ── Realtime ──────────────────────────────────────────────────────────────────
 
     function subscribeRealtime(){
@@ -1111,13 +1149,8 @@
 
       chatChannel = sb.channel("chat-realtime")
         .on("postgres_changes",{event:"*",schema:"public",table:"chat_messages"},payload => {
-          if(payload.eventType === "INSERT"){
-            renderChatMessage(payload.new);
-            scrollChatBottom();
-          }
-          if(payload.eventType === "DELETE"){
-            removeChatMessageFromView(payload.old.id);
-          }
+          if(payload.eventType === "INSERT"){ renderChatMessage(payload.new); scrollChatBottom(); }
+          if(payload.eventType === "DELETE"){ removeChatMessageFromView(payload.old.id); }
         }).subscribe();
 
       profilesChannel = sb.channel("profiles-realtime")
@@ -1233,7 +1266,6 @@
 
     window.addEventListener("focus",checkOwnProfileStillValid);
     document.addEventListener("visibilitychange",() => { if(!document.hidden) checkOwnProfileStillValid(); });
-    // Intervall auf 60s erhöht – Realtime übernimmt Sofortreaktion
     setInterval(checkOwnProfileStillValid, 60000);
 
     function showMsg(id,text,ok=false){
@@ -1357,18 +1389,16 @@
         if(entry.marker.dragging) entry.marker.dragging.disable();
         markers.set(entry.id,entry);
         wireMarker(entry);
+        if(markersLoaded) updateMarkerSizes();
       }else{
         const status = row.status ?? "verfügbar";
         const newBikeNumber = row.bike_number ?? "";
         const newIsRented = status !== "verfügbar" ? true : !!row.is_rented;
-
-        // Icon nur neu rendern wenn sich etwas Relevantes geändert hat
         const iconNeedsUpdate =
           entry.bikeNumber !== newBikeNumber ||
           entry.isRented !== newIsRented ||
           entry.status !== status ||
           entry.type !== row.type;
-
         entry.type = row.type;
         entry.lat = row.lat; entry.lng = row.lng;
         entry.bikeNumber = newBikeNumber;
@@ -1379,9 +1409,11 @@
         entry.content = row.content ?? "";
         entry.status = status;
         entry.isRented = newIsRented;
-
         if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
-        if(iconNeedsUpdate) entry.marker.setIcon(iconForEntry(entry));
+        if(iconNeedsUpdate){
+          entry.marker.setIcon(iconForEntry(entry));
+          if(markersLoaded) updateMarkerSizes();
+        }
       }
       return entry;
     }
@@ -1391,6 +1423,7 @@
       const rows = await dbLoadAllMarkers();
       rows.forEach(row => { if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row); });
       markersLoaded = true;
+      updateMarkerSizes();
     }
 
     function findEntryById(id){ return markers.get(id) || null; }
@@ -1431,7 +1464,7 @@
 
     function pulseEntry(entry){
       entry.isPulsing = true; entry.marker.setIcon(iconForEntry(entry));
-      setTimeout(() => { entry.isPulsing = false; entry.marker.setIcon(iconForEntry(entry)); },1400);
+      setTimeout(() => { entry.isPulsing = false; entry.marker.setIcon(iconForEntry(entry)); updateMarkerSizes(); },1400);
     }
 
     function startMoveMode(entry){
@@ -1453,6 +1486,7 @@
         entry.isMoving = false; moveModeEntry = null;
         if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.setIcon(iconForEntry(entry));
+        updateMarkerSizes();
         showStatus("position gespeichert");
       }catch(err){ console.error(err); showStatus("position konnte nicht gespeichert werden"); }
     }
@@ -1483,6 +1517,7 @@
       try{
         await dbUpdateMarker(entry.id,{status:newStatus,is_rented:true});
         entry.status = newStatus; entry.isRented = true; entry.marker.setIcon(iconForEntry(entry));
+        updateMarkerSizes();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1527,7 +1562,9 @@
           entry.marker.setLatLng([ll.lat,ll.lng]);
         }
         await dbUpdateMarker(entry.id,patch);
-        entry.status = "verfügbar"; entry.isRented = false; entry.marker.setIcon(iconForEntry(entry));
+        entry.status = "verfügbar"; entry.isRented = false;
+        entry.marker.setIcon(iconForEntry(entry));
+        updateMarkerSizes();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1549,6 +1586,7 @@
         await dbUpdateMarker(entry.id,{status:nextStatus,is_rented:nextStatus !== "verfügbar"});
         entry.status = nextStatus; entry.isRented = nextStatus !== "verfügbar";
         entry.marker.setIcon(iconForEntry(entry));
+        updateMarkerSizes();
         closeModal(); openBikeWindow(entry);
         showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
       }catch(err){ console.error(err); showStatus("status konnte nicht geändert werden"); }
@@ -2180,6 +2218,7 @@
             entry.bikeColor = patch.color; entry.bikeRemark = patch.remark;
             if(codeIsVisible) entry.bikeCode = patch.code;
             entry.marker.setIcon(iconForEntry(entry));
+            updateMarkerSizes();
           }catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
         }else{
           const newRemark = document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark;
@@ -2282,17 +2321,9 @@
         const rows = await dbLoadChatMessages(0);
         document.getElementById("chatMessages").innerHTML = "";
         renderedChatMessages.clear();
-
-        // "mehr laden"-Button entfernen falls vorhanden
         const existingBtn = document.getElementById("loadMoreChatBtn");
         if(existingBtn) existingBtn.remove();
-
-        if(rows.length < CHAT_PAGE_SIZE){
-          chatAllLoaded = true;
-        }else{
-          addLoadMoreButton();
-        }
-
+        if(rows.length < CHAT_PAGE_SIZE){ chatAllLoaded = true; }else{ addLoadMoreButton(); }
         rows.forEach(renderChatMessage);
         scrollChatBottom();
         chatOffset = rows.length;
@@ -2316,13 +2347,7 @@
         const chatMessages = document.getElementById("chatMessages");
         const btn = document.getElementById("loadMoreChatBtn");
         const scrollHeightBefore = chatMessages.scrollHeight;
-
-        if(rows.length < CHAT_PAGE_SIZE){
-          chatAllLoaded = true;
-          if(btn) btn.remove();
-        }
-
-        // Nachrichten oben einfügen
+        if(rows.length < CHAT_PAGE_SIZE){ chatAllLoaded = true; if(btn) btn.remove(); }
         const fragment = document.createDocumentFragment();
         rows.forEach(row => {
           if(renderedChatMessages.has(row.id)) return;
@@ -2330,11 +2355,8 @@
           const box = createChatMessageElement(row);
           fragment.appendChild(box);
         });
-
         const firstExisting = btn ? btn.nextSibling : chatMessages.firstChild;
         chatMessages.insertBefore(fragment, firstExisting);
-
-        // Scrollposition halten
         chatMessages.scrollTop += chatMessages.scrollHeight - scrollHeightBefore;
         chatOffset += rows.length;
       }catch(err){ console.error(err); showStatus("nachrichten konnten nicht geladen werden"); }
