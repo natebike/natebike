@@ -235,7 +235,7 @@
     #stationContentInput{
   font-family:var(--font);
   font-size:14px;
-  border:inherit;
+  
     }
 
     .footer{
@@ -2389,9 +2389,12 @@
         haversineKm(entry.lat, entry.lng, bike.lat, bike.lng) <= 0.03
           );
       
-      const stationClass = hasAvailableBikeNearby ? "statusAvailable" : "";
+      modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>`;
 
-      modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} class="${stationClass}" style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>`;
+if(hasAvailableBikeNearby){
+  const ta = document.getElementById("stationContentInput");
+  if(ta) ta.style.border = "2px solid #9be39b";
+}
 
       
       if(isAdmin){
