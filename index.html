@@ -736,21 +736,21 @@
     }
 
     .stationIconWrap.small{
-    transform:scale(0.333);
-  }
+      transform:scale(0.333);
+    }
 
-   .stationIconWrap.small .stationIconImg{
-    display:none;
-  }
+    .stationIconWrap.small .stationIconImg{
+      display:none;
+    }
 
-.stationIconWrap.small::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  border-radius:50%;
-  background:var(--blue);
-  box-shadow:0 2px 7px rgba(0,0,0,.22);
-}
+    .stationIconWrap.small::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background:var(--blue);
+      box-shadow:0 2px 7px rgba(0,0,0,.22);
+    }
 
     .stationIconImg{
       position:absolute;
@@ -1061,7 +1061,6 @@
     const SMALL_MARKER_ZOOM_THRESHOLD = 14;
     const CLUSTER_ZOOM_THRESHOLD = 10;
     const CLUSTER_RADIUS_KM = 10;
-    
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1087,9 +1086,7 @@
     let chatChannel = null;
     let profilesChannel = null;
 
-    // Cluster-Marker auf der Karte
-    const clusterLeafletMarkers = new Map(); // clusterId -> L.marker
-
+    const clusterLeafletMarkers = new Map();
     const markers = new Map();
     const renderedChatMessages = new Set();
 
@@ -1144,7 +1141,6 @@
       const notes = Array.from(markers.values()).filter(e => e.type === "note");
       const assigned = new Set();
       const clusters = [];
-
       notes.forEach(note => {
         if(assigned.has(note.id)) return;
         const group = [note];
@@ -1156,12 +1152,10 @@
             assigned.add(other.id);
           }
         });
-        // Mittelpunkt berechnen
         const centerLat = group.reduce((s,n) => s + n.lat, 0) / group.length;
         const centerLng = group.reduce((s,n) => s + n.lng, 0) / group.length;
         clusters.push({ id: group.map(n=>n.id).sort().join("|"), entries: group, lat: centerLat, lng: centerLng });
       });
-
       return clusters;
     }
 
@@ -1178,55 +1172,42 @@
       const zoom = map.getZoom();
       const showClusters = zoom < CLUSTER_ZOOM_THRESHOLD;
 
-      // Bike-Marker + Note-Marker ein-/ausblenden
       markers.forEach(entry => {
         const el = entry.marker.getElement();
         if(!el) return;
-        if(entry.type === "bike"){
-          el.style.display = showClusters ? "none" : "";
-        }
-        if(entry.type === "note"){
-          el.style.display = showClusters ? "none" : "";
-        }
+        el.style.display = showClusters ? "none" : "";
       });
 
-      // Alte Cluster-Marker entfernen
       clusterLeafletMarkers.forEach(m => map.removeLayer(m));
       clusterLeafletMarkers.clear();
 
       if(!showClusters) return;
 
-      // Neue Cluster-Marker setzen
       const clusters = buildNoteClusters();
       clusters.forEach(cluster => {
         const m = L.marker([cluster.lat, cluster.lng], {
           icon: clusterIcon(),
           pane: "clusterPane"
         }).addTo(map);
-
         m.on("click", () => {
-          map.setView([cluster.lat, cluster.lng], 12);
+          map.setView([cluster.lat, cluster.lng], 6);
         });
-
         clusterLeafletMarkers.set(cluster.id, m);
       });
     }
 
-  function updateNoteMarkerOpacity(){
-    const notes = Array.from(markers.values()).filter(e => e.type === "note");
-    const bikes = Array.from(markers.values()).filter(e => e.type === "bike");
+    function updateNoteMarkerOpacity(){
+      const notes = Array.from(markers.values()).filter(e => e.type === "note");
+      const bikes = Array.from(markers.values()).filter(e => e.type === "bike");
+      notes.forEach(note => {
+        const hasBikeNearby = bikes.some(bike =>
+          haversineKm(note.lat, note.lng, bike.lat, bike.lng) <= 0.03
+        );
+        const el = note.marker.getElement();
+        if(el) el.style.opacity = hasBikeNearby ? "1" : "0.5";
+      });
+    }
 
-    notes.forEach(note => {
-      const hasBikeNearby = bikes.some(bike =>
-        haversineKm(note.lat, note.lng, bike.lat, bike.lng) <= 0.03
-      );
-      const el = note.marker.getElement();
-      if(el) el.style.opacity = hasBikeNearby ? "1" : "0.5";
-    });
-  }
-
-
-    
     map.on("zoomend", () => {
       updateMarkerSizes();
       updateClusterView();
@@ -1267,7 +1248,12 @@
           }
           if(payload.eventType === "DELETE"){
             const entry = findEntryById(payload.old.id);
-            if(entry){ map.removeLayer(entry.marker); markers.delete(entry.id); updateClusterView(); }
+            if(entry){
+              map.removeLayer(entry.marker);
+              markers.delete(entry.id);
+              updateClusterView();
+              updateNoteMarkerOpacity();
+            }
           }
         }).subscribe();
 
@@ -1513,7 +1499,11 @@
         if(entry.marker.dragging) entry.marker.dragging.disable();
         markers.set(entry.id,entry);
         wireMarker(entry);
-        if(markersLoaded){ updateMarkerSizes(); updateClusterView(); }
+        if(markersLoaded){
+          updateMarkerSizes();
+          updateClusterView();
+          updateNoteMarkerOpacity();
+        }
       }else{
         const status = row.status ?? "verfügbar";
         const newBikeNumber = row.bike_number ?? "";
@@ -1536,7 +1526,11 @@
         if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
         if(iconNeedsUpdate){
           entry.marker.setIcon(iconForEntry(entry));
-          if(markersLoaded){ updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); }
+          if(markersLoaded){
+            updateMarkerSizes();
+            updateClusterView();
+            updateNoteMarkerOpacity();
+          }
         }
       }
       return entry;
@@ -1590,7 +1584,11 @@
 
     function pulseEntry(entry){
       entry.isPulsing = true; entry.marker.setIcon(iconForEntry(entry));
-      setTimeout(() => { entry.isPulsing = false; entry.marker.setIcon(iconForEntry(entry)); updateMarkerSizes(); },1400);
+      setTimeout(() => {
+        entry.isPulsing = false;
+        entry.marker.setIcon(iconForEntry(entry));
+        updateMarkerSizes();
+      },1400);
     }
 
     function startMoveMode(entry){
@@ -1644,8 +1642,10 @@
       const newStatus = borrowedStatusText();
       try{
         await dbUpdateMarker(entry.id,{status:newStatus,is_rented:true});
-        entry.status = newStatus; entry.isRented = true; entry.marker.setIcon(iconForEntry(entry));
+        entry.status = newStatus; entry.isRented = true;
+        entry.marker.setIcon(iconForEntry(entry));
         updateMarkerSizes();
+        updateNoteMarkerOpacity();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1693,6 +1693,7 @@
         entry.status = "verfügbar"; entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
         updateMarkerSizes();
+        updateNoteMarkerOpacity();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1715,6 +1716,7 @@
         entry.status = nextStatus; entry.isRented = nextStatus !== "verfügbar";
         entry.marker.setIcon(iconForEntry(entry));
         updateMarkerSizes();
+        updateNoteMarkerOpacity();
         closeModal(); openBikeWindow(entry);
         showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
       }catch(err){ console.error(err); showStatus("status konnte nicht geändert werden"); }
@@ -2317,8 +2319,12 @@
         modalFooter.innerHTML = `${loanButtonHtml}${maintenanceButtonHtml}<button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>`;
         document.getElementById("bikeDeleteBtn").addEventListener("click",async() => {
           try{
-            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id);
-            updateClusterView(); closeModal();
+            await dbDeleteMarker(entry.id);
+            map.removeLayer(entry.marker);
+            markers.delete(entry.id);
+            updateClusterView();
+            updateNoteMarkerOpacity();
+            closeModal();
           }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
         },{once:true});
       }else{
@@ -2348,6 +2354,7 @@
             if(codeIsVisible) entry.bikeCode = patch.code;
             entry.marker.setIcon(iconForEntry(entry));
             updateMarkerSizes();
+            updateNoteMarkerOpacity();
           }catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
         }else{
           const newRemark = document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark;
@@ -2381,10 +2388,13 @@
         modalFooter.innerHTML = `<button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>`;
         document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
           try{
-            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id);
-            updateClusterView(); closeModal();
-          }
-          catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
+            await dbDeleteMarker(entry.id);
+            map.removeLayer(entry.marker);
+            markers.delete(entry.id);
+            updateClusterView();
+            updateNoteMarkerOpacity();
+            closeModal();
+          }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
         },{once:true});
       }
 
