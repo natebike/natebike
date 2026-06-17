@@ -2115,10 +2115,10 @@
       const isAvailable = statusText === "verfügbar";
       const isBorrowed = statusText.startsWith("von ") && statusText.includes("ausgeliehen");
       const isMaintenance = statusText === "nicht verfügbar";
-      const codeIsVisible = revealedBikeCodeId === entry.id;
+      const codeIsVisible = isAdmin || revealedBikeCodeId === entry.id;
       const realCode = String(entry.bikeCode || "");
       const displayedCode = codeIsVisible ? realCode : "*".repeat(realCode.length);
-      const codeReadonly = (isAdmin && codeIsVisible) ? "" : "readonly";
+      const codeReadonly = isAdmin ? "" : "readonly";
 
       modalBody.innerHTML = `
         <div class="label">nummer</div>
