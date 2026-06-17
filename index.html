@@ -1046,6 +1046,9 @@
     const DEFAULT_ZOOM = 13;
     const CHAT_PAGE_SIZE = 50;
     const SMALL_MARKER_ZOOM_THRESHOLD = 14;
+    const CLUSTER_ZOOM_THRESHOLD = 10;
+    const CLUSTER_RADIUS_KM = 10;
+    const CLUSTER_ZOOM_IN = 8;
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1071,6 +1074,9 @@
     let chatChannel = null;
     let profilesChannel = null;
 
+    // Cluster-Marker auf der Karte
+    const clusterLeafletMarkers = new Map(); // clusterId -> L.marker
+
     const markers = new Map();
     const renderedChatMessages = new Set();
 
@@ -1079,6 +1085,8 @@
     map.getPane("stationPane").style.zIndex = 380;
     map.createPane("bikePane");
     map.getPane("bikePane").style.zIndex = 420;
+    map.createPane("clusterPane");
+    map.getPane("clusterPane").style.zIndex = 390;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom:19, attribution:"&copy; OpenStreetMap"
@@ -1107,6 +1115,95 @@
     });
     map.on("locationerror",() => showStatus("standort nicht verfügbar"));
 
+    // ── Cluster-Logik ─────────────────────────────────────────────────────────────
+
+    function haversineKm(lat1, lng1, lat2, lng2){
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat/2)**2 +
+                Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+                Math.sin(dLng/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function buildNoteClusters(){
+      const notes = Array.from(markers.values()).filter(e => e.type === "note");
+      const assigned = new Set();
+      const clusters = [];
+
+      notes.forEach(note => {
+        if(assigned.has(note.id)) return;
+        const group = [note];
+        assigned.add(note.id);
+        notes.forEach(other => {
+          if(assigned.has(other.id)) return;
+          if(haversineKm(note.lat, note.lng, other.lat, other.lng) <= CLUSTER_RADIUS_KM){
+            group.push(other);
+            assigned.add(other.id);
+          }
+        });
+        // Mittelpunkt berechnen
+        const centerLat = group.reduce((s,n) => s + n.lat, 0) / group.length;
+        const centerLng = group.reduce((s,n) => s + n.lng, 0) / group.length;
+        clusters.push({ id: group.map(n=>n.id).sort().join("|"), entries: group, lat: centerLat, lng: centerLng });
+      });
+
+      return clusters;
+    }
+
+    function clusterIcon(){
+      return L.divIcon({
+        className:"",
+        html:`<div class="stationIconWrap"><img class="stationIconImg" src="logo.png" alt="" /></div>`,
+        iconSize:[33,33],
+        iconAnchor:[16.5,16.5]
+      });
+    }
+
+    function updateClusterView(){
+      const zoom = map.getZoom();
+      const showClusters = zoom < CLUSTER_ZOOM_THRESHOLD;
+
+      // Bike-Marker + Note-Marker ein-/ausblenden
+      markers.forEach(entry => {
+        const el = entry.marker.getElement();
+        if(!el) return;
+        if(entry.type === "bike"){
+          el.style.display = showClusters ? "none" : "";
+        }
+        if(entry.type === "note"){
+          el.style.display = showClusters ? "none" : "";
+        }
+      });
+
+      // Alte Cluster-Marker entfernen
+      clusterLeafletMarkers.forEach(m => map.removeLayer(m));
+      clusterLeafletMarkers.clear();
+
+      if(!showClusters) return;
+
+      // Neue Cluster-Marker setzen
+      const clusters = buildNoteClusters();
+      clusters.forEach(cluster => {
+        const m = L.marker([cluster.lat, cluster.lng], {
+          icon: clusterIcon(),
+          pane: "clusterPane"
+        }).addTo(map);
+
+        m.on("click", () => {
+          map.setView([cluster.lat, cluster.lng], CLUSTER_ZOOM_IN);
+        });
+
+        clusterLeafletMarkers.set(cluster.id, m);
+      });
+    }
+
+    map.on("zoomend", () => {
+      updateMarkerSizes();
+      updateClusterView();
+    });
+
     // ── Marker-Größe nach Zoom ────────────────────────────────────────────────────
 
     function updateMarkerSizes(){
@@ -1130,8 +1227,6 @@
       });
     }
 
-    map.on("zoomend", updateMarkerSizes);
-
     // ── Realtime ──────────────────────────────────────────────────────────────────
 
     function subscribeRealtime(){
@@ -1143,7 +1238,7 @@
           }
           if(payload.eventType === "DELETE"){
             const entry = findEntryById(payload.old.id);
-            if(entry){ map.removeLayer(entry.marker); markers.delete(entry.id); }
+            if(entry){ map.removeLayer(entry.marker); markers.delete(entry.id); updateClusterView(); }
           }
         }).subscribe();
 
@@ -1389,7 +1484,7 @@
         if(entry.marker.dragging) entry.marker.dragging.disable();
         markers.set(entry.id,entry);
         wireMarker(entry);
-        if(markersLoaded) updateMarkerSizes();
+        if(markersLoaded){ updateMarkerSizes(); updateClusterView(); }
       }else{
         const status = row.status ?? "verfügbar";
         const newBikeNumber = row.bike_number ?? "";
@@ -1412,7 +1507,7 @@
         if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
         if(iconNeedsUpdate){
           entry.marker.setIcon(iconForEntry(entry));
-          if(markersLoaded) updateMarkerSizes();
+          if(markersLoaded){ updateMarkerSizes(); updateClusterView(); }
         }
       }
       return entry;
@@ -1424,6 +1519,7 @@
       rows.forEach(row => { if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row); });
       markersLoaded = true;
       updateMarkerSizes();
+      updateClusterView();
     }
 
     function findEntryById(id){ return markers.get(id) || null; }
@@ -1487,6 +1583,7 @@
         if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.setIcon(iconForEntry(entry));
         updateMarkerSizes();
+        updateClusterView();
         showStatus("position gespeichert");
       }catch(err){ console.error(err); showStatus("position konnte nicht gespeichert werden"); }
     }
@@ -2189,7 +2286,8 @@
         modalFooter.innerHTML = `${loanButtonHtml}${maintenanceButtonHtml}<button class="btn danger" id="bikeDeleteBtn" type="button">löschen</button>`;
         document.getElementById("bikeDeleteBtn").addEventListener("click",async() => {
           try{
-            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id); closeModal();
+            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id);
+            updateClusterView(); closeModal();
           }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
         },{once:true});
       }else{
@@ -2251,7 +2349,10 @@
       if(isAdmin){
         modalFooter.innerHTML = `<button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>`;
         document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
-          try{ await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id); closeModal(); }
+          try{
+            await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id);
+            updateClusterView(); closeModal();
+          }
           catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
         },{once:true});
       }
