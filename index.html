@@ -1061,7 +1061,7 @@
     const SMALL_MARKER_ZOOM_THRESHOLD = 14;
     const CLUSTER_ZOOM_THRESHOLD = 10;
     const CLUSTER_RADIUS_KM = 10;
-    const CLUSTER_ZOOM_IN = 8;
+    
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1205,7 +1205,7 @@
         }).addTo(map);
 
         m.on("click", () => {
-          map.setView([cluster.lat, cluster.lng], CLUSTER_ZOOM_IN);
+          map.setView([cluster.lat, cluster.lng], 14);
         });
 
         clusterLeafletMarkers.set(cluster.id, m);
