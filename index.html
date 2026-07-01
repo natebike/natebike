@@ -1461,14 +1461,9 @@
     }
 
     function updateMaintenanceMarkerVisibility(){
-      if(!markersLoaded) return;
-      markers.forEach(entry => {
-        if(entry.type !== "bike") return;
-        if(entry.status !== "nicht verfügbar") return;
-        const el = entry.marker.getElement();
-        if(el) el.style.display = isAdmin ? "" : "none";
-      });
-    }
+  if(!markersLoaded) return;
+  updateMarkerSizes();
+}
 
     map.on("zoomend", () => {
       updateMarkerSizes();
@@ -1478,21 +1473,32 @@
     });
 
     function updateMarkerSizes(){
-      const zoom = map.getZoom();
-      const small = zoom < SMALL_MARKER_ZOOM_THRESHOLD;
-      markers.forEach(entry => {
-        const el = entry.marker.getElement();
-        if(!el) return;
-        if(entry.type === "bike"){
-          const wrap = el.querySelector(".bikeWrap");
-          if(wrap){ wrap.classList.toggle("small", small); const num = wrap.querySelector(".bikeNum"); if(num) num.style.opacity = small ? "0" : "1"; }
-        }
-        if(entry.type === "note"){
-          const wrap = el.querySelector(".stationIconWrap");
-          if(wrap) wrap.classList.toggle("small", small);
-        }
-      });
+  const zoom = map.getZoom();
+  const small = zoom < SMALL_MARKER_ZOOM_THRESHOLD;
+  markers.forEach(entry => {
+    const el = entry.marker.getElement();
+    if(!el) return;
+
+    // Wartungs-Bikes immer ausblenden wenn kein Admin
+    if(entry.type === "bike" && entry.status === "nicht verfügbar" && !isAdmin){
+      el.style.display = "none";
+      return;
     }
+
+    if(entry.type === "bike"){
+      const wrap = el.querySelector(".bikeWrap");
+      if(wrap){
+        wrap.classList.toggle("small", small);
+        const num = wrap.querySelector(".bikeNum");
+        if(num) num.style.opacity = small ? "0" : "1";
+      }
+    }
+    if(entry.type === "note"){
+      const wrap = el.querySelector(".stationIconWrap");
+      if(wrap) wrap.classList.toggle("small", small);
+    }
+  });
+}
 
     // ── Realtime ──────────────────────────────────────────────────────────────────
 
