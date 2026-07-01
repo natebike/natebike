@@ -214,6 +214,8 @@
 
     input[type="password"],
     input[type="text"],
+    input[type="email"],
+    input[type="tel"],
     textarea{
       width:100%;
       border:1px solid var(--border);
@@ -575,9 +577,27 @@
       padding:8px 10px;
       max-width:95%;
       cursor:default;
+      display:flex;
+      gap:8px;
+      align-items:flex-start;
     }
 
     .chatMessage:hover{border-color:#b9c6f2;}
+
+    .chatAvatar{
+      width:32px;
+      height:32px;
+      border-radius:50%;
+      object-fit:cover;
+      flex-shrink:0;
+      border:1px solid var(--border);
+      background:#f0f0f0;
+    }
+
+    .chatMessageContent{
+      flex:1;
+      min-width:0;
+    }
 
     .chatMeta{
       font-size:11px;
@@ -606,6 +626,7 @@
       border:none;
       padding:2px 6px;
       max-width:100%;
+      gap:0;
     }
 
     .chatMessage.systemMessage .chatMeta{display:none;}
@@ -691,6 +712,30 @@
       object-fit:cover;
       border-radius:8px;
       border:1px solid var(--border);
+    }
+
+    /* Profil-Modal */
+    .profileAvatarArea{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+      margin-bottom:16px;
+    }
+
+    .profileAvatarImg{
+      width:90px;
+      height:90px;
+      border-radius:50%;
+      object-fit:cover;
+      border:2px solid var(--border);
+      background:#f0f0f0;
+      cursor:pointer;
+    }
+
+    .profileAvatarHint{
+      font-size:12px;
+      color:#667;
     }
 
     .bikeWrap{
@@ -866,6 +911,7 @@
           <div class="dropdown-item" data-kind="notes">natebikestationen</div>
           <div class="dropdown-item" data-kind="bikes">natebikes</div>
           <div class="dropdown-item" data-kind="chat">chat</div>
+          <div class="dropdown-item" data-kind="profil">profil</div>
           <div class="dropdown-item" data-kind="account">account verwalten</div>
           <div class="dropdown-item adminOnly" data-kind="accounts">alle accounts verwalten</div>
           <div class="dropdown-item adminOnly" data-kind="admintools">admin tools</div>
@@ -995,6 +1041,18 @@
     </div>
   </div>
 
+  <!-- Profil-Overlay -->
+  <div id="profilOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <h2>profil</h2>
+        <button id="profilCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
+      </div>
+      <div id="profilBody"></div>
+      <div id="profilFooter" class="modal-footer"></div>
+    </div>
+  </div>
+
   <div id="listOverlay" class="list-overlay">
     <div class="list-container">
       <div class="list-header">
@@ -1057,6 +1115,8 @@
     </div>
   </div>
 
+  <input id="avatarInput" type="file" accept="image/*" style="display:none;" />
+
   <script>
     const SUPABASE_URL = "https://lczpdudidvzbcalzprzl.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjenBkdWRpZHZ6YmNhbHpwcnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjA2MDcsImV4cCI6MjA4NzU5NjYwN30.j_3fTPlwpeQNDut5iTx5b2r5sENaTlFMk-L0fBnQYL4";
@@ -1068,10 +1128,20 @@
     const CLUSTER_ZOOM_THRESHOLD = 10;
     const CLUSTER_RADIUS_KM = 10;
 
+    // Standard-Avatar SVG als Data-URL
+    const DEFAULT_AVATAR = "data:image/svg+xml," + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+        <rect width="40" height="40" fill="#fff"/>
+        <circle cx="20" cy="15" r="8" fill="#c9c9c9"/>
+        <ellipse cx="20" cy="34" rx="13" ry="9" fill="#c9c9c9"/>
+      </svg>
+    `);
+
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let currentUserName = "";
     let currentProfile = null;
+    let currentProfileDetails = null; // { email, phone, avatar_data }
     let isAdmin = false;
     let moveModeEntry = null;
     let selectedPhotoData = null;
@@ -1091,6 +1161,9 @@
     let markersChannel = null;
     let chatChannel = null;
     let profilesChannel = null;
+
+    // Cache für Avatare: username -> dataUrl
+    const avatarCache = new Map();
 
     const clusterLeafletMarkers = new Map();
     const markers = new Map();
@@ -1130,6 +1203,139 @@
       }
     });
     map.on("locationerror",() => showStatus("standort nicht verfügbar"));
+
+    // ── Profil-Details DB ─────────────────────────────────────────────────────────
+
+    async function dbLoadProfileDetails(userId){
+      const { data, error } = await sb
+        .from("user_profile_details")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+      if(error) throw error;
+      return data || { id: userId, email: "", phone: "", avatar_data: null };
+    }
+
+    async function dbSaveProfileDetails(userId, email, phone, avatarData){
+      const payload = { id: userId, email, phone, avatar_data: avatarData };
+      const { error } = await sb
+        .from("user_profile_details")
+        .upsert(payload, { onConflict: "id" });
+      if(error) throw error;
+    }
+
+    async function dbGetAvatarForUser(username){
+      if(avatarCache.has(username)) return avatarCache.get(username);
+      try{
+        // Erst user_profiles laden um die ID zu bekommen
+        const { data: profileData } = await sb
+          .from("user_profiles")
+          .select("id")
+          .eq("display_name", username)
+          .maybeSingle();
+        if(!profileData) return DEFAULT_AVATAR;
+        const { data: detailData } = await sb
+          .from("user_profile_details")
+          .select("avatar_data")
+          .eq("id", profileData.id)
+          .maybeSingle();
+        const avatar = (detailData && detailData.avatar_data) ? detailData.avatar_data : DEFAULT_AVATAR;
+        avatarCache.set(username, avatar);
+        return avatar;
+      }catch(err){
+        return DEFAULT_AVATAR;
+      }
+    }
+
+    // ── Profil-Fenster ────────────────────────────────────────────────────────────
+
+    async function openProfil(){
+      const overlay = document.getElementById("profilOverlay");
+      const body = document.getElementById("profilBody");
+      const footer = document.getElementById("profilFooter");
+
+      body.innerHTML = `<div style="text-align:center;padding:20px;color:#667;font-size:13px;">laden...</div>`;
+      footer.innerHTML = "";
+      overlay.style.display = "flex";
+
+      try{
+        currentProfileDetails = await dbLoadProfileDetails(currentProfile.id);
+      }catch(err){
+        console.error(err);
+        currentProfileDetails = { id: currentProfile.id, email: "", phone: "", avatar_data: null };
+      }
+
+      const avatarSrc = currentProfileDetails.avatar_data || DEFAULT_AVATAR;
+
+      body.innerHTML = `
+        <div class="profileAvatarArea">
+          <img id="profilAvatarImg" class="profileAvatarImg" src="${escapeHtml(avatarSrc)}" alt="profilbild" title="bild ändern" />
+          <div class="profileAvatarHint">auf bild klicken zum ändern</div>
+        </div>
+        <div class="grid">
+          <div class="label">e-mail:</div>
+          <input id="profilEmailInput" type="email" value="${escapeHtml(currentProfileDetails.email || "")}" placeholder="deine@email.de" />
+          <div class="label">telefon:</div>
+          <input id="profilPhoneInput" type="tel" value="${escapeHtml(currentProfileDetails.phone || "")}" placeholder="+49 123 456789" />
+        </div>
+        <div id="profilMsg" class="msg">meldung</div>
+      `;
+
+      footer.innerHTML = `
+        <button class="btn secondary" id="profilRemoveAvatarBtn" type="button">bild entfernen</button>
+        <button class="btn" id="profilSaveBtn" type="button">speichern</button>
+      `;
+
+      document.getElementById("profilAvatarImg").addEventListener("click",() => {
+        document.getElementById("avatarInput").click();
+      });
+
+      document.getElementById("profilRemoveAvatarBtn").addEventListener("click",() => {
+        document.getElementById("profilAvatarImg").src = DEFAULT_AVATAR;
+        currentProfileDetails.avatar_data = null;
+      });
+
+      document.getElementById("profilSaveBtn").addEventListener("click", saveProfilDetails);
+    }
+
+    async function saveProfilDetails(){
+      const email = document.getElementById("profilEmailInput")?.value.trim() ?? "";
+      const phone = document.getElementById("profilPhoneInput")?.value.trim() ?? "";
+      const avatarImg = document.getElementById("profilAvatarImg");
+      const avatarData = avatarImg ? (avatarImg.src === DEFAULT_AVATAR ? null : avatarImg.src) : null;
+      try{
+        await dbSaveProfileDetails(currentProfile.id, email, phone, avatarData);
+        currentProfileDetails = { id: currentProfile.id, email, phone, avatar_data: avatarData };
+        // Avatar-Cache für aktuellen Nutzer aktualisieren
+        avatarCache.set(currentUserName, avatarData || DEFAULT_AVATAR);
+        showMsg("profilMsg","profil gespeichert",true);
+        setTimeout(() => { document.getElementById("profilOverlay").style.display = "none"; },800);
+      }catch(err){
+        console.error(err);
+        showMsg("profilMsg","speichern fehlgeschlagen");
+      }
+    }
+
+    document.getElementById("profilCloseBtn").addEventListener("click",() => {
+      document.getElementById("profilOverlay").style.display = "none";
+    });
+    document.getElementById("profilOverlay").addEventListener("click",e => {
+      if(e.target.id === "profilOverlay") document.getElementById("profilOverlay").style.display = "none";
+    });
+
+    document.getElementById("avatarInput").addEventListener("change", async e => {
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+      try{
+        const dataUrl = await resizeImageToDataUrl(file, 120, 120);
+        const img = document.getElementById("profilAvatarImg");
+        if(img) img.src = dataUrl;
+      }catch(err){
+        console.error(err);
+        showStatus("bild konnte nicht verarbeitet werden");
+      }
+      e.target.value = "";
+    });
 
     // ── Cluster-Logik ─────────────────────────────────────────────────────────────
 
@@ -1232,8 +1438,6 @@
       updateNoteMarkerOpacity();
       updateMaintenanceMarkerVisibility();
     });
-
-    // ── Marker-Größe nach Zoom ────────────────────────────────────────────────────
 
     function updateMarkerSizes(){
       const zoom = map.getZoom();
@@ -1366,9 +1570,10 @@
       forcedLogoutInProgress = true;
       unsubscribeRealtime();
       try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
-      currentUserName = ""; currentProfile = null; isAdmin = false;
+      currentUserName = ""; currentProfile = null; currentProfileDetails = null; isAdmin = false;
       moveModeEntry = null; revealedBikeCodeId = null; markersLoaded = false;
       chatOffset = 0; chatAllLoaded = false;
+      avatarCache.clear();
       stopAutoPan(); updateAdminUI(); closeAllOverlays(); hideContextMenus();
       document.getElementById("headerActions").style.display = "none";
       document.getElementById("mapFrame").style.display = "none";
@@ -1400,11 +1605,13 @@
 
     function showMsg(id,text,ok=false){
       const el = document.getElementById(id);
+      if(!el) return;
       el.textContent = text; el.classList.toggle("ok",ok); el.style.display = "block";
     }
 
     function hideMsg(id){
       const el = document.getElementById(id);
+      if(!el) return;
       el.style.display = "none"; el.classList.remove("ok");
     }
 
@@ -1519,12 +1726,7 @@
         if(entry.marker.dragging) entry.marker.dragging.disable();
         markers.set(entry.id,entry);
         wireMarker(entry);
-        if(markersLoaded){
-          updateMarkerSizes();
-          updateClusterView();
-          updateNoteMarkerOpacity();
-          updateMaintenanceMarkerVisibility();
-        }
+        if(markersLoaded){ updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility(); }
       }else{
         const status = row.status ?? "verfügbar";
         const newBikeNumber = row.bike_number ?? "";
@@ -1542,12 +1744,7 @@
         if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
         if(iconNeedsUpdate){
           entry.marker.setIcon(iconForEntry(entry));
-          if(markersLoaded){
-            updateMarkerSizes();
-            updateClusterView();
-            updateNoteMarkerOpacity();
-            updateMaintenanceMarkerVisibility();
-          }
+          if(markersLoaded){ updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility(); }
         }
       }
       return entry;
@@ -1624,10 +1821,7 @@
         entry.isMoving = false; moveModeEntry = null;
         if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes();
-        updateClusterView();
-        updateNoteMarkerOpacity();
-        updateMaintenanceMarkerVisibility();
+        updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility();
         showStatus("position gespeichert");
       }catch(err){ console.error(err); showStatus("position konnte nicht gespeichert werden"); }
     }
@@ -1659,9 +1853,7 @@
         await dbUpdateMarker(entry.id,{status:newStatus,is_rented:true});
         entry.status = newStatus; entry.isRented = true;
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes();
-        updateNoteMarkerOpacity();
-        updateMaintenanceMarkerVisibility();
+        updateMarkerSizes(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1708,9 +1900,7 @@
         await dbUpdateMarker(entry.id,patch);
         entry.status = "verfügbar"; entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes();
-        updateNoteMarkerOpacity();
-        updateMaintenanceMarkerVisibility();
+        updateMarkerSizes(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1732,9 +1922,7 @@
         await dbUpdateMarker(entry.id,{status:nextStatus,is_rented:nextStatus !== "verfügbar"});
         entry.status = nextStatus; entry.isRented = nextStatus !== "verfügbar";
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes();
-        updateNoteMarkerOpacity();
-        updateMaintenanceMarkerVisibility();
+        updateMarkerSizes(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility();
         closeModal(); openBikeWindow(entry);
         showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
       }catch(err){ console.error(err); showStatus("status konnte nicht geändert werden"); }
@@ -1783,6 +1971,7 @@
         if(kind === "bikes") showBikeList();
         if(kind === "notes") showNoteList();
         if(kind === "chat") openChat();
+        if(kind === "profil") openProfil();
         if(kind === "account") openAccountManage();
         if(kind === "accounts") openAllAccountsManage();
         if(kind === "admintools") openAdminTools();
@@ -1874,6 +2063,13 @@
         setTimeout(() => { map.invalidateSize(); map.locate({setView:true,maxZoom:16,enableHighAccuracy:true}); },100);
         await loadMarkersOnce();
         subscribeRealtime();
+        // Eigenes Profil vorab laden und cachen
+        try{
+          currentProfileDetails = await dbLoadProfileDetails(currentProfile.id);
+          if(currentProfileDetails.avatar_data){
+            avatarCache.set(currentUserName, currentProfileDetails.avatar_data);
+          }
+        }catch(e){ console.error(e); }
       }catch(err){ console.error(err); showMsg("loginMsg","anmeldung fehlgeschlagen"); }
     }
 
@@ -2101,8 +2297,9 @@
     async function logoutUser(){
       unsubscribeRealtime();
       try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
-      currentUserName = ""; currentProfile = null; isAdmin = false; markersLoaded = false;
+      currentUserName = ""; currentProfile = null; currentProfileDetails = null; isAdmin = false; markersLoaded = false;
       chatOffset = 0; chatAllLoaded = false;
+      avatarCache.clear();
       updateAdminUI(); closeAccountOverlay();
       headerActions.style.display = "none"; mapFrame.style.display = "none"; loginFrame.style.display = "grid";
       document.getElementById("loginNameInput").value = "";
@@ -2156,8 +2353,9 @@
         if(currentProfile) await sb.from("user_profiles").delete().eq("id",currentProfile.id);
         await sb.auth.signOut();
       }catch(err){ console.error(err); }
-      currentProfile = null; currentUserName = ""; isAdmin = false; markersLoaded = false;
+      currentProfile = null; currentProfileDetails = null; currentUserName = ""; isAdmin = false; markersLoaded = false;
       chatOffset = 0; chatAllLoaded = false;
+      avatarCache.clear();
       updateAdminUI(); closeAccountOverlay();
       headerActions.style.display = "none"; mapFrame.style.display = "none"; loginFrame.style.display = "grid";
       document.getElementById("loginNameInput").value = "";
@@ -2381,9 +2579,7 @@
             entry.bikeColor = patch.color; entry.bikeRemark = patch.remark;
             if(codeIsVisible) entry.bikeCode = patch.code;
             entry.marker.setIcon(iconForEntry(entry));
-            updateMarkerSizes();
-            updateNoteMarkerOpacity();
-            updateMaintenanceMarkerVisibility();
+            updateMarkerSizes(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility();
           }catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
         }else{
           const newRemark = document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark;
@@ -2497,6 +2693,9 @@
         const existingBtn = document.getElementById("loadMoreChatBtn");
         if(existingBtn) existingBtn.remove();
         if(rows.length < CHAT_PAGE_SIZE){ chatAllLoaded = true; }else{ addLoadMoreButton(); }
+        // Avatare vorladen
+        const usernames = [...new Set(rows.map(r => r.user_name).filter(u => u && u !== "system"))];
+        await Promise.all(usernames.map(u => dbGetAvatarForUser(u)));
         rows.forEach(renderChatMessage);
         scrollChatBottom();
         chatOffset = rows.length;
@@ -2521,6 +2720,9 @@
         const btn = document.getElementById("loadMoreChatBtn");
         const scrollHeightBefore = chatMessages.scrollHeight;
         if(rows.length < CHAT_PAGE_SIZE){ chatAllLoaded = true; if(btn) btn.remove(); }
+        // Avatare vorladen
+        const usernames = [...new Set(rows.map(r => r.user_name).filter(u => u && u !== "system"))];
+        await Promise.all(usernames.map(u => dbGetAvatarForUser(u)));
         const fragment = document.createDocumentFragment();
         rows.forEach(row => {
           if(renderedChatMessages.has(row.id)) return;
@@ -2540,18 +2742,37 @@
       const box = document.createElement("div");
       box.className = isSystemMessage ? "chatMessage systemMessage" : "chatMessage";
       box.dataset.id = row.id;
+
       if(!isSystemMessage){
+        // Avatar
+        const avatar = document.createElement("img");
+        avatar.className = "chatAvatar";
+        avatar.alt = "";
+        avatar.src = avatarCache.get(row.user_name) || DEFAULT_AVATAR;
+        box.appendChild(avatar);
+
+        const content = document.createElement("div");
+        content.className = "chatMessageContent";
+
         const meta = document.createElement("div");
         meta.className = "chatMeta";
         meta.textContent = `${row.user_name || "unbekannt"} • ${formatDateTime(row.created_at)}`;
-        box.appendChild(meta);
+        content.appendChild(meta);
+
+        if(row.message){
+          const text = document.createElement("div"); text.className = "chatText"; text.textContent = row.message; content.appendChild(text);
+        }
+        if(row.photo_data){
+          const img = document.createElement("img"); img.className = "chatPhoto"; img.src = row.photo_data; img.alt = "foto"; content.appendChild(img);
+        }
+        box.appendChild(content);
+      }else{
+        // Systemnachricht ohne Avatar
+        if(row.message){
+          const text = document.createElement("div"); text.className = "chatText"; text.textContent = row.message; box.appendChild(text);
+        }
       }
-      if(row.message){
-        const text = document.createElement("div"); text.className = "chatText"; text.textContent = row.message; box.appendChild(text);
-      }
-      if(row.photo_data){
-        const img = document.createElement("img"); img.className = "chatPhoto"; img.src = row.photo_data; img.alt = "foto"; box.appendChild(img);
-      }
+
       box.addEventListener("contextmenu",e => {
         if(!isAdmin) return;
         e.preventDefault(); e.stopPropagation();
@@ -2633,6 +2854,10 @@
       if(!message && !selectedPhotoData) return;
       try{
         const savedMessage = await dbInsertChatMessage(message,selectedPhotoData);
+        // Eigenen Avatar für neue Nachricht sicherstellen
+        if(!avatarCache.has(currentUserName)){
+          avatarCache.set(currentUserName, (currentProfileDetails?.avatar_data) || DEFAULT_AVATAR);
+        }
         renderChatMessage(savedMessage); scrollChatBottom();
         input.value = ""; document.getElementById("charCount").textContent = "0";
         selectedPhotoData = null; document.getElementById("photoInput").value = "";
