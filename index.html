@@ -375,7 +375,12 @@
       justify-content:center;
       padding:16px;
       box-sizing:border-box;
+      
     }
+
+    #profilOverlay{
+      z-index:20000;
+        }
 
     .modal{
       width:min(640px,95vw);
@@ -1292,9 +1297,9 @@
             <div class="profileAvatarHint">auf bild klicken zum ändern</div>
           </div>
           <div class="grid">
-            <div class="label">e-mail:</div>
+            <div class="label">e-mail</div>
             <input id="profilEmailInput" type="email" value="${escapeHtml(details.email || "")}" placeholder="deine@email.de" />
-            <div class="label">telefon:</div>
+            <div class="label">telefon</div>
             <input id="profilPhoneInput" type="tel" value="${escapeHtml(details.phone || "")}" placeholder="+49 123 456789" />
           </div>
           <div id="profilMsg" class="msg">meldung</div>
@@ -1317,12 +1322,12 @@
         body.innerHTML = `
           <div class="profileAvatarArea">
             <img class="profileAvatarImg" src="${escapeHtml(avatarSrc)}" alt="profilbild" style="cursor:default;" />
-            <div style="font-size:14px;font-weight:700;color:var(--blue)">${escapeHtml(username)}</div>
+            
           </div>
           <div class="grid">
-            <div class="label">e-mail:</div>
+            <div class="label">e-mail</div>
             <div style="font-size:14px;padding:10px 0;">${emailText}</div>
-            <div class="label">telefon:</div>
+            <div class="label">telefon</div>
             <div style="font-size:14px;padding:10px 0;">${phoneText}</div>
           </div>
         `;
