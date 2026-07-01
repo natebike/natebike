@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="de">
 <head>
@@ -235,7 +236,7 @@
     #stationContentInput{
       font-family:var(--font);
       font-size:14px;
-      resize: none; /* Verhindert das Vergrößern */
+      resize:none;
     }
 
     .footer{
@@ -443,7 +444,6 @@
     .statusBorrowed{border:2px solid var(--bikePurple)!important;}
     .statusMaintenance{border:2px solid var(--danger)!important;}
 
-    /* Grüner Rahmen für Listeneinträge in der Stationsliste */
     .noteListItem.hasAvailableBike{
       border-color:#9be39b;
       border-width:2px;
@@ -1217,10 +1217,21 @@
       });
     }
 
+    function updateMaintenanceMarkerVisibility(){
+      if(!markersLoaded) return;
+      markers.forEach(entry => {
+        if(entry.type !== "bike") return;
+        if(entry.status !== "nicht verfügbar") return;
+        const el = entry.marker.getElement();
+        if(el) el.style.display = isAdmin ? "" : "none";
+      });
+    }
+
     map.on("zoomend", () => {
       updateMarkerSizes();
       updateClusterView();
       updateNoteMarkerOpacity();
+      updateMaintenanceMarkerVisibility();
     });
 
     // ── Marker-Größe nach Zoom ────────────────────────────────────────────────────
@@ -1262,6 +1273,7 @@
               markers.delete(entry.id);
               updateClusterView();
               updateNoteMarkerOpacity();
+              updateMaintenanceMarkerVisibility();
             }
           }
         }).subscribe();
@@ -1508,7 +1520,12 @@
         if(entry.marker.dragging) entry.marker.dragging.disable();
         markers.set(entry.id,entry);
         wireMarker(entry);
-        if(markersLoaded){ updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); }
+        if(markersLoaded){
+          updateMarkerSizes();
+          updateClusterView();
+          updateNoteMarkerOpacity();
+          updateMaintenanceMarkerVisibility();
+        }
       }else{
         const status = row.status ?? "verfügbar";
         const newBikeNumber = row.bike_number ?? "";
@@ -1526,7 +1543,12 @@
         if(!entry.isMoving) entry.marker.setLatLng([entry.lat,entry.lng]);
         if(iconNeedsUpdate){
           entry.marker.setIcon(iconForEntry(entry));
-          if(markersLoaded){ updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); }
+          if(markersLoaded){
+            updateMarkerSizes();
+            updateClusterView();
+            updateNoteMarkerOpacity();
+            updateMaintenanceMarkerVisibility();
+          }
         }
       }
       return entry;
@@ -1540,6 +1562,7 @@
       updateMarkerSizes();
       updateClusterView();
       updateNoteMarkerOpacity();
+      updateMaintenanceMarkerVisibility();
     }
 
     function findEntryById(id){ return markers.get(id) || null; }
@@ -1602,7 +1625,10 @@
         entry.isMoving = false; moveModeEntry = null;
         if(entry.marker.dragging) entry.marker.dragging.disable();
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity();
+        updateMarkerSizes();
+        updateClusterView();
+        updateNoteMarkerOpacity();
+        updateMaintenanceMarkerVisibility();
         showStatus("position gespeichert");
       }catch(err){ console.error(err); showStatus("position konnte nicht gespeichert werden"); }
     }
@@ -1634,7 +1660,9 @@
         await dbUpdateMarker(entry.id,{status:newStatus,is_rented:true});
         entry.status = newStatus; entry.isRented = true;
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes(); updateNoteMarkerOpacity();
+        updateMarkerSizes();
+        updateNoteMarkerOpacity();
+        updateMaintenanceMarkerVisibility();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} ausgeliehen`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1681,7 +1709,9 @@
         await dbUpdateMarker(entry.id,patch);
         entry.status = "verfügbar"; entry.isRented = false;
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes(); updateNoteMarkerOpacity();
+        updateMarkerSizes();
+        updateNoteMarkerOpacity();
+        updateMaintenanceMarkerVisibility();
         const numberText = entry.bikeNumber ? ` ${entry.bikeNumber}` : "";
         const systemMessage = `${formatSystemMessageDateTime()}: ${currentUserName} hat natebike${numberText} zurückgegeben`;
         const savedMsg = await dbInsertSystemChatMessage(systemMessage);
@@ -1703,7 +1733,9 @@
         await dbUpdateMarker(entry.id,{status:nextStatus,is_rented:nextStatus !== "verfügbar"});
         entry.status = nextStatus; entry.isRented = nextStatus !== "verfügbar";
         entry.marker.setIcon(iconForEntry(entry));
-        updateMarkerSizes(); updateNoteMarkerOpacity();
+        updateMarkerSizes();
+        updateNoteMarkerOpacity();
+        updateMaintenanceMarkerVisibility();
         closeModal(); openBikeWindow(entry);
         showStatus(nextStatus === "nicht verfügbar" ? "wartung aktiviert" : "natebike freigegeben");
       }catch(err){ console.error(err); showStatus("status konnte nicht geändert werden"); }
@@ -1783,7 +1815,9 @@
     }
 
     function showBikeList(){
-      const bikes = Array.from(markers.values()).filter(e => e.type === "bike").sort(sortBikeEntries);
+      const bikes = Array.from(markers.values())
+        .filter(e => e.type === "bike" && (isAdmin || e.status !== "nicht verfügbar"))
+        .sort(sortBikeEntries);
       openList("natebikes");
       if(bikes.length === 0){ addEmptyListMessage("keine fahrräder gefunden"); return; }
       bikes.forEach(entry => {
@@ -1791,8 +1825,6 @@
         addListRow(line || "(ohne nummer/name)", entry, statusClassForBike(entry));
       });
     }
-
-    // ── Stationsliste mit grünem Rahmen ───────────────────────────────────────────
 
     function showNoteList(){
       const notes = Array.from(markers.values()).filter(e => e.type === "note").sort((a,b) => Number(a.lng)-Number(b.lng));
@@ -1914,6 +1946,7 @@
       document.querySelectorAll(".adminOnly").forEach(el => { el.style.display = isAdmin ? "block" : "none"; });
       const clearChatBtn = document.getElementById("clearChatBtn");
       if(clearChatBtn) clearChatBtn.style.display = isAdmin ? "inline-block" : "none";
+      updateMaintenanceMarkerVisibility();
     }
 
     function openAdminModal(){
@@ -2320,7 +2353,7 @@
         document.getElementById("bikeDeleteBtn").addEventListener("click",async() => {
           try{
             await dbDeleteMarker(entry.id); map.removeLayer(entry.marker); markers.delete(entry.id);
-            updateClusterView(); updateNoteMarkerOpacity(); closeModal();
+            updateClusterView(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility(); closeModal();
           }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
         },{once:true});
       }else{
@@ -2349,7 +2382,9 @@
             entry.bikeColor = patch.color; entry.bikeRemark = patch.remark;
             if(codeIsVisible) entry.bikeCode = patch.code;
             entry.marker.setIcon(iconForEntry(entry));
-            updateMarkerSizes(); updateNoteMarkerOpacity();
+            updateMarkerSizes();
+            updateNoteMarkerOpacity();
+            updateMaintenanceMarkerVisibility();
           }catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
         }else{
           const newRemark = document.getElementById("bikeRemarkInput")?.value.trim() ?? entry.bikeRemark;
@@ -2639,3 +2674,4 @@
   </script>
 </body>
 </html>
+```
