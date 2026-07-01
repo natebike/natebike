@@ -903,7 +903,7 @@
 <body>
   <header>
     <div class="headerLeft">
-      <img id="logo" alt="logo" src="logo.png" />
+      <img id="logo" alt="logo" src="logo.png" style="cursor:pointer;" title="admin" />
       <h1>natebike</h1>
     </div>
 
@@ -922,7 +922,7 @@
           <div class="dropdown-item adminOnly" data-kind="admintools">admin tools</div>
         </div>
       </div>
-      <button id="adminBtn" class="adminBtn" type="button">admin</button>
+      
     </div>
   </header>
 
@@ -2151,13 +2151,15 @@
 
     // ── Admin ─────────────────────────────────────────────────────────────────────
 
-    const adminBtn = document.getElementById("adminBtn");
+   
     const adminOverlay = document.getElementById("adminOverlay");
     const adminPwInput = document.getElementById("adminPwInput");
     const adminMsg = document.getElementById("adminMsg");
 
     function updateAdminUI(){
-      adminBtn.classList.toggle("isAdmin",isAdmin);
+      const logo = document.getElementById("logo");
+  if(logo) logo.style.outline = isAdmin ? "2px solid var(--adminGreen)" : "none";
+      
       document.querySelectorAll(".adminOnly").forEach(el => { el.style.display = isAdmin ? "block" : "none"; });
       const clearChatBtn = document.getElementById("clearChatBtn");
       if(clearChatBtn) clearChatBtn.style.display = isAdmin ? "inline-block" : "none";
@@ -2180,10 +2182,10 @@
       }catch(err){ console.error(err); adminMsg.style.display = "block"; }
     }
 
-    adminBtn.addEventListener("click",() => {
-      if(isAdmin){ isAdmin = false; updateAdminUI(); showStatus("admin abgemeldet"); }
-      else openAdminModal();
-    });
+   document.getElementById("logo").addEventListener("dblclick", () => {
+  if(isAdmin){ isAdmin = false; updateAdminUI(); showStatus("admin abgemeldet"); }
+  else openAdminModal();
+});
 
     document.getElementById("adminOkBtn").addEventListener("click",confirmAdmin);
     adminPwInput.addEventListener("keydown",e => { if(e.key === "Enter") confirmAdmin(); });
