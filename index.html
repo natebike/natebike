@@ -766,6 +766,7 @@
     }
 
     .bikeDot.rented{background:var(--rentGrey);}
+    .bikeDot.maintenance{background:var(--danger);}
 
     .bikeNum{
       font-size:12px;
@@ -1674,13 +1675,19 @@
     }
 
     function bikeIcon(entry){
-      const classes = ["bikeDot", entry.isRented?"rented":"", entry.isMoving?"moving":"", entry.isPulsing?"selectedPulse":""].filter(Boolean).join(" ");
-      return L.divIcon({
-        className:"",
-        html:`<div class="bikeWrap"><div class="${classes}"><div class="bikeNum">${escapeHtml(entry.bikeNumber)}</div></div></div>`,
-        iconSize:[24,24], iconAnchor:[12,12]
-      });
-    }
+  const isMaintenance = entry.status === "nicht verfügbar";
+  const classes = [
+    isMaintenance ? "bikeDot maintenance" : "bikeDot",
+    entry.isRented ? "rented" : "",
+    entry.isMoving ? "moving" : "",
+    entry.isPulsing ? "selectedPulse" : ""
+  ].filter(Boolean).join(" ");
+  return L.divIcon({
+    className:"",
+    html:`<div class="bikeWrap"><div class="${classes}"><div class="bikeNum">${escapeHtml(entry.bikeNumber)}</div></div></div>`,
+    iconSize:[24,24], iconAnchor:[12,12]
+  });
+}
 
     function stationIcon(entry){
       const classes = ["stationIconImg", entry.isMoving?"moving":"", entry.isPulsing?"selectedPulse":""].filter(Boolean).join(" ");
