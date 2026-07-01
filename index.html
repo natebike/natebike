@@ -714,7 +714,6 @@
       border:1px solid var(--border);
     }
 
-    /* Profil-Modal */
     .profileAvatarArea{
       display:flex;
       flex-direction:column;
@@ -1041,11 +1040,10 @@
     </div>
   </div>
 
-  <!-- Profil-Overlay -->
   <div id="profilOverlay" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal">
       <div class="modalHeader">
-        <h2>profil</h2>
+        <h2 id="profilTitle">profil</h2>
         <button id="profilCloseBtn" class="modalCloseX" type="button" title="schließen">×</button>
       </div>
       <div id="profilBody"></div>
@@ -1128,7 +1126,6 @@
     const CLUSTER_ZOOM_THRESHOLD = 10;
     const CLUSTER_RADIUS_KM = 10;
 
-    // Standard-Avatar SVG als Data-URL
     const DEFAULT_AVATAR = "data:image/svg+xml," + encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
         <rect width="40" height="40" fill="#fff"/>
@@ -1141,7 +1138,7 @@
 
     let currentUserName = "";
     let currentProfile = null;
-    let currentProfileDetails = null; // { email, phone, avatar_data }
+    let currentProfileDetails = null;
     let isAdmin = false;
     let moveModeEntry = null;
     let selectedPhotoData = null;
@@ -1162,9 +1159,7 @@
     let chatChannel = null;
     let profilesChannel = null;
 
-    // Cache für Avatare: username -> dataUrl
     const avatarCache = new Map();
-
     const clusterLeafletMarkers = new Map();
     const markers = new Map();
     const renderedChatMessages = new Set();
@@ -1204,7 +1199,7 @@
     });
     map.on("locationerror",() => showStatus("standort nicht verfügbar"));
 
-    // ── Profil-Details DB ─────────────────────────────────────────────────────────
+    // ── Profil DB ─────────────────────────────────────────────────────────────────
 
     async function dbLoadProfileDetails(userId){
       const { data, error } = await sb
@@ -1227,13 +1222,12 @@
     async function dbGetAvatarForUser(username){
       if(avatarCache.has(username)) return avatarCache.get(username);
       try{
-        // Erst user_profiles laden um die ID zu bekommen
         const { data: profileData } = await sb
           .from("user_profiles")
           .select("id")
           .eq("display_name", username)
           .maybeSingle();
-        if(!profileData) return DEFAULT_AVATAR;
+        if(!profileData){ avatarCache.set(username, DEFAULT_AVATAR); return DEFAULT_AVATAR; }
         const { data: detailData } = await sb
           .from("user_profile_details")
           .select("avatar_data")
@@ -1243,59 +1237,97 @@
         avatarCache.set(username, avatar);
         return avatar;
       }catch(err){
+        avatarCache.set(username, DEFAULT_AVATAR);
         return DEFAULT_AVATAR;
       }
     }
 
     // ── Profil-Fenster ────────────────────────────────────────────────────────────
 
-    async function openProfil(){
+    async function openOwnProfil(){
+      await openProfilForUser(currentUserName, true);
+    }
+
+    async function openUserProfil(username){
+      const isOwn = username === currentUserName;
+      await openProfilForUser(username, isOwn);
+    }
+
+    async function openProfilForUser(username, editable){
       const overlay = document.getElementById("profilOverlay");
       const body = document.getElementById("profilBody");
       const footer = document.getElementById("profilFooter");
+      const title = document.getElementById("profilTitle");
 
       body.innerHTML = `<div style="text-align:center;padding:20px;color:#667;font-size:13px;">laden...</div>`;
       footer.innerHTML = "";
       overlay.style.display = "flex";
 
+      let userId = null;
+      let details = { email:"", phone:"", avatar_data:null };
+
       try{
-        currentProfileDetails = await dbLoadProfileDetails(currentProfile.id);
-      }catch(err){
-        console.error(err);
-        currentProfileDetails = { id: currentProfile.id, email: "", phone: "", avatar_data: null };
+        if(editable && currentProfile){
+          userId = currentProfile.id;
+        }else{
+          const { data: profileData } = await sb
+            .from("user_profiles")
+            .select("id")
+            .eq("display_name", username)
+            .maybeSingle();
+          if(profileData) userId = profileData.id;
+        }
+        if(userId) details = await dbLoadProfileDetails(userId);
+      }catch(err){ console.error(err); }
+
+      if(editable) currentProfileDetails = details;
+
+      const avatarSrc = details.avatar_data || DEFAULT_AVATAR;
+      title.textContent = editable ? "profil" : username;
+
+      if(editable){
+        body.innerHTML = `
+          <div class="profileAvatarArea">
+            <img id="profilAvatarImg" class="profileAvatarImg" src="${escapeHtml(avatarSrc)}" alt="profilbild" title="bild ändern" />
+            <div class="profileAvatarHint">auf bild klicken zum ändern</div>
+          </div>
+          <div class="grid">
+            <div class="label">e-mail:</div>
+            <input id="profilEmailInput" type="email" value="${escapeHtml(details.email || "")}" placeholder="deine@email.de" />
+            <div class="label">telefon:</div>
+            <input id="profilPhoneInput" type="tel" value="${escapeHtml(details.phone || "")}" placeholder="+49 123 456789" />
+          </div>
+          <div id="profilMsg" class="msg">meldung</div>
+        `;
+        footer.innerHTML = `
+          <button class="btn secondary" id="profilRemoveAvatarBtn" type="button">bild entfernen</button>
+          <button class="btn" id="profilSaveBtn" type="button">speichern</button>
+        `;
+        document.getElementById("profilAvatarImg").addEventListener("click",() => {
+          document.getElementById("avatarInput").click();
+        });
+        document.getElementById("profilRemoveAvatarBtn").addEventListener("click",() => {
+          document.getElementById("profilAvatarImg").src = DEFAULT_AVATAR;
+          if(currentProfileDetails) currentProfileDetails.avatar_data = null;
+        });
+        document.getElementById("profilSaveBtn").addEventListener("click", saveProfilDetails);
+      }else{
+        const emailText = details.email ? escapeHtml(details.email) : `<span style='color:#aaa'>keine angabe</span>`;
+        const phoneText = details.phone ? escapeHtml(details.phone) : `<span style='color:#aaa'>keine angabe</span>`;
+        body.innerHTML = `
+          <div class="profileAvatarArea">
+            <img class="profileAvatarImg" src="${escapeHtml(avatarSrc)}" alt="profilbild" style="cursor:default;" />
+            <div style="font-size:14px;font-weight:700;color:var(--blue)">${escapeHtml(username)}</div>
+          </div>
+          <div class="grid">
+            <div class="label">e-mail:</div>
+            <div style="font-size:14px;padding:10px 0;">${emailText}</div>
+            <div class="label">telefon:</div>
+            <div style="font-size:14px;padding:10px 0;">${phoneText}</div>
+          </div>
+        `;
+        footer.innerHTML = "";
       }
-
-      const avatarSrc = currentProfileDetails.avatar_data || DEFAULT_AVATAR;
-
-      body.innerHTML = `
-        <div class="profileAvatarArea">
-          <img id="profilAvatarImg" class="profileAvatarImg" src="${escapeHtml(avatarSrc)}" alt="profilbild" title="bild ändern" />
-          <div class="profileAvatarHint">auf bild klicken zum ändern</div>
-        </div>
-        <div class="grid">
-          <div class="label">e-mail:</div>
-          <input id="profilEmailInput" type="email" value="${escapeHtml(currentProfileDetails.email || "")}" placeholder="deine@email.de" />
-          <div class="label">telefon:</div>
-          <input id="profilPhoneInput" type="tel" value="${escapeHtml(currentProfileDetails.phone || "")}" placeholder="+49 123 456789" />
-        </div>
-        <div id="profilMsg" class="msg">meldung</div>
-      `;
-
-      footer.innerHTML = `
-        <button class="btn secondary" id="profilRemoveAvatarBtn" type="button">bild entfernen</button>
-        <button class="btn" id="profilSaveBtn" type="button">speichern</button>
-      `;
-
-      document.getElementById("profilAvatarImg").addEventListener("click",() => {
-        document.getElementById("avatarInput").click();
-      });
-
-      document.getElementById("profilRemoveAvatarBtn").addEventListener("click",() => {
-        document.getElementById("profilAvatarImg").src = DEFAULT_AVATAR;
-        currentProfileDetails.avatar_data = null;
-      });
-
-      document.getElementById("profilSaveBtn").addEventListener("click", saveProfilDetails);
     }
 
     async function saveProfilDetails(){
@@ -1306,7 +1338,6 @@
       try{
         await dbSaveProfileDetails(currentProfile.id, email, phone, avatarData);
         currentProfileDetails = { id: currentProfile.id, email, phone, avatar_data: avatarData };
-        // Avatar-Cache für aktuellen Nutzer aktualisieren
         avatarCache.set(currentUserName, avatarData || DEFAULT_AVATAR);
         showMsg("profilMsg","profil gespeichert",true);
         setTimeout(() => { document.getElementById("profilOverlay").style.display = "none"; },800);
@@ -1330,10 +1361,7 @@
         const dataUrl = await resizeImageToDataUrl(file, 120, 120);
         const img = document.getElementById("profilAvatarImg");
         if(img) img.src = dataUrl;
-      }catch(err){
-        console.error(err);
-        showStatus("bild konnte nicht verarbeitet werden");
-      }
+      }catch(err){ console.error(err); showStatus("bild konnte nicht verarbeitet werden"); }
       e.target.value = "";
     });
 
@@ -1401,10 +1429,7 @@
       if(!showClusters) return;
       const clusters = buildNoteClusters();
       clusters.forEach(cluster => {
-        const m = L.marker([cluster.lat, cluster.lng], {
-          icon: clusterIcon(),
-          pane: "clusterPane"
-        }).addTo(map);
+        const m = L.marker([cluster.lat, cluster.lng], { icon: clusterIcon(), pane: "clusterPane" }).addTo(map);
         m.on("click", () => { map.setView([cluster.lat, cluster.lng], 6); });
         clusterLeafletMarkers.set(cluster.id, m);
       });
@@ -1414,9 +1439,7 @@
       const notes = Array.from(markers.values()).filter(e => e.type === "note");
       const bikes = Array.from(markers.values()).filter(e => e.type === "bike");
       notes.forEach(note => {
-        const hasBikeNearby = bikes.some(bike =>
-          haversineKm(note.lat, note.lng, bike.lat, bike.lng) <= 0.03
-        );
+        const hasBikeNearby = bikes.some(bike => haversineKm(note.lat, note.lng, bike.lat, bike.lng) <= 0.03);
         const el = note.marker.getElement();
         if(el) el.style.opacity = hasBikeNearby ? "1" : "0.5";
       });
@@ -1447,11 +1470,7 @@
         if(!el) return;
         if(entry.type === "bike"){
           const wrap = el.querySelector(".bikeWrap");
-          if(wrap){
-            wrap.classList.toggle("small", small);
-            const num = wrap.querySelector(".bikeNum");
-            if(num) num.style.opacity = small ? "0" : "1";
-          }
+          if(wrap){ wrap.classList.toggle("small", small); const num = wrap.querySelector(".bikeNum"); if(num) num.style.opacity = small ? "0" : "1"; }
         }
         if(entry.type === "note"){
           const wrap = el.querySelector(".stationIconWrap");
@@ -1471,13 +1490,7 @@
           }
           if(payload.eventType === "DELETE"){
             const entry = findEntryById(payload.old.id);
-            if(entry){
-              map.removeLayer(entry.marker);
-              markers.delete(entry.id);
-              updateClusterView();
-              updateNoteMarkerOpacity();
-              updateMaintenanceMarkerVisibility();
-            }
+            if(entry){ map.removeLayer(entry.marker); markers.delete(entry.id); updateClusterView(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility(); }
           }
         }).subscribe();
 
@@ -1543,8 +1556,7 @@
         const currentPoint = map.latLngToContainerPoint(entry.marker.getLatLng());
         const newLatLng = map.containerPointToLatLng(L.point(currentPoint.x + dx, currentPoint.y + dy));
         entry.marker.setLatLng(newLatLng);
-        entry.lat = newLatLng.lat;
-        entry.lng = newLatLng.lng;
+        entry.lat = newLatLng.lat; entry.lng = newLatLng.lng;
       }
       autoPanAnimFrame = requestAnimationFrame(runAutoPan);
     }
@@ -1572,8 +1584,7 @@
       try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
       currentUserName = ""; currentProfile = null; currentProfileDetails = null; isAdmin = false;
       moveModeEntry = null; revealedBikeCodeId = null; markersLoaded = false;
-      chatOffset = 0; chatAllLoaded = false;
-      avatarCache.clear();
+      chatOffset = 0; chatAllLoaded = false; avatarCache.clear();
       stopAutoPan(); updateAdminUI(); closeAllOverlays(); hideContextMenus();
       document.getElementById("headerActions").style.display = "none";
       document.getElementById("mapFrame").style.display = "none";
@@ -1686,10 +1697,7 @@
     }
 
     async function dbInsertMarker(type,lat,lng){
-      const payload = {
-        type,lat,lng, bike_number:"", name:"natebike", color:"undefiniert",
-        remark:"keine", code:"", content:" ", status:"verfügbar", is_rented:false, photo_url:null
-      };
+      const payload = { type,lat,lng, bike_number:"", name:"natebike", color:"undefiniert", remark:"keine", code:"", content:" ", status:"verfügbar", is_rented:false, photo_url:null };
       const { data, error } = await sb.from("markers").insert(payload).select().single();
       if(error) throw error;
       return data;
@@ -1731,11 +1739,7 @@
         const status = row.status ?? "verfügbar";
         const newBikeNumber = row.bike_number ?? "";
         const newIsRented = status !== "verfügbar" ? true : !!row.is_rented;
-        const iconNeedsUpdate =
-          entry.bikeNumber !== newBikeNumber ||
-          entry.isRented !== newIsRented ||
-          entry.status !== status ||
-          entry.type !== row.type;
+        const iconNeedsUpdate = entry.bikeNumber !== newBikeNumber || entry.isRented !== newIsRented || entry.status !== status || entry.type !== row.type;
         entry.type = row.type; entry.lat = row.lat; entry.lng = row.lng;
         entry.bikeNumber = newBikeNumber; entry.bikeName = row.name ?? "";
         entry.bikeColor = row.color ?? ""; entry.bikeRemark = row.remark ?? "";
@@ -1755,10 +1759,7 @@
       const rows = await dbLoadAllMarkers();
       rows.forEach(row => { if(row.type === "bike" || row.type === "note") addOrUpdateMarker(row); });
       markersLoaded = true;
-      updateMarkerSizes();
-      updateClusterView();
-      updateNoteMarkerOpacity();
-      updateMaintenanceMarkerVisibility();
+      updateMarkerSizes(); updateClusterView(); updateNoteMarkerOpacity(); updateMaintenanceMarkerVisibility();
     }
 
     function findEntryById(id){ return markers.get(id) || null; }
@@ -1779,10 +1780,7 @@
       });
       marker.on("dragstart",() => {
         map.dragging.disable();
-        if(moveModeEntry === entry){
-          autoPanMarkerEntry = entry;
-          if(autoPanAnimFrame === null) autoPanAnimFrame = requestAnimationFrame(runAutoPan);
-        }
+        if(moveModeEntry === entry){ autoPanMarkerEntry = entry; if(autoPanAnimFrame === null) autoPanAnimFrame = requestAnimationFrame(runAutoPan); }
       });
       marker.on("drag",() => {
         if(moveModeEntry === entry){ const ll = marker.getLatLng(); entry.lat = ll.lat; entry.lng = ll.lng; }
@@ -1940,10 +1938,8 @@
           cancelX.removeEventListener("click",onCancel); overlay.removeEventListener("click",onOverlay);
           resolve(value);
         }
-        function onAuto(){ close("auto"); }
-        function onManual(){ close("manual"); }
-        function onCancel(){ close("cancel"); }
-        function onOverlay(e){ if(e.target === overlay) close("cancel"); }
+        function onAuto(){ close("auto"); } function onManual(){ close("manual"); }
+        function onCancel(){ close("cancel"); } function onOverlay(e){ if(e.target === overlay) close("cancel"); }
         autoBtn.addEventListener("click",onAuto); manualBtn.addEventListener("click",onManual);
         cancelX.addEventListener("click",onCancel); overlay.addEventListener("click",onOverlay);
         overlay.style.display = "flex";
@@ -1971,7 +1967,7 @@
         if(kind === "bikes") showBikeList();
         if(kind === "notes") showNoteList();
         if(kind === "chat") openChat();
-        if(kind === "profil") openProfil();
+        if(kind === "profil") openOwnProfil();
         if(kind === "account") openAccountManage();
         if(kind === "accounts") openAllAccountsManage();
         if(kind === "admintools") openAdminTools();
@@ -2063,12 +2059,9 @@
         setTimeout(() => { map.invalidateSize(); map.locate({setView:true,maxZoom:16,enableHighAccuracy:true}); },100);
         await loadMarkersOnce();
         subscribeRealtime();
-        // Eigenes Profil vorab laden und cachen
         try{
           currentProfileDetails = await dbLoadProfileDetails(currentProfile.id);
-          if(currentProfileDetails.avatar_data){
-            avatarCache.set(currentUserName, currentProfileDetails.avatar_data);
-          }
+          if(currentProfileDetails.avatar_data) avatarCache.set(currentUserName, currentProfileDetails.avatar_data);
         }catch(e){ console.error(e); }
       }catch(err){ console.error(err); showMsg("loginMsg","anmeldung fehlgeschlagen"); }
     }
@@ -2298,8 +2291,7 @@
       unsubscribeRealtime();
       try{ await sb.auth.signOut(); }catch(err){ console.error(err); }
       currentUserName = ""; currentProfile = null; currentProfileDetails = null; isAdmin = false; markersLoaded = false;
-      chatOffset = 0; chatAllLoaded = false;
-      avatarCache.clear();
+      chatOffset = 0; chatAllLoaded = false; avatarCache.clear();
       updateAdminUI(); closeAccountOverlay();
       headerActions.style.display = "none"; mapFrame.style.display = "none"; loginFrame.style.display = "grid";
       document.getElementById("loginNameInput").value = "";
@@ -2354,8 +2346,7 @@
         await sb.auth.signOut();
       }catch(err){ console.error(err); }
       currentProfile = null; currentProfileDetails = null; currentUserName = ""; isAdmin = false; markersLoaded = false;
-      chatOffset = 0; chatAllLoaded = false;
-      avatarCache.clear();
+      chatOffset = 0; chatAllLoaded = false; avatarCache.clear();
       updateAdminUI(); closeAccountOverlay();
       headerActions.style.display = "none"; mapFrame.style.display = "none"; loginFrame.style.display = "grid";
       document.getElementById("loginNameInput").value = "";
@@ -2375,6 +2366,12 @@
           row.className = account.locked ? "list-item accountRow locked" : "list-item accountRow";
           row.textContent = account.locked ? `${account.display_name} (gesperrt)` : account.display_name;
           row.dataset.id = account.id;
+
+          // Linksklick → Profil öffnen
+          row.addEventListener("click", () => {
+            openUserProfil(account.display_name);
+          });
+
           row.addEventListener("contextmenu",e => {
             if(!isAdmin) return;
             e.preventDefault(); e.stopPropagation();
@@ -2607,14 +2604,11 @@
       if(modalCleanup){ modalCleanup(); modalCleanup = null; }
       modalTitle.textContent = "natebikestation";
       const readonly = isAdmin ? "" : "readonly";
-
       modalBody.innerHTML = `<textarea id="stationContentInput" ${readonly} style="grid-column:1 / -1;">${escapeHtml(entry.content)}</textarea>`;
-
       if(noteHasAvailableBikeNearby(entry)){
         const ta = document.getElementById("stationContentInput");
         if(ta) ta.style.border = "2px solid #9be39b";
       }
-
       if(isAdmin){
         modalFooter.innerHTML = `<button class="btn danger" id="stationDeleteBtn" type="button">löschen</button>`;
         document.getElementById("stationDeleteBtn").addEventListener("click",async() => {
@@ -2624,7 +2618,6 @@
           }catch(err){ console.error(err); showStatus("löschen fehlgeschlagen"); }
         },{once:true});
       }
-
       async function saveOnClose(){
         if(!isAdmin) return;
         const content = document.getElementById("stationContentInput")?.value.trim() ?? entry.content;
@@ -2633,7 +2626,6 @@
           catch(err){ console.error(err); showStatus("speichern fehlgeschlagen"); }
         }
       }
-
       const closeBtnHandler = async() => { await saveOnClose(); closeModal(); };
       const overlayHandler = async(e) => { if(e.target === modalOverlay){ await saveOnClose(); closeModal(); } };
       document.getElementById("modalCloseBtn").addEventListener("click",closeBtnHandler);
@@ -2693,7 +2685,6 @@
         const existingBtn = document.getElementById("loadMoreChatBtn");
         if(existingBtn) existingBtn.remove();
         if(rows.length < CHAT_PAGE_SIZE){ chatAllLoaded = true; }else{ addLoadMoreButton(); }
-        // Avatare vorladen
         const usernames = [...new Set(rows.map(r => r.user_name).filter(u => u && u !== "system"))];
         await Promise.all(usernames.map(u => dbGetAvatarForUser(u)));
         rows.forEach(renderChatMessage);
@@ -2720,7 +2711,6 @@
         const btn = document.getElementById("loadMoreChatBtn");
         const scrollHeightBefore = chatMessages.scrollHeight;
         if(rows.length < CHAT_PAGE_SIZE){ chatAllLoaded = true; if(btn) btn.remove(); }
-        // Avatare vorladen
         const usernames = [...new Set(rows.map(r => r.user_name).filter(u => u && u !== "system"))];
         await Promise.all(usernames.map(u => dbGetAvatarForUser(u)));
         const fragment = document.createDocumentFragment();
@@ -2744,11 +2734,13 @@
       box.dataset.id = row.id;
 
       if(!isSystemMessage){
-        // Avatar
         const avatar = document.createElement("img");
         avatar.className = "chatAvatar";
         avatar.alt = "";
         avatar.src = avatarCache.get(row.user_name) || DEFAULT_AVATAR;
+        avatar.style.cursor = "pointer";
+        avatar.title = row.user_name;
+        avatar.addEventListener("click", () => { openUserProfil(row.user_name); });
         box.appendChild(avatar);
 
         const content = document.createElement("div");
@@ -2767,7 +2759,6 @@
         }
         box.appendChild(content);
       }else{
-        // Systemnachricht ohne Avatar
         if(row.message){
           const text = document.createElement("div"); text.className = "chatText"; text.textContent = row.message; box.appendChild(text);
         }
@@ -2854,7 +2845,6 @@
       if(!message && !selectedPhotoData) return;
       try{
         const savedMessage = await dbInsertChatMessage(message,selectedPhotoData);
-        // Eigenen Avatar für neue Nachricht sicherstellen
         if(!avatarCache.has(currentUserName)){
           avatarCache.set(currentUserName, (currentProfileDetails?.avatar_data) || DEFAULT_AVATAR);
         }
