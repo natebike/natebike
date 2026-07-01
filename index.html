@@ -1426,10 +1426,19 @@
       const zoom = map.getZoom();
       const showClusters = zoom < CLUSTER_ZOOM_THRESHOLD;
       markers.forEach(entry => {
-        const el = entry.marker.getElement();
-        if(!el) return;
-        el.style.display = showClusters ? "none" : "";
-      });
+    const el = entry.marker.getElement();
+    if(!el) return;
+    if(showClusters){
+      el.style.display = "none";
+    }else{
+      // Wartungs-Bikes nur für Admin sichtbar
+      if(entry.type === "bike" && entry.status === "nicht verfügbar" && !isAdmin){
+        el.style.display = "none";
+      }else{
+        el.style.display = "";
+      }
+    }
+  });
       clusterLeafletMarkers.forEach(m => map.removeLayer(m));
       clusterLeafletMarkers.clear();
       if(!showClusters) return;
