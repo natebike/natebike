@@ -2373,8 +2373,9 @@
           row.dataset.id = account.id;
 
           // Linksklick → Profil öffnen
-          row.addEventListener("click", () => {
-            openUserProfil(account.display_name);
+         row.addEventListener("click", () => {
+        document.getElementById("listOverlay").style.display = "none";
+        openUserProfil(account.display_name);
           });
 
           row.addEventListener("contextmenu",e => {
